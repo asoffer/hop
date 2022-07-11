@@ -7,8 +7,8 @@
 #include <utility>
 #include <vector>
 
-#include "value.h"
-#include "value_stack.h"
+#include "jasmin/value.h"
+#include "jasmin/value_stack.h"
 
 #if defined(__clang__)
 #define JASMIN_TAIL_CALL [[clang::musttail]]
@@ -27,7 +27,7 @@ struct ExtractSignature<R (*)(Args...)> {
   using return_type = R;
 
   template <typename F>
-  static constexpr auto invoke_with_argument_types(F&& f) requires(requires {
+  static constexpr auto invoke_with_argument_types(F &&f) requires(requires {
     std::forward<F>(f).template operator()<Args...>();
   }) {
     return std::forward<F>(f).template operator()<Args...>();
@@ -64,10 +64,10 @@ struct InstructionPointer {
   friend struct internal_instruction::FunctionBase;
 
   explicit constexpr InstructionPointer(
-      internal_instruction::OpCodeOrValue const* p)
+      internal_instruction::OpCodeOrValue const *p)
       : pointer_(p) {}
 
-  internal_instruction::OpCodeOrValue const* pointer_;
+  internal_instruction::OpCodeOrValue const *pointer_;
 };
 
 namespace internal_instruction {
@@ -96,8 +96,6 @@ struct Return;
 struct JumpIf;
 struct Call;
 
-
-
 template <typename InstructionTable>
 struct Function : internal_instruction::FunctionBase {
   explicit constexpr Function(uint8_t parameter_count, uint8_t return_count)
@@ -119,21 +117,20 @@ struct Function : internal_instruction::FunctionBase {
 
   void set_jump_target(size_t index) {
     assert(op_codes_.size() > index);
-    op_codes_[index].value = Value(static_cast<ptrdiff_t>(op_codes_.size() - 1));
+    op_codes_[index].value =
+        Value(static_cast<ptrdiff_t>(op_codes_.size() - 1));
   }
 };
 
 struct CallStack {
-  void push(internal_instruction::FunctionBase const* f,
+  void push(internal_instruction::FunctionBase const *f,
             size_t value_stack_size, InstructionPointer ip) {
     stack_.emplace_back(f, value_stack_size, ip);
   }
 
-  constexpr bool empty() const {
-    return stack_.empty();
-  }
+  constexpr bool empty() const { return stack_.empty(); }
 
-  internal_instruction::FunctionBase const* back() const {
+  internal_instruction::FunctionBase const *back() const {
     assert(stack_.size() != 0);
     return std::get<0>(stack_.back());
   }
@@ -160,7 +157,8 @@ struct CallStack {
   }
 
  private:
-  std::deque<std::tuple<internal_instruction::FunctionBase const*, size_t, InstructionPointer>>
+  std::deque<std::tuple<internal_instruction::FunctionBase const *, size_t,
+                        InstructionPointer>>
       stack_;
 };
 
@@ -171,11 +169,11 @@ struct StackMachineInstruction {
   friend struct InstructionTable;
 
   template <typename InstructionTableType>
-  static void execute_impl(ValueStack& value_stack, InstructionPointer& ip,
-                           CallStack& call_stack) {
+  static void execute_impl(ValueStack &value_stack, InstructionPointer &ip,
+                           CallStack &call_stack) {
     if constexpr (std::is_same_v<Inst, Call>) {
-      auto const* f =
-          value_stack.pop<internal_instruction::FunctionBase const*>();
+      auto const *f =
+          value_stack.pop<internal_instruction::FunctionBase const *>();
       call_stack.push(f, value_stack.size(), ip);
       ip = f->begin();
       JASMIN_TAIL_CALL return InstructionTableType::table[ip.op_code()](
@@ -191,7 +189,7 @@ struct StackMachineInstruction {
         return;
       } else {
         JASMIN_TAIL_CALL return InstructionTableType::table[ip.op_code()](
-          value_stack, ip, call_stack);
+            value_stack, ip, call_stack);
       }
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       ++ip;
@@ -212,11 +210,12 @@ struct StackMachineInstruction {
       } else {
         if constexpr (std::is_void_v<typename signature::return_type>) {
           signature::invoke_with_argument_types([&]<typename... Ts>() {
-              std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
+            std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
           });
         } else {
           signature::invoke_with_argument_types([&]<typename... Ts>() {
-            value_stack.push(std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
+            value_stack.push(
+                std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
           });
         }
         ++ip;
@@ -246,14 +245,14 @@ struct InstructionTable {
     return i;
   }
 
-  static constexpr void (*table[sizeof...(Instructions)])(ValueStack&,
-                                                          InstructionPointer&,
-                                                          CallStack&) = {
+  static constexpr void (*table[sizeof...(Instructions)])(ValueStack &,
+                                                          InstructionPointer &,
+                                                          CallStack &) = {
       &Instructions::template execute_impl<InstructionTable>...};
 };
 
 template <typename InstructionTableType>
-void Execute(Function<InstructionTableType> const& f, ValueStack& value_stack) {
+void Execute(Function<InstructionTableType> const &f, ValueStack &value_stack) {
   CallStack call_stack;
   InstructionPointer ip = f.begin();
   call_stack.push(&f, value_stack.size(), ip);
@@ -261,9 +260,9 @@ void Execute(Function<InstructionTableType> const& f, ValueStack& value_stack) {
 }
 
 template <typename InstructionTableType>
-void Execute(Function<InstructionTableType> const& f,
+void Execute(Function<InstructionTableType> const &f,
              std::initializer_list<Value> arguments,
-             SmallTrivialValue auto&... return_values) {
+             SmallTrivialValue auto &...return_values) {
   ValueStack value_stack(arguments);
   int dummy;
   Execute(f, value_stack);

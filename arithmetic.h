@@ -20,7 +20,7 @@ concept Subtractable = requires(T t) {
 
 template <typename T>
 concept Multiplicable = requires(T t) {
-  { t* t } -> std::same_as<T>;
+  { t *t } -> std::same_as<T>;
 };
 
 template <typename T>

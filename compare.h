@@ -15,9 +15,7 @@ concept Comparable = requires(T t) {
 template <Comparable T>
 struct LessThan : StackMachineInstruction<LessThan<T>> {
   static constexpr std::string_view jasmin_instruction = "lt";
-  static constexpr bool execute(T x, T y) {
-    return x < y;
-  }
+  static constexpr bool execute(T x, T y) { return x < y; }
 };
 
 template <typename T>

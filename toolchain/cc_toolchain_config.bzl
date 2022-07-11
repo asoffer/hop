@@ -102,23 +102,20 @@ def _impl(ctx):
         linking_flags([
             "-ldl",
             "-lm",
-            "-lpthread",
-            "-lffi",
-            "-rdynamic",
             "-lstdc++",
         ]),
         mode_dependent_flags({
-            "dbg": ["-g", "-O0", "-DICARUS_DEBUG"],
-            "opt": ["-O2", "-DNDEBUG"],
+            "dbg": ["-g", "-O0"],
+            "opt": ["-O2"],
         }),
 
     ]
 
     return cc_common.create_cc_toolchain_config_info(
         ctx = ctx,
-        toolchain_identifier = "asmjs-toolchain",
-        host_system_name = "i686-unknown-linux-gnu",
-        target_system_name = "asmjs-unknown-emscripten",
+        toolchain_identifier = "cc-toolchain",
+        host_system_name = "host",
+        target_system_name = "target",
         target_cpu = "gcc",
         target_libc = "unknown",
         compiler = "gcc",
