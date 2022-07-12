@@ -1,9 +1,46 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
+    name = "call_stack",
+    hdrs = ["call_stack.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":debug",
+        "//jasmin/internal:function_base",
+    ],
+)
+
+cc_library(
     name = "debug",
     hdrs = ["debug.h"],
     deps = [],
+)
+
+cc_library(
+    name = "function",
+    hdrs = ["function.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":call_stack",
+        ":debug",
+        "//jasmin/internal:function_base",
+    ],
+)
+
+cc_library(
+    name = "instruction",
+    hdrs = ["instruction.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":call_stack",
+        ":debug",
+        ":instruction_pointer",
+        ":value",
+        ":value_stack",
+        "//jasmin/internal:attributes",
+        "//jasmin/internal:function_base",
+        "//jasmin/internal:type_traits",
+    ],
 )
 
 cc_library(

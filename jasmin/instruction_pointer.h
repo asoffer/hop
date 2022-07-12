@@ -82,14 +82,12 @@ struct OpCodeOrValue {
 };
 
 struct InstructionPointer {
-  // Consturcts an `InstructionPointer` from an underlying `OpCodeOrValue` pointer `p`.
-  explicit constexpr InstructionPointer(OpCodeOrValue const *p)
-      : pointer_(p) {}
+  // Consturcts an `InstructionPointer` from an underlying `OpCodeOrValue`
+  // pointer `p`.
+  explicit constexpr InstructionPointer(OpCodeOrValue const *p) : pointer_(p) {}
 
   // Returns the underlying `OpCodeOrValue` pointer.
-  constexpr OpCodeOrValue const *operator->() const {
-    return pointer_;
-  }
+  constexpr OpCodeOrValue const *operator->() const { return pointer_; }
 
   // Moves the instruction pointer forward one instruction, returning the
   // modified InstructionPointer.
@@ -121,13 +119,15 @@ struct InstructionPointer {
     return copy;
   }
 
-  // Returns an `InstructionPointer` that is `n` instructions further forward than `ip`.
+  // Returns an `InstructionPointer` that is `n` instructions further forward
+  // than `ip`.
   friend constexpr InstructionPointer operator+(InstructionPointer ip,
                                                 ptrdiff_t n) {
     return InstructionPointer(ip.pointer_ + n);
   }
 
-  // Returns an `InstructionPointer` that is `n` instructions further forward than `ip`.
+  // Returns an `InstructionPointer` that is `n` instructions further forward
+  // than `ip`.
   friend constexpr InstructionPointer operator+(ptrdiff_t n,
                                                 InstructionPointer ip) {
     return InstructionPointer(ip.pointer_ + n);
@@ -139,7 +139,8 @@ struct InstructionPointer {
     return *this;
   }
 
-  // Returns an `InstructionPointer` that is `n` instructions further backward than `ip`.
+  // Returns an `InstructionPointer` that is `n` instructions further backward
+  // than `ip`.
   friend InstructionPointer operator-(InstructionPointer ip, ptrdiff_t n) {
     return InstructionPointer(ip.pointer_ - n);
   }

@@ -4,8 +4,9 @@ cc_library(
     name = "instruction",
     hdrs = ["instruction.h"],
     deps = [
-        "//jasmin/internal:attributes",
-        "//jasmin/internal:type_traits",
+        "//jasmin:call_stack",
+        "//jasmin:function",
+        "//jasmin:instruction",
         "//jasmin:instruction_pointer",
         "//jasmin:value",
         "//jasmin:value_stack",
