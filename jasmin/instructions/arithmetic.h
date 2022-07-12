@@ -1,5 +1,5 @@
-#ifndef JASMIN_ARITHMETIC_H
-#define JASMIN_ARITHMETIC_H
+#ifndef JASMIN_INSTRUCTIONS_ARITHMETIC_H
+#define JASMIN_INSTRUCTIONS_ARITHMETIC_H
 
 #include <concepts>
 #include <string_view>
@@ -65,4 +65,4 @@ struct Mod : StackMachineInstruction<Mod<T>> {
 
 }  // namespace jasmin
 
-#endif  // JASMIN_INSTRUCTION_H
+#endif  // JASMIN_INSTRUCTIONS_ARITHMETIC_H

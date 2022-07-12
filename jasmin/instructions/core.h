@@ -1,5 +1,5 @@
-#ifndef JASMIN_CORE_H
-#define JASMIN_CORE_H
+#ifndef JASMIN_INSTRUCTIONS_CORE_H
+#define JASMIN_INSTRUCTIONS_CORE_H
 
 #include <cstring>
 
@@ -34,4 +34,4 @@ struct Swap : StackMachineInstruction<Swap> {
 
 }  // namespace jasmin
 
-#endif  // JASMIN_CORE_H
+#endif  // JASMIN_INSTRUCTIONS_CORE_H

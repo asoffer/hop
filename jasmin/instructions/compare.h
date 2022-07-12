@@ -1,5 +1,5 @@
-#ifndef JASMIN_COMPARE_H
-#define JASMIN_COMPARE_H
+#ifndef JASMIN_INSTRUCTIONS_COMPARE_H
+#define JASMIN_INSTRUCTIONS_COMPARE_H
 
 #include <string_view>
 
@@ -31,4 +31,4 @@ struct Equal : StackMachineInstruction<Equal<T>> {
 
 }  // namespace jasmin
 
-#endif  // JASMIN_INSTRUCTION_H
+#endif  // JASMIN_INSTRUCTIONS_COMPARE_H

@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include "arithmetic.h"
-#include "compare.h"
-#include "core.h"
+#include "jasmin/instructions/arithmetic.h"
+#include "jasmin/instructions/compare.h"
+#include "jasmin/instructions/core.h"
 #include "jasmin/execute.h"
 
 using Instructions = jasmin::MakeInstructionSet<
