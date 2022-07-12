@@ -8,10 +8,19 @@ cc_library(
 )
 
 cc_library(
+    name = "debug",
+    hdrs = ["debug.h"],
+    visibility = ["//jasmin:__subpackages__"],
+    deps = [],
+)
+
+cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     visibility = ["//jasmin:__subpackages__"],
-    deps = [],
+    deps = [
+        "//jasmin:instruction_pointer",
+    ],
 )
 
 cc_library(

@@ -6,7 +6,7 @@
 #include <tuple>
 #include <vector>
 
-#include "jasmin/debug.h"
+#include "jasmin/internal/debug.h"
 #include "jasmin/value.h"
 
 namespace jasmin {

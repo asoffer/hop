@@ -4,7 +4,7 @@
 #include <cstring>
 #include <type_traits>
 
-#include "jasmin/debug.h"
+#include "jasmin/internal/debug.h"
 
 namespace jasmin {
 

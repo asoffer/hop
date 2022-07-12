@@ -13,7 +13,7 @@ namespace jasmin {
 struct JumpIf;
 
 template <typename InstructionTable>
-struct Function : internal_function_base::FunctionBase {
+struct Function final : internal_function_base::FunctionBase {
   explicit constexpr Function(uint8_t parameter_count, uint8_t return_count)
       : FunctionBase(parameter_count, return_count) {}
 
@@ -25,12 +25,14 @@ struct Function : internal_function_base::FunctionBase {
     (op_codes_.push_back(OpCodeOrValue::Value(vs)), ...);
   }
 
+  // TODO: Find a better API for this.
   size_t append_conditional_jump() {
     append<JumpIf>(ptrdiff_t{0});
     size_t result = op_codes_.size() - 1;
     return result;
   }
 
+  // TODO: Find a better API for this.
   void set_jump_target(size_t index) {
     assert(op_codes_.size() > index);
     op_codes_[index].set_value(static_cast<ptrdiff_t>(op_codes_.size() - 1));

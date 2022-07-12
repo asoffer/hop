@@ -5,12 +5,12 @@
 #include <type_traits>
 #include <utility>
 
-#include "jasmin/instruction_pointer.h"
 #include "jasmin/call_stack.h"
 #include "jasmin/function.h"
+#include "jasmin/instruction.h"
+#include "jasmin/instruction_pointer.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
-#include "jasmin/instruction.h"
 
 namespace jasmin {
 
@@ -47,7 +47,8 @@ void Execute(Function<InstructionTableType> const &f, ValueStack &value_stack) {
   CallStack call_stack;
   InstructionPointer ip = f.entry();
   call_stack.push(&f, value_stack.size(), ip);
-  return InstructionTableType::table[ip->op_code()](value_stack, ip, call_stack);
+  return InstructionTableType::table[ip->op_code()](value_stack, ip,
+                                                    call_stack);
 }
 
 template <typename InstructionTableType>
