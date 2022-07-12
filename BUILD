@@ -6,6 +6,7 @@ cc_library(
     deps = [
         "//jasmin/internal:attributes",
         "//jasmin/internal:type_traits",
+        "//jasmin:instruction_pointer",
         "//jasmin:value",
         "//jasmin:value_stack",
     ],

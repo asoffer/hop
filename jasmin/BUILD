@@ -7,6 +7,17 @@ cc_library(
 )
 
 cc_library(
+    name = "instruction_pointer",
+    hdrs = ["instruction_pointer.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":debug",
+        ":value"
+    ],
+)
+
+
+cc_library(
     name = "value_stack",
     hdrs = ["value_stack.h"],
     visibility = ["//visibility:public"],

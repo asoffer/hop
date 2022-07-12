@@ -11,7 +11,7 @@ struct Push : StackMachineInstruction<Push> {
   static constexpr void execute(ValueStack &value_stack,
                                 InstructionPointer &ip) {
     ++ip;
-    value_stack.push(ip.value());
+    value_stack.push(ip->value());
     ++ip;
   }
 };

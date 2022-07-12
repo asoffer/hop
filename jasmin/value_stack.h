@@ -1,10 +1,10 @@
 #ifndef JASMIN_VALUE_STACK_H
 #define JASMIN_VALUE_STACK_H
 
-#include <vector>
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
+#include <vector>
 
 #include "jasmin/debug.h"
 #include "jasmin/value.h"

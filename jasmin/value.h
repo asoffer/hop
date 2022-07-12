@@ -37,8 +37,8 @@ struct Value {
   }
 
   // Returns the stored value as a `T`. In general, behavior is undefined if the
-  // stored value is not of type `T`. However, if the JASMIN_DEBUG macro is
-  // defined, then an the behavior is defined to report an error message to
+  // stored value is not of type `T`. However, if the `JASMIN_DEBUG` macro is
+  // defined, then the behavior is defined to report an error message to
   // `stderr` and abort program execution.
   template <SmallTrivialValue T>
   T as() const {
