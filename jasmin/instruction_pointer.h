@@ -22,6 +22,12 @@ struct OpCodeOrValue {
     return OpCodeOrValue(value);
   }
 
+  // Returns an `OpCodeOrValue` representing an uninitialized `Value`. This
+  // value may be overwritten via a call to `set_value()`.
+  constexpr static OpCodeOrValue UninitializedValue() {
+    return OpCodeOrValue();
+  }
+
   // Returns the op-code represented by this `OpCodeOrValue`. Generally,
   // behavior is undefined if this `OpCodeOrValue` represnts a `Value`. However,
   // if the `JASMIN_DEBUG` macro is defined, then the behavior is defined to
@@ -69,6 +75,14 @@ struct OpCodeOrValue {
         is_op_code_(false),
 #endif
         value_(v) {
+  }
+
+  // Constructs an `OpCodeOrValue` representing an uninitialized `Value`.
+  explicit constexpr OpCodeOrValue()
+#if defined(JASMIN_DEBUG)
+      : is_op_code_(false)
+#endif
+  {
   }
 
 #if defined(JASMIN_DEBUG)

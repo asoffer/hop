@@ -3,7 +3,7 @@
 
 #include <cstring>
 
-#include "instruction.h"
+#include "jasmin/execute.h"
 
 namespace jasmin {
 

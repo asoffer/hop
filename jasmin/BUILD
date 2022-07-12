@@ -5,9 +5,25 @@ cc_library(
     hdrs = ["call_stack.h"],
     visibility = ["//visibility:public"],
     deps = [
+        "//jasmin/internal:debug",
         "//jasmin/internal:function_base",
     ],
 )
+
+cc_library(
+    name = "execute",
+    hdrs = ["execute.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":call_stack",
+        ":function",
+        ":instruction",
+        ":instruction_pointer",
+        ":value",
+        ":value_stack",
+    ],
+)
+
 
 cc_library(
     name = "function",
@@ -15,6 +31,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":call_stack",
+        ":instruction_pointer",
+        ":instruction",
+        "//jasmin/internal:debug",
         "//jasmin/internal:function_base",
     ],
 )
@@ -43,7 +62,6 @@ cc_library(
         "//jasmin/internal:debug",
     ],
 )
-
 
 cc_library(
     name = "value_stack",

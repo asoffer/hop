@@ -33,6 +33,7 @@ struct FunctionBase {
 
  protected:
   std::vector<OpCodeOrValue> op_codes_;
+
  private:
   uint8_t parameter_count_;
   uint8_t return_count_;

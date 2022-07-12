@@ -4,7 +4,7 @@
 #include <concepts>
 #include <string_view>
 
-#include "instruction.h"
+#include "jasmin/execute.h"
 
 namespace jasmin {
 
