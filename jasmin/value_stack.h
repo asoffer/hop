@@ -1,7 +1,7 @@
 #ifndef JASMIN_VALUE_STACK_H
 #define JASMIN_VALUE_STACK_H
 
-#include <deque>
+#include <vector>
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
@@ -115,7 +115,7 @@ struct ValueStack {
   }
 
  private:
-  std::deque<Value> values_;
+  std::vector<Value> values_;
 };
 
 }  // namespace jasmin

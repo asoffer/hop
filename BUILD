@@ -4,6 +4,8 @@ cc_library(
     name = "instruction",
     hdrs = ["instruction.h"],
     deps = [
+        "//jasmin/internal:attributes",
+        "//jasmin/internal:type_traits",
         "//jasmin:value",
         "//jasmin:value_stack",
     ],
