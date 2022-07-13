@@ -1,7 +1,9 @@
+#include "jasmin/internal/debug.h"
+
+#if defined(JASMIN_DEBUG)
+
 #include <cstdio>
 #include <cstdlib>
-
-#include "jasmin/internal/debug.h"
 
 namespace jasmin::internal_debug {
 
@@ -12,3 +14,5 @@ namespace jasmin::internal_debug {
 }
 
 }  // namespace jasmin::internal_debug
+
+#endif  // defined(JASMIN_DEBUG)

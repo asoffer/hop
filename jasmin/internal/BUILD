@@ -15,6 +15,16 @@ cc_library(
     deps = [],
 )
 
+cc_test(
+    name = "debug_test",
+    srcs = ["debug_test.cc"],
+    deps = [
+        ":debug",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
 cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
@@ -24,9 +34,27 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "function_base_test",
+    srcs = ["function_base_test.cc"],
+    deps = [
+      ":function_base",
+      "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "type_traits",
     hdrs = ["type_traits.h"],
     visibility = ["//jasmin:__subpackages__"],
     deps = [],
+)
+
+cc_test(
+  name = "type_traits_test",
+  srcs = ["type_traits_test.cc"],
+  deps = [
+      ":type_traits",
+      "@com_google_googletest//:gtest_main",
+  ]
 )
