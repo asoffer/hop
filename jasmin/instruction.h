@@ -18,6 +18,37 @@ namespace internal_instruction {
 // instruction set.
 struct InstructionSetBase {};
 
+// Implementation detail. A concept capturing valid return types for one way a
+// type can adhere to the `Instruction` concept defined below.
+template <typename T>
+concept VoidOrSmallTrivialValue = std::is_void_v<T> or SmallTrivialValue<T>;
+
+// Implementation detail. A concept capturing one way a type can adhere to the
+// `Instruction` concept defined below.
+template <typename Signature>
+concept SignatureSatisfiesSimpleRequirements =
+    VoidOrSmallTrivialValue<typename Signature::return_type> and
+    Signature::invoke_with_argument_types([]<SmallTrivialValue... Ts>() {
+      return true;
+    });
+
+// Implementation detail. A concept capturing one way a type can adhere to the
+// `Instruction` concept defined below.
+template <typename Signature>
+concept SignatureSatisfiesGeneralRequirements =
+    std::is_void_v<typename Signature::return_type> and
+    Signature::invoke_with_argument_types(
+        []<std::same_as<ValueStack &>, std::same_as<InstructionPointer &>,
+           SmallTrivialValue... Ts>() { return true; });
+
+// Implementation detail. A concept capturing that the signature for an
+// `execute` static member function satisfies the requirements for the
+// Instruction concept.
+template <typename Signature>
+concept SignatureSatisfiesRequirements =
+    (SignatureSatisfiesSimpleRequirements<Signature> or
+     SignatureSatisfiesGeneralRequirements<Signature>);
+
 }  // namespace internal_instruction
 
 // A concept indicating which types constitute instruction sets understandable
@@ -30,7 +61,6 @@ concept InstructionSet =
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
 // appear below.
 struct Return;
-struct JumpIf;
 struct Call;
 
 // Every instruction `Inst` executable as part of Jasmin's stack machine
@@ -40,8 +70,9 @@ struct Call;
 // overload set (so that `&Inst::execute` is well-formed) and this function must
 // either:
 //
-//   (a) Have the signature
-//       `void execute(jasmin::ValueStack&, jasmin::InstructionPointer&)`.
+//   (a) Return void and accept a `jasmin::ValueStack&`, then a
+//   `jasmin::InstructionPointer&`, and then some number of arguments satisfying
+//   whose types satisfy the `jasmin::SmallTrivialValue` concept.
 //
 //   (b) Accept some number of arguments satisfying `jasmin::SmallTrivialValue`
 //   and
@@ -75,30 +106,28 @@ struct StackMachineInstruction {
         JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(
             ip->op_code())(value_stack, ip, call_stack);
       }
-    } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      ++ip;
-      if (value_stack.pop<bool>()) {
-        ip = call_stack.current()->entry() + ip->value().as<ptrdiff_t>();
-      } else {
-        ++ip;
-      }
-      JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
-          value_stack, ip, call_stack);
     } else {
-      if constexpr (std::is_same_v<decltype(&Inst::execute),
-                                   void (*)(ValueStack &,
-                                            InstructionPointer &)>) {
-        Inst::execute(value_stack, ip);
+      using signature =
+          internal_type_traits::ExtractSignature<decltype(&Inst::execute)>;
+      if constexpr (internal_instruction::SignatureSatisfiesGeneralRequirements<signature>) {
+        signature::invoke_with_argument_types(
+            [&]<std::same_as<ValueStack &>, std::same_as<InstructionPointer &>,
+                SmallTrivialValue... Ts>() {
+              auto ip_copy = ip;
+              // Brace-initialization forces the order of evaluation to be in
+              // the order the elements appear in the list.
+              std::apply(
+                  Inst::execute,
+                  std::tuple<ValueStack &, InstructionPointer &, Ts...>{
+                      value_stack, ip, (ip_copy++)->value().as<Ts>()...});
+            });
       } else {
-        using signature =
-            internal_type_traits::ExtractSignature<decltype(&Inst::execute)>;
-
         if constexpr (std::is_void_v<typename signature::return_type>) {
-          signature::invoke_with_argument_types([&]<typename... Ts>() {
+          signature::invoke_with_argument_types([&]<SmallTrivialValue... Ts>() {
             std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
           });
         } else {
-          signature::invoke_with_argument_types([&]<typename... Ts>() {
+          signature::invoke_with_argument_types([&]<SmallTrivialValue... Ts>() {
             value_stack.push(
                 std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
           });
@@ -114,38 +143,14 @@ struct StackMachineInstruction {
 
 // Built-in instructions to every instruction-set.
 struct Call : StackMachineInstruction<Call> {};
-struct JumpIf : StackMachineInstruction<JumpIf> {};
 struct Return : StackMachineInstruction<Return> {};
-
-// Implementation details for `Instruction` concept defined below.
-namespace internal_instruction {
-template <typename I>
-concept ExecuteSatisfiesGeneralInterface =
-    std::is_same_v<decltype(&I::execute),
-                   void (*)(ValueStack &, InstructionPointer &)>;
-
-template <typename T>
-concept VoidOrSmallTrivialValue = std::is_void_v<T> or SmallTrivialValue<T>;
-
-template <typename Signature>
-concept SignatureSatisfiesSimplerInterface =
-    VoidOrSmallTrivialValue<typename Signature::return_type> and
-    Signature::invoke_with_argument_types([]<SmallTrivialValue... Ts>() {
-      return true;
-    });
-
-template <typename I>
-concept ExecuteSatisfiesSimplerInterface = SignatureSatisfiesSimplerInterface<
-    internal_type_traits::ExtractSignature<decltype(&I::execute)>>;
-
-}  // namespace internal_instruction
 
 // The `Instruction` concept indicates that a type `I` represents an instruction
 // which Jasmin is capable of executing. Instructions must either be one of the
-// builtin instructions `jasmin::Call`, `jasmin::JumpIf`, or `jasmin::Return`,
-// or publicly inherit from `jasmin::StackMachineInstruction<I>` and have a
-// static member function `execute` that is not part of an overload set, and
-// that adheres to one of the following:
+// builtin instructions `jasmin::Call` or `jasmin::Return`, or publicly inherit
+// from `jasmin::StackMachineInstruction<I>` and have a static member function
+// `execute` that is not part of an overload set, and that adheres to one of the
+// following:
 //
 //   (a) Have the signature
 //       `void execute(jasmin::ValueStack&, jasmin::InstructionPointer&)`.
@@ -157,11 +162,10 @@ concept ExecuteSatisfiesSimplerInterface = SignatureSatisfiesSimplerInterface<
 //
 template <typename I>
 concept Instruction =
-    (std::is_same_v<I, Call> or std::is_same_v<I, JumpIf> or
-     std::is_same_v<I, Return> or
+    (std::is_same_v<I, Call> or std::is_same_v<I, Return> or
      (std::derived_from<I, StackMachineInstruction<I>> and
-      (internal_instruction::ExecuteSatisfiesGeneralInterface<I> or
-       internal_instruction::ExecuteSatisfiesSimplerInterface<I>)));
+      internal_instruction::SignatureSatisfiesRequirements<
+          internal_type_traits::ExtractSignature<decltype(&I::execute)>>));
 
 template <Instruction... Is>
 struct MakeInstructionSet final : internal_instruction::InstructionSetBase {

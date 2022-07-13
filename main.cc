@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
   func.append<jasmin::Return>();
-  func.set_value(index, static_cast<ptrdiff_t>(func.size() - 1));
+  func.set_value(index, static_cast<ptrdiff_t>(func.size() - index));
 
   uint64_t result;
   jasmin::Execute(func, {static_cast<uint64_t>(std::atoi(argv[1]))}, result);
