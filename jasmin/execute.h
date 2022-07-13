@@ -32,7 +32,6 @@ void Execute(Function<Set> const &f, ValueStack &value_stack) {
 // `std::decay_t<decltype(return_values)...>`. However, if the macro
 // `JASMIN_DEBUG` is defined then the behavior is defined to report an error
 // message to `stderr` and abort program execution.
-
 template <InstructionSet Set>
 void Execute(Function<Set> const &f, std::initializer_list<Value> arguments,
              SmallTrivialValue auto &...return_values) {

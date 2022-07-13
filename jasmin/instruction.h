@@ -71,12 +71,11 @@ struct Call;
 // either:
 //
 //   (a) Return void and accept a `jasmin::ValueStack&`, then a
-//   `jasmin::InstructionPointer&`, and then some number of arguments satisfying
-//   whose types satisfy the `jasmin::SmallTrivialValue` concept.
+//       `jasmin::InstructionPointer&`, and then some number of arguments
+//       satisfying whose types satisfy the `jasmin::SmallTrivialValue` concept.
 //
 //   (b) Accept some number of arguments satisfying `jasmin::SmallTrivialValue`
-//   and
-//       return either for or another type satisfying
+//       and return either for or another type satisfying
 //       `jasmin::SmallTrivialValue`.
 //
 template <typename Inst>
@@ -152,14 +151,15 @@ struct Return : StackMachineInstruction<Return> {};
 // `execute` that is not part of an overload set, and that adheres to one of the
 // following:
 //
-//   (a) Have the signature
-//       `void execute(jasmin::ValueStack&, jasmin::InstructionPointer&)`.
+//   (a) Return void and accept a `jasmin::ValueStack&`, then a
+//       `jasmin::InstructionPointer&`, and then some number of arguments
+//       satisfying whose types satisfy the `jasmin::SmallTrivialValue` concept.
 //
 //   (b) Accept some number of arguments satisfying `jasmin::SmallTrivialValue`
-//   and
-//       return either for or another type satisfying
+//       and return either for or another type satisfying
 //       `jasmin::SmallTrivialValue`.
 //
+
 template <typename I>
 concept Instruction =
     (std::is_same_v<I, Call> or std::is_same_v<I, Return> or
