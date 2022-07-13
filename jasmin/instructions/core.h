@@ -1,9 +1,7 @@
 #ifndef JASMIN_INSTRUCTIONS_CORE_H
 #define JASMIN_INSTRUCTIONS_CORE_H
 
-#include <cstring>
-
-#include "jasmin/execute.h"
+#include "jasmin/instruction.h"
 
 namespace jasmin {
 

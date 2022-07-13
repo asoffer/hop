@@ -2,9 +2,8 @@
 #define JASMIN_INSTRUCTIONS_ARITHMETIC_H
 
 #include <concepts>
-#include <string_view>
 
-#include "jasmin/execute.h"
+#include "jasmin/instruction.h"
 
 namespace jasmin {
 
@@ -35,31 +34,26 @@ concept Modable = requires(T t) {
 
 template <Addable T>
 struct Add : StackMachineInstruction<Add<T>> {
-  static constexpr std::string_view jasmin_instruction = "add";
   static constexpr T execute(T x, T y) { return x + y; }
 };
 
 template <Subtractable T>
 struct Subtract : StackMachineInstruction<Subtract<T>> {
-  static constexpr std::string_view jasmin_instruction = "sub";
   static constexpr T execute(T x, T y) { return x - y; }
 };
 
 template <Multiplicable T>
 struct Multiply : StackMachineInstruction<Multiply<T>> {
-  static constexpr std::string_view jasmin_instruction = "mul";
   static constexpr T execute(T x, T y) { return x * y; }
 };
 
 template <Divisible T>
 struct Divide : StackMachineInstruction<Divide<T>> {
-  static constexpr std::string_view jasmin_instruction = "div";
   static constexpr T execute(T x, T y) { return x / y; }
 };
 
 template <Modable T>
 struct Mod : StackMachineInstruction<Mod<T>> {
-  static constexpr std::string_view jasmin_instruction = "mod";
   static constexpr T execute(T x, T y) { return x % y; }
 };
 
