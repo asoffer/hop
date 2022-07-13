@@ -12,6 +12,7 @@ using Instructions = jasmin::MakeInstructionSet<
     jasmin::Multiply<uint64_t>>;
 
 int main(int argc, char const *argv[]) {
+  if (argc != 2) { return 1; }
   jasmin::Function<Instructions> func(1, 1);
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
