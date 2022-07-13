@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "main",
-    srcs = ["main.cc"],
+    name = "fibonacci",
+    srcs = ["fibonacci.cc"],
     deps = [
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",
