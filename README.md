@@ -58,7 +58,7 @@ http_archive(
   sha256 = "<<sha>>",
 )
 ```
-where `<<hash>>` and ``<sha>>` are replaced with the appropriate Git hash and
+where `<<hash>>` and `<sha>>` are replaced with the appropriate Git hash and
 checksum as desired.
 
 Any compilation action my also optionally be passed the argument
