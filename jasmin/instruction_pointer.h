@@ -44,7 +44,7 @@ struct OpCodeOrValue {
   // defined to report an error message to `stderr` and abort program execution.
   struct Value value() const {
     JASMIN_INTERNAL_DEBUG_ASSERT(not is_op_code_,
-                                 "OpCodeOrValue unexpectedly holds a op-code");
+                                 "OpCodeOrValue unexpectedly holds an op-code");
     return value_;
   }
 
@@ -54,7 +54,7 @@ struct OpCodeOrValue {
   // defined to report an error message to `stderr` and abort program execution.
   void set_value(struct Value v) {
     JASMIN_INTERNAL_DEBUG_ASSERT(not is_op_code_,
-                                 "OpCodeOrValue unexpectedly holds a op-code");
+                                 "OpCodeOrValue unexpectedly holds an op-code");
     value_ = v;
   }
 
@@ -122,7 +122,7 @@ struct InstructionPointer {
   // original InstructionPointer.
   constexpr InstructionPointer operator++(int) {
     auto copy = *this;
-    ++copy;
+    ++*this;
     return copy;
   }
 
@@ -137,7 +137,7 @@ struct InstructionPointer {
   // original InstructionPointer.
   constexpr InstructionPointer operator--(int) {
     auto copy = *this;
-    --copy;
+    --*this;
     return copy;
   }
 

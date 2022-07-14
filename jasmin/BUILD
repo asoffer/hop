@@ -71,6 +71,15 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "instruction_pointer_test",
+    srcs = ["instruction_pointer_test.cc"],
+    deps = [
+        ":instruction_pointer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "value_stack",
     hdrs = ["value_stack.h"],
