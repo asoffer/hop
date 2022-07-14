@@ -1,7 +1,5 @@
 #include "jasmin/call_stack.h"
 
-#include <type_traits>
-
 #include "gtest/gtest.h"
 
 namespace jasmin {
