@@ -7,7 +7,7 @@ both fast and customizable, aiming to be a target for higher-level interpreted
 programming languages.
 
 [Stack machine](https://en.wikipedia.org/wiki/Stack_machine) interpreters differ
-from more traditional register-based interpreters in that hey do not use
+from more traditional register-based interpreters in that they do not use
 registers for passing arguments to instructions. Instructions execute by pushing
 and popping values from the top of a stack.
 
@@ -16,6 +16,14 @@ interpreters is that Jasmin does not have a fixed instruction set. Rather, users
 are expected to define their own instructions that are best suited to their use
 case. Jasmin provides [common instructions](jasmin/instructions/) which one can,
 but is not required to, use in their instruction set.
+
+## Tutorials and Examples
+
+* Examples can be found in the [examples directory](jasmin/examples/), though
+  there are not many examples yet.
+* We do not yet have a tutorial, though it is on our radar. For now, reading
+  examples and the source code are your best bet for learning how to use these
+  libraries.
 
 ## Building from Source
 
