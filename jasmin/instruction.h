@@ -108,7 +108,8 @@ struct StackMachineInstruction {
     } else {
       using signature =
           internal_type_traits::ExtractSignature<decltype(&Inst::execute)>;
-      if constexpr (internal_instruction::SignatureSatisfiesGeneralRequirements<signature>) {
+      if constexpr (internal_instruction::SignatureSatisfiesGeneralRequirements<
+                        signature>) {
         signature::invoke_with_argument_types(
             [&]<std::same_as<ValueStack &>, std::same_as<InstructionPointer &>,
                 SmallTrivialValue... Ts>() {

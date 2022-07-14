@@ -10,6 +10,15 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "call_stack_test",
+    srcs = ["call_stack_test.cc"],
+    deps = [
+        ":call_stack",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "execute",
     hdrs = ["execute.h"],

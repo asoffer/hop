@@ -24,7 +24,6 @@ cc_test(
     ],
 )
 
-
 cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
