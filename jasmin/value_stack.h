@@ -45,8 +45,6 @@ struct ValueStack {
   // if the stack is empty or the top value is not of type `T`.
   template <SmallTrivialValue T>
   T pop() {
-    JASMIN_INTERNAL_DEBUG_ASSERT(not values_.empty(),
-                                 "Unexpectedly empty ValueStack");
     return pop_value().as<T>();
   }
 

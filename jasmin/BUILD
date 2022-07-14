@@ -81,6 +81,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "value_stack_test",
+    srcs = ["value_stack_test.cc"],
+    deps = [
+        ":value_stack",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+# TODO: A testing utility that enables describing expectations about the top of a ValueStack.
+
 cc_library(
     name = "value",
     hdrs = ["value.h"],

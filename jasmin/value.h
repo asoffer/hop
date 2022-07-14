@@ -16,10 +16,15 @@ inline size_t constexpr ValueSize      = 8;
 
 }  // namespace internal_value
 
+// Forward declaration of type Defined below so it can be used in the
+// `SmallTrivialValue` concept.
+struct Value;
+
 // A concept that defines those types which are representable in a `Value`
 // (defined below).
 template <typename T>
-concept SmallTrivialValue = (std::is_trivially_copyable_v<T> and
+concept SmallTrivialValue = (not std::is_same_v<T, Value> and
+                             std::is_trivially_copyable_v<T> and
                              sizeof(T) <= internal_value::ValueSize and
                              alignof(T) <= internal_value::ValueAlignment);
 
