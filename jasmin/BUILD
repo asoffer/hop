@@ -61,6 +61,15 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "instruction_test",
+    srcs = ["instruction_test.cc"],
+    deps = [
+        ":instruction",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "instruction_pointer",
     hdrs = ["instruction_pointer.h"],

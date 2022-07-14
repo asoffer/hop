@@ -160,7 +160,6 @@ struct Return : StackMachineInstruction<Return> {};
 //       and return either for or another type satisfying
 //       `jasmin::SmallTrivialValue`.
 //
-
 template <typename I>
 concept Instruction =
     (std::is_same_v<I, Call> or std::is_same_v<I, Return> or
@@ -179,7 +178,10 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
     return value;
   }
 
-  static auto InstructionFunction(uint64_t op_code) { return table[op_code]; }
+  static auto InstructionFunction(uint64_t op_code) {
+    JASMIN_INTERNAL_DEBUG_ASSERT(op_code < sizeof...(Is), "Out-of-bounds op-code");
+    return table[op_code];
+  }
 
  private:
   static constexpr void (*table[sizeof...(Is)])(ValueStack &,
