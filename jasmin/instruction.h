@@ -1,8 +1,8 @@
 #ifndef JASMIN_INSTRUCTION_H
 #define JASMIN_INSTRUCTION_H
 
-#include <iostream>
 #include <concepts>
+#include <iostream>
 
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction_pointer.h"
@@ -22,24 +22,25 @@ struct InstructionSetBase {};
 // Implementation detail. A concept capturing valid return types for one way a
 // type can adhere to the `Instruction` concept defined below.
 template <typename T>
-concept VoidOrConvertibleToValue = std::is_void_v<T> or std::convertible_to<T, Value>;
+concept VoidOrConvertibleToValue =
+    std::is_void_v<T> or std::convertible_to<T, Value>;
 
 // Implementation detail. A concept capturing one way a type can adhere to the
 // `Instruction` concept defined below.
 template <typename Signature>
 concept SignatureSatisfiesRequirementsNoImmediateValues =
     VoidOrConvertibleToValue<typename Signature::return_type> and
-    Signature::invoke_with_argument_types([]<std::convertible_to<Value>... Ts>() {
-      return true;
-    });
+    Signature::invoke_with_argument_types([
+    ]<std::convertible_to<Value>... Ts>() { return true; });
 
 // Implementation detail. A concept capturing one way a type can adhere to the
 // `Instruction` concept defined below.
 template <typename Signature>
 concept SignatureSatisfiesRequirementsWithImmediateValues =
     std::is_void_v<typename Signature::return_type> and
-    Signature::invoke_with_argument_types([]<std::same_as<ValueStack&>, std::convertible_to<Value>... Ts>() {
-      return not (std::is_reference_v<Ts> or ...);
+    Signature::invoke_with_argument_types([
+    ]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
+      return not(std::is_reference_v<Ts> or ...);
     });
 
 // Implementation detail. A concept capturing one way a type can adhere to the
@@ -47,8 +48,10 @@ concept SignatureSatisfiesRequirementsWithImmediateValues =
 template <typename Signature>
 concept SignatureSatisfiesGeneralRequirements =
     std::is_same_v<typename Signature::return_type, ptrdiff_t> and
-    Signature::invoke_with_argument_types(
-        []<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() { return true; });
+    Signature::invoke_with_argument_types([
+    ]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
+      return true;
+    });
 
 // Implementation detail. A concept capturing that the signature for an
 // `execute` static member function satisfies the requirements for the
@@ -70,8 +73,9 @@ concept InstructionSet =
 // Forward declarations for instructions that need special treatement in
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
 // appear below.
-struct Return;
 struct Call;
+struct JumpIf;
+struct Return;
 
 // Every instruction `Inst` executable as part of Jasmin's stack machine
 // interpreter must publicly inherit from `StackMachineInstruction<Inst>`.
@@ -80,18 +84,13 @@ struct Call;
 // overload set (so that `&Inst::execute` is well-formed) and this function must
 // either:
 //
-//   (a) Return a `ptrdiff_t` indicating how to increment the instruction
-//       pointer, and accept a `jasmin::ValueStack&`, followed by any number of
-//       arguments convertible to `Value`. These arguments are intperpreted as
-//       the immediate values for the instruction.
-//
-//   (b) Return void and accept a `jasmin::ValueStack&`, and then some number of
+//   (a) Return void and accept a `jasmin::ValueStack&`, and then some number of
 //       arguments convertible to `Value`. These arguments are intperpreted as
 //       the immediate values for the instruction. The void return type
 //       indicates that execution should fall through to the following
 //       instruction.
 //
-//   (c) Accept some number of arguments convertible to `Value` and return
+//   (b) Accept some number of arguments convertible to `Value` and return
 //       either `void` or another type convertible to `Value`. The arguments are
 //       to be popped from the value stack, and the returned value, if any, will
 //       be pushed onto the value stack. Execution will fall through to the
@@ -108,6 +107,13 @@ struct StackMachineInstruction {
           value_stack.pop<internal_function_base::FunctionBase const *>();
       call_stack.push(f, value_stack.size(), ip);
       ip = f->entry();
+      JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
+          value_stack, ip, call_stack);
+
+    } else if constexpr (std::is_same_v<Inst, JumpIf>) {
+      ++ip;
+      if (value_stack.pop<bool>()) { ip += ip->value().as<ptrdiff_t>(); }
+      ++ip;
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
           value_stack, ip, call_stack);
 
@@ -128,39 +134,45 @@ struct StackMachineInstruction {
       using signature =
           internal_type_traits::ExtractSignature<decltype(&Inst::execute)>;
 
-      if constexpr (internal_instruction::SignatureSatisfiesRequirementsWithImmediateValues<
-                        signature>) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
+      if constexpr (internal_instruction::
+                        SignatureSatisfiesRequirementsWithImmediateValues<
+                            signature>) {
+        signature::
+            invoke_with_argument_types([&]<std::same_as<ValueStack &>,
+                                           std::convertible_to<Value>... Ts>() {
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
-              std::apply(
-                  Inst::execute,
-                  std::tuple<ValueStack &, Ts...>{
-                      value_stack, (++ip)->value().as<Ts>()...});
+              std::apply(Inst::execute,
+                         std::tuple<ValueStack &, Ts...>{
+                             value_stack, (++ip)->value().as<Ts>()...});
             });
         ++ip;
-      } else if constexpr (internal_instruction::SignatureSatisfiesGeneralRequirements<
-                        signature>) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
+      } else if constexpr (internal_instruction::
+                               SignatureSatisfiesGeneralRequirements<
+                                   signature>) {
+        signature::
+            invoke_with_argument_types([&]<std::same_as<ValueStack &>,
+                                           std::convertible_to<Value>... Ts>() {
               auto ip_copy = ip;
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
               ip += std::apply(
                   Inst::execute,
-                  std::tuple<ValueStack &, Ts...>{value_stack, (++ip_copy)->value().as<Ts>()...});
+                  std::tuple<ValueStack &, Ts...>{
+                      value_stack, (++ip_copy)->value().as<Ts>()...});
             });
       } else {
         if constexpr (std::is_void_v<typename signature::return_type>) {
-          signature::invoke_with_argument_types([&]<std::convertible_to<Value>... Ts>() {
-            std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
-          });
+          signature::invoke_with_argument_types(
+              [&]<std::convertible_to<Value>... Ts>() {
+                std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
+              });
         } else {
-          signature::invoke_with_argument_types([&]<std::convertible_to<Value>... Ts>() {
-            value_stack.push(
-                std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
-          });
+          signature::invoke_with_argument_types(
+              [&]<std::convertible_to<Value>... Ts>() {
+                value_stack.push(
+                    std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
+              });
         }
         ++ip;
       }
@@ -173,27 +185,23 @@ struct StackMachineInstruction {
 
 // Built-in instructions to every instruction-set.
 struct Call : StackMachineInstruction<Call> {};
+struct JumpIf : StackMachineInstruction<JumpIf> {};
 struct Return : StackMachineInstruction<Return> {};
 
 // The `Instruction` concept indicates that a type `I` represents an instruction
 // which Jasmin is capable of executing. Instructions must either be one of the
-// builtin instructions `jasmin::Call` or `jasmin::Return`, or publicly inherit
-// from `jasmin::StackMachineInstruction<I>` and have a static member function
-// `execute` that is not part of an overload set, and that adheres to one of the
-// following:
+// builtin instructions `jasmin::Call`, `jasmin::JumpIf`, or `jasmin::Return`,
+// or publicly inherit from `jasmin::StackMachineInstruction<I>` and have a
+// static member function `execute` that is not part of an overload set, and
+// that adheres to one of the following:
 //
-//   (a) Return a `ptrdiff_t` indicating how to increment the instruction
-//       pointer, and accept a `jasmin::ValueStack&`, followed by any number of
-//       arguments convertible to `Value`. These arguments are intperpreted as
-//       the immediate values for the instruction.
-//
-//   (b) Return void and accept a `jasmin::ValueStack&`, and then some number of
+//   (a) Return void and accept a `jasmin::ValueStack&`, and then some number of
 //       arguments convertible to `Value`. These arguments are intperpreted as
 //       the immediate values for the instruction. The void return type
 //       indicates that execution should fall through to the following
 //       instruction.
 //
-//   (c) Accept some number of arguments convertible to `Value` and return
+//   (b) Accept some number of arguments convertible to `Value` and return
 //       either `void` or another type convertible to `Value`. The arguments are
 //       to be popped from the value stack, and the returned value, if any, will
 //       be pushed onto the value stack. Execution will fall through to the
@@ -201,7 +209,8 @@ struct Return : StackMachineInstruction<Return> {};
 //
 template <typename I>
 concept Instruction =
-    (std::is_same_v<I, Call> or std::is_same_v<I, Return> or
+    (std::is_same_v<I, Call> or std::is_same_v<I, JumpIf> or
+     std::is_same_v<I, Return> or
      (std::derived_from<I, StackMachineInstruction<I>> and
       internal_instruction::SignatureSatisfiesRequirements<
           internal_type_traits::ExtractSignature<decltype(&I::execute)>>));
@@ -218,7 +227,8 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
   }
 
   static auto InstructionFunction(uint64_t op_code) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(op_code < sizeof...(Is), "Out-of-bounds op-code");
+    JASMIN_INTERNAL_DEBUG_ASSERT(op_code < sizeof...(Is),
+                                 "Out-of-bounds op-code");
     return table[op_code];
   }
 

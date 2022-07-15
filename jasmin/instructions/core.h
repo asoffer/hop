@@ -23,12 +23,6 @@ struct Swap : StackMachineInstruction<Swap> {
   }
 };
 
-struct JumpIf : StackMachineInstruction<JumpIf> {
-  static constexpr ptrdiff_t execute(ValueStack &value_stack, ptrdiff_t n) {
-    return value_stack.pop<bool>() ? n : 2;
-  }
-};
-
 }  // namespace jasmin
 
 #endif  // JASMIN_INSTRUCTIONS_CORE_H

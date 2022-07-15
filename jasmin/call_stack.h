@@ -17,8 +17,9 @@ struct CallStack {
   void push(internal_function_base::FunctionBase const *f,
             size_t value_stack_size, InstructionPointer ip) {
     JASMIN_INTERNAL_DEBUG_ASSERT(
-        stack_.empty() or value_stack_size >= stack_.back().stack_size_before_call +
-                                                  f->parameter_count(),
+        stack_.empty() or
+            value_stack_size >=
+                stack_.back().stack_size_before_call + f->parameter_count(),
         "Value stack invariant broken: The size of the value-stack should "
         "always be non-decreasing");
     stack_.push_back({.function                     = f,
