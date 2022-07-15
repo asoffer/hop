@@ -43,24 +43,13 @@ concept SignatureSatisfiesRequirementsWithImmediateValues =
       return not(std::is_reference_v<Ts> or ...);
     });
 
-// Implementation detail. A concept capturing one way a type can adhere to the
-// `Instruction` concept defined below.
-template <typename Signature>
-concept SignatureSatisfiesGeneralRequirements =
-    std::is_same_v<typename Signature::return_type, ptrdiff_t> and
-    Signature::invoke_with_argument_types([
-    ]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
-      return true;
-    });
-
 // Implementation detail. A concept capturing that the signature for an
 // `execute` static member function satisfies the requirements for the
 // Instruction concept.
 template <typename Signature>
 concept SignatureSatisfiesRequirements =
     (SignatureSatisfiesRequirementsNoImmediateValues<Signature> or
-     SignatureSatisfiesRequirementsWithImmediateValues<Signature> or
-     SignatureSatisfiesGeneralRequirements<Signature>);
+     SignatureSatisfiesRequirementsWithImmediateValues<Signature>);
 
 }  // namespace internal_instruction
 
@@ -155,20 +144,6 @@ struct StackMachineInstruction {
                              value_stack, (++ip)->value().as<Ts>()...});
             });
         ++ip;
-      } else if constexpr (internal_instruction::
-                               SignatureSatisfiesGeneralRequirements<
-                                   signature>) {
-        signature::
-            invoke_with_argument_types([&]<std::same_as<ValueStack &>,
-                                           std::convertible_to<Value>... Ts>() {
-              auto ip_copy = ip;
-              // Brace-initialization forces the order of evaluation to be in
-              // the order the elements appear in the list.
-              ip += std::apply(
-                  Inst::execute,
-                  std::tuple<ValueStack &, Ts...>{
-                      value_stack, (++ip_copy)->value().as<Ts>()...});
-            });
       } else {
         if constexpr (std::is_void_v<typename signature::return_type>) {
           signature::invoke_with_argument_types(
@@ -260,6 +235,23 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
   }
 };
 
+namespace internal_instruction {
+
+template <Instruction I>
+constexpr size_t ImmediateValueCount() {
+  if constexpr (std::is_same_v<I, Call> or std::is_same_v<I, Return>) {
+    return 0;
+  } else if constexpr (std::is_same_v<I, Jump> or std::is_same_v<I, JumpIf>) {
+    return 1;
+  } else {
+    return internal_type_traits::ExtractSignature<decltype(&I::execute)>::
+        invoke_with_argument_types([]<typename First, typename... Ts>() {
+          return std::is_same_v<First, ValueStack &> ? sizeof...(Ts) : 0;
+        });
+  }
+}
+
+}  // namespace internal_instruction
 }  // namespace jasmin
 
 #endif  // JASMIN_INSTRUCTION_H

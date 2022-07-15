@@ -21,17 +21,12 @@ struct Function final : internal_function_base::FunctionBase {
   explicit constexpr Function(uint8_t parameter_count, uint8_t return_count)
       : FunctionBase(parameter_count, return_count) {}
 
-  // Returns the number of instructions and values in the code for this
-  // function.
-  constexpr size_t size() const { return op_codes_.size(); }
-
-  // Appends an op-code for the given `Instruction` template parameter, followed
-  // by `Value`s for each of the passed arguments.
-  template <typename Instruction, typename... Vs>
+  // Appends an op-code for the given `Instruction I` template parameter,
+  // followed by `Value`s for each of the passed arguments.
+  template <Instruction I, typename... Vs>
   constexpr void append(Vs... vs) requires((std::is_convertible_v<Vs, Value> and
                                             ...)) {
-    op_codes_.push_back(
-        OpCodeOrValue::OpCode(Set::template OpCodeFor<Instruction>()));
+    op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
     (op_codes_.push_back(OpCodeOrValue::Value(vs)), ...);
   }
 
@@ -39,10 +34,10 @@ struct Function final : internal_function_base::FunctionBase {
   // which are left uninitialized. They may be initialized later via calls to
   // `OpCodeOrValue::set_value`. Returns the index of the first uninitialized
   // value.
-  template <typename Instruction>
-  constexpr size_t append_with_placeholders(size_t placeholders) {
-    op_codes_.push_back(
-        OpCodeOrValue::OpCode(Set::template OpCodeFor<Instruction>()));
+  template <Instruction I>
+  constexpr size_t append_with_placeholders() {
+    constexpr size_t placeholders = internal_instruction::ImmediateValueCount<I>();
+    op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
     size_t result = op_codes_.size();
     op_codes_.resize(op_codes_.size() + placeholders,
                      OpCodeOrValue::UninitializedValue());

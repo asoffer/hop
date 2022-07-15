@@ -31,6 +31,10 @@ struct FunctionBase {
     return InstructionPointer(op_codes_.data());
   }
 
+  // Returns the number of instructions and values in the code for this
+  // function.
+  constexpr size_t size() const { return op_codes_.size(); }
+
  protected:
   std::vector<OpCodeOrValue> op_codes_;
 

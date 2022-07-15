@@ -27,7 +27,7 @@ auto FibonacciWithSubtract() {
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
-  auto index = func.append_with_placeholders<jasmin::JumpIf>(1);
+  auto index = func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{1});
   func.append<jasmin::Subtract<uint64_t>>();
@@ -60,7 +60,7 @@ auto FibonacciWithHardCodedDecrements() {
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
-  auto index = func.append_with_placeholders<jasmin::JumpIf>(1);
+  auto index = func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
   func.append<DecrementBy<uint64_t, 1>>();
   func.append<jasmin::Push>(&func);
