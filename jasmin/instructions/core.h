@@ -6,34 +6,26 @@
 namespace jasmin {
 
 struct Push : StackMachineInstruction<Push> {
-  static constexpr void execute(ValueStack &value_stack,
-                                InstructionPointer &ip) {
-    ++ip;
-    value_stack.push(ip->value());
-    ++ip;
+  static constexpr void execute(ValueStack &value_stack, Value v) {
+    value_stack.push(v);
   }
 };
 
 struct Duplicate : StackMachineInstruction<Duplicate> {
-  static constexpr void execute(ValueStack &value_stack,
-                                InstructionPointer &ip) {
+  static constexpr void execute(ValueStack &value_stack) {
     value_stack.push(value_stack.peek_value());
-    ++ip;
   }
 };
 
 struct Swap : StackMachineInstruction<Swap> {
-  static constexpr void execute(ValueStack &value_stack,
-                                InstructionPointer &ip) {
+  static constexpr void execute(ValueStack &value_stack) {
     value_stack.swap_with(1);
-    ++ip;
   }
 };
 
 struct JumpIf : StackMachineInstruction<JumpIf> {
-  static constexpr void execute(ValueStack &value_stack,
-                                InstructionPointer &ip, ptrdiff_t n) {
-    ip += value_stack.pop<bool>() ? n : 2;
+  static constexpr ptrdiff_t execute(ValueStack &value_stack, ptrdiff_t n) {
+    return value_stack.pop<bool>() ? n : 2;
   }
 };
 

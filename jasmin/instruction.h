@@ -1,6 +1,7 @@
 #ifndef JASMIN_INSTRUCTION_H
 #define JASMIN_INSTRUCTION_H
 
+#include <iostream>
 #include <concepts>
 
 #include "jasmin/call_stack.h"
@@ -21,32 +22,41 @@ struct InstructionSetBase {};
 // Implementation detail. A concept capturing valid return types for one way a
 // type can adhere to the `Instruction` concept defined below.
 template <typename T>
-concept VoidOrSmallTrivialValue = std::is_void_v<T> or SmallTrivialValue<T>;
+concept VoidOrConvertibleToValue = std::is_void_v<T> or std::convertible_to<T, Value>;
 
 // Implementation detail. A concept capturing one way a type can adhere to the
 // `Instruction` concept defined below.
 template <typename Signature>
-concept SignatureSatisfiesSimpleRequirements =
-    VoidOrSmallTrivialValue<typename Signature::return_type> and
-    Signature::invoke_with_argument_types([]<SmallTrivialValue... Ts>() {
+concept SignatureSatisfiesRequirementsNoImmediateValues =
+    VoidOrConvertibleToValue<typename Signature::return_type> and
+    Signature::invoke_with_argument_types([]<std::convertible_to<Value>... Ts>() {
       return true;
     });
 
 // Implementation detail. A concept capturing one way a type can adhere to the
 // `Instruction` concept defined below.
 template <typename Signature>
-concept SignatureSatisfiesGeneralRequirements =
+concept SignatureSatisfiesRequirementsWithImmediateValues =
     std::is_void_v<typename Signature::return_type> and
+    Signature::invoke_with_argument_types([]<std::same_as<ValueStack&>, std::convertible_to<Value>... Ts>() {
+      return not (std::is_reference_v<Ts> or ...);
+    });
+
+// Implementation detail. A concept capturing one way a type can adhere to the
+// `Instruction` concept defined below.
+template <typename Signature>
+concept SignatureSatisfiesGeneralRequirements =
+    std::is_same_v<typename Signature::return_type, ptrdiff_t> and
     Signature::invoke_with_argument_types(
-        []<std::same_as<ValueStack &>, std::same_as<InstructionPointer &>,
-           SmallTrivialValue... Ts>() { return true; });
+        []<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() { return true; });
 
 // Implementation detail. A concept capturing that the signature for an
 // `execute` static member function satisfies the requirements for the
 // Instruction concept.
 template <typename Signature>
 concept SignatureSatisfiesRequirements =
-    (SignatureSatisfiesSimpleRequirements<Signature> or
+    (SignatureSatisfiesRequirementsNoImmediateValues<Signature> or
+     SignatureSatisfiesRequirementsWithImmediateValues<Signature> or
      SignatureSatisfiesGeneralRequirements<Signature>);
 
 }  // namespace internal_instruction
@@ -70,13 +80,22 @@ struct Call;
 // overload set (so that `&Inst::execute` is well-formed) and this function must
 // either:
 //
-//   (a) Return void and accept a `jasmin::ValueStack&`, then a
-//       `jasmin::InstructionPointer&`, and then some number of arguments
-//       satisfying whose types satisfy the `jasmin::SmallTrivialValue` concept.
+//   (a) Return a `ptrdiff_t` indicating how to increment the instruction
+//       pointer, and accept a `jasmin::ValueStack&`, followed by any number of
+//       arguments convertible to `Value`. These arguments are intperpreted as
+//       the immediate values for the instruction.
 //
-//   (b) Accept some number of arguments satisfying `jasmin::SmallTrivialValue`
-//       and return either for or another type satisfying
-//       `jasmin::SmallTrivialValue`.
+//   (b) Return void and accept a `jasmin::ValueStack&`, and then some number of
+//       arguments convertible to `Value`. These arguments are intperpreted as
+//       the immediate values for the instruction. The void return type
+//       indicates that execution should fall through to the following
+//       instruction.
+//
+//   (c) Accept some number of arguments convertible to `Value` and return
+//       either `void` or another type convertible to `Value`. The arguments are
+//       to be popped from the value stack, and the returned value, if any, will
+//       be pushed onto the value stack. Execution will fall through to the
+//       following instruction.
 //
 template <typename Inst>
 struct StackMachineInstruction {
@@ -108,26 +127,37 @@ struct StackMachineInstruction {
     } else {
       using signature =
           internal_type_traits::ExtractSignature<decltype(&Inst::execute)>;
-      if constexpr (internal_instruction::SignatureSatisfiesGeneralRequirements<
+
+      if constexpr (internal_instruction::SignatureSatisfiesRequirementsWithImmediateValues<
                         signature>) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<ValueStack &>, std::same_as<InstructionPointer &>,
-                SmallTrivialValue... Ts>() {
-              auto ip_copy = ip;
+            [&]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
               std::apply(
                   Inst::execute,
-                  std::tuple<ValueStack &, InstructionPointer &, Ts...>{
-                      value_stack, ip, (++ip_copy)->value().as<Ts>()...});
+                  std::tuple<ValueStack &, Ts...>{
+                      value_stack, (++ip)->value().as<Ts>()...});
+            });
+        ++ip;
+      } else if constexpr (internal_instruction::SignatureSatisfiesGeneralRequirements<
+                        signature>) {
+        signature::invoke_with_argument_types(
+            [&]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
+              auto ip_copy = ip;
+              // Brace-initialization forces the order of evaluation to be in
+              // the order the elements appear in the list.
+              ip += std::apply(
+                  Inst::execute,
+                  std::tuple<ValueStack &, Ts...>{value_stack, (++ip_copy)->value().as<Ts>()...});
             });
       } else {
         if constexpr (std::is_void_v<typename signature::return_type>) {
-          signature::invoke_with_argument_types([&]<SmallTrivialValue... Ts>() {
+          signature::invoke_with_argument_types([&]<std::convertible_to<Value>... Ts>() {
             std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
           });
         } else {
-          signature::invoke_with_argument_types([&]<SmallTrivialValue... Ts>() {
+          signature::invoke_with_argument_types([&]<std::convertible_to<Value>... Ts>() {
             value_stack.push(
                 std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
           });
@@ -152,13 +182,22 @@ struct Return : StackMachineInstruction<Return> {};
 // `execute` that is not part of an overload set, and that adheres to one of the
 // following:
 //
-//   (a) Return void and accept a `jasmin::ValueStack&`, then a
-//       `jasmin::InstructionPointer&`, and then some number of arguments
-//       satisfying whose types satisfy the `jasmin::SmallTrivialValue` concept.
+//   (a) Return a `ptrdiff_t` indicating how to increment the instruction
+//       pointer, and accept a `jasmin::ValueStack&`, followed by any number of
+//       arguments convertible to `Value`. These arguments are intperpreted as
+//       the immediate values for the instruction.
 //
-//   (b) Accept some number of arguments satisfying `jasmin::SmallTrivialValue`
-//       and return either for or another type satisfying
-//       `jasmin::SmallTrivialValue`.
+//   (b) Return void and accept a `jasmin::ValueStack&`, and then some number of
+//       arguments convertible to `Value`. These arguments are intperpreted as
+//       the immediate values for the instruction. The void return type
+//       indicates that execution should fall through to the following
+//       instruction.
+//
+//   (c) Accept some number of arguments convertible to `Value` and return
+//       either `void` or another type convertible to `Value`. The arguments are
+//       to be popped from the value stack, and the returned value, if any, will
+//       be pushed onto the value stack. Execution will fall through to the
+//       following instruction.
 //
 template <typename I>
 concept Instruction =

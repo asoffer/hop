@@ -30,14 +30,21 @@ TEST(Value, Construction) {
 
 TEST(Value, Access) {
   Value v(0);
+  auto copy = v.as<Value>();
+  EXPECT_EQ(std::memcmp(&copy, &v, sizeof(Value)), 0);
   EXPECT_EQ(v.as<int>(), 0);
 #if defined(JASMIN_DEBUG)
   EXPECT_DEATH({ v.as<unsigned int>(); }, "Value type mismatch");
 #endif  // defined(JASMIN_DEBUG)
+
   v = 1;
+  copy = v.as<Value>();
+  EXPECT_EQ(std::memcmp(&copy, &v, sizeof(Value)), 0);
   EXPECT_EQ(v.as<int>(), 1);
 
   v = true;
+  copy = v.as<Value>();
+  EXPECT_EQ(std::memcmp(&copy, &v, sizeof(Value)), 0);
   EXPECT_TRUE(v.as<bool>());
 #if defined(JASMIN_DEBUG)
   EXPECT_DEATH({ v.as<int>(); }, "Value type mismatch");

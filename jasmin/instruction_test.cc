@@ -9,9 +9,8 @@ struct NoOp : StackMachineInstruction<NoOp> {
   static void execute() {}
 };
 struct Duplicate : StackMachineInstruction<Duplicate> {
-  static void execute(ValueStack & v, InstructionPointer& ip) {
+  static void execute(ValueStack & v) {
     v.push(v.peek_value());
-    ++ip;
   }
 };
 

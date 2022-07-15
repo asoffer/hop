@@ -1,6 +1,7 @@
 #ifndef JASMIN_VALUE_H
 #define JASMIN_VALUE_H
 
+#include <concepts>
 #include <cstring>
 #include <type_traits>
 
@@ -41,18 +42,23 @@ struct Value {
     std::memcpy(value_, &v, sizeof(v));
   }
 
-  // Returns the stored value as a `T`. In general, behavior is undefined if the
-  // stored value is not of type `T`. However, if the `JASMIN_DEBUG` macro is
-  // defined, then the behavior is defined to report an error message to
-  // `stderr` and abort program execution.
-  template <SmallTrivialValue T>
+  // Returns the stored value as a `T` (or copies the value if `T` is the same
+  // type as `Value`). In general, behavior is undefined if the stored value is
+  // not of type `T`. However, if the `JASMIN_DEBUG` macro is defined, then the
+  // behavior is defined to report an error message to `stderr` and abort
+  // program execution.
+  template <std::convertible_to<Value> T>
   T as() const {
-    JASMIN_INTERNAL_DEBUG_ASSERT(debug_type_id_ == internal_debug::type_id<T>,
-                                 "Value type mismatch");
+    if constexpr (std::is_same_v<T, Value>) {
+      return *this;
+    } else {
+      JASMIN_INTERNAL_DEBUG_ASSERT(debug_type_id_ == internal_debug::type_id<T>,
+                                   "Value type mismatch");
 
-    T result;
-    std::memcpy(&result, value_, sizeof(T));
-    return result;
+      T result;
+      std::memcpy(&result, value_, sizeof(T));
+      return result;
+    }
   }
 
  private:
