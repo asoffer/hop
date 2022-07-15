@@ -78,11 +78,20 @@ versions of any particular operating system or compiler.
 
 ## Long Term Support
 
-Jasmin makes no guarantees of either API stability or ABI stability. While
-we aim to make API changes unobtrusive, we will, without notice, add, change, or
-remove APIs. We will always aim to do in such a way that that upgrading the
-version of Jasmin can be done in a change of its own, separate from any
-refactoring effort required to do make the upgrade. Concretely, this means that
-if we want to, for example, rename a function, we will add a function with the
-new name and mark the old one as deprecated in one change, and remove the
-deprecated function in a separate change.
+As it is currently in the early exploratory stages of development, we are not
+ready to make any guarantees, even for short-term stability.
+
+In the future we intend to provide significant long-term support, but in a
+somewhat unconventional way: Jasmin will never make guarantees of either API
+stability or ABI stability. While we aim to make API changes unobtrusive, we
+will add, change, or remove APIs. This enables us to make to always be able
+to provide the best possible software for our users.
+
+Though any change can be a breaking change, we aim to advertize the potential
+breakge (e.g., removing a public function). Moreover, we aim to make such
+changes in such a way that upgrading the version of Jasmin can be done in a
+change of its own, separate from any refactoring that may be required to make
+the upgrade. Concretely, this means that if we want to, for example, rename a
+function, we will add a function with the new name and mark the old one as
+deprecated in one change, and remove the deprecated function in a separate
+change.
