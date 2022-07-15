@@ -74,6 +74,7 @@ concept InstructionSet =
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
 // appear below.
 struct Call;
+struct Jump;
 struct JumpIf;
 struct Return;
 
@@ -107,6 +108,13 @@ struct StackMachineInstruction {
           value_stack.pop<internal_function_base::FunctionBase const *>();
       call_stack.push(f, value_stack.size(), ip);
       ip = f->entry();
+      JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
+          value_stack, ip, call_stack);
+
+    } else if constexpr (std::is_same_v<Inst, Jump>) {
+      ++ip;
+      ip += ip->value().as<ptrdiff_t>();
+      ++ip;
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
           value_stack, ip, call_stack);
 
@@ -185,15 +193,17 @@ struct StackMachineInstruction {
 
 // Built-in instructions to every instruction-set.
 struct Call : StackMachineInstruction<Call> {};
+struct Jump : StackMachineInstruction<Jump> {};
 struct JumpIf : StackMachineInstruction<JumpIf> {};
 struct Return : StackMachineInstruction<Return> {};
 
 // The `Instruction` concept indicates that a type `I` represents an instruction
 // which Jasmin is capable of executing. Instructions must either be one of the
-// builtin instructions `jasmin::Call`, `jasmin::JumpIf`, or `jasmin::Return`,
-// or publicly inherit from `jasmin::StackMachineInstruction<I>` and have a
-// static member function `execute` that is not part of an overload set, and
-// that adheres to one of the following:
+// builtin instructions `jasmin::Call`, `jasmin::Jump`, `jasmin::JumpIf`, or
+// `jasmin::Return`, or publicly inherit from
+// `jasmin::StackMachineInstruction<I>` and have a static member function
+// `execute` that is not part of an overload set, and that adheres to one of the
+// following:
 //
 //   (a) Return void and accept a `jasmin::ValueStack&`, and then some number of
 //       arguments convertible to `Value`. These arguments are intperpreted as
@@ -209,8 +219,8 @@ struct Return : StackMachineInstruction<Return> {};
 //
 template <typename I>
 concept Instruction =
-    (std::is_same_v<I, Call> or std::is_same_v<I, JumpIf> or
-     std::is_same_v<I, Return> or
+    (std::is_same_v<I, Call> or std::is_same_v<I, Jump> or
+     std::is_same_v<I, JumpIf> or std::is_same_v<I, Return> or
      (std::derived_from<I, StackMachineInstruction<I>> and
       internal_instruction::SignatureSatisfiesRequirements<
           internal_type_traits::ExtractSignature<decltype(&I::execute)>>));
