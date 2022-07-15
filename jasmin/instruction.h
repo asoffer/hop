@@ -119,7 +119,7 @@ struct StackMachineInstruction {
               std::apply(
                   Inst::execute,
                   std::tuple<ValueStack &, InstructionPointer &, Ts...>{
-                      value_stack, ip, (ip_copy++)->value().as<Ts>()...});
+                      value_stack, ip, (++ip_copy)->value().as<Ts>()...});
             });
       } else {
         if constexpr (std::is_void_v<typename signature::return_type>) {
