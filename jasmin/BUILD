@@ -46,6 +46,15 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "function_test",
+    srcs = ["function_test.cc"],
+    deps = [
+        ":function",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "instruction",
     hdrs = ["instruction.h"],
