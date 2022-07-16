@@ -19,8 +19,7 @@
 
 auto FibonacciWithSubtract() {
   using Instructions = jasmin::MakeInstructionSet<
-      jasmin::Duplicate, jasmin::Swap,
-      jasmin::Push, jasmin::LessThan<uint64_t>,
+      jasmin::Duplicate, jasmin::Swap, jasmin::Push, jasmin::LessThan<uint64_t>,
       jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>,
       jasmin::Multiply<uint64_t>>;
   jasmin::Function<Instructions> func(1, 1);
@@ -51,8 +50,7 @@ struct DecrementBy : jasmin::StackMachineInstruction<DecrementBy<T, N>> {
 
 auto FibonacciWithHardCodedDecrements() {
   using Instructions = jasmin::MakeInstructionSet<
-      jasmin::Duplicate, jasmin::Swap,
-      jasmin::Push, jasmin::LessThan<uint64_t>,
+      jasmin::Duplicate, jasmin::Swap, jasmin::Push, jasmin::LessThan<uint64_t>,
       jasmin::Add<uint64_t>, DecrementBy<uint64_t, 1>, DecrementBy<uint64_t, 2>,
       jasmin::Multiply<uint64_t>>;
 

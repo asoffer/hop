@@ -41,10 +41,13 @@ void Execute(Function<Set> const &f, std::initializer_list<Value> arguments,
                                "Return value count mismatch");
   ValueStack value_stack(arguments);
   int dummy;
+
   Execute(f, value_stack);
-  (dummy = ... = (return_values =
-                      value_stack.pop<std::decay_t<decltype(return_values)>>(),
-                  0));
+  static_cast<void>(
+      (dummy = ... =
+           (return_values =
+                value_stack.pop<std::decay_t<decltype(return_values)>>(),
+            0)));
 }
 
 }  // namespace jasmin

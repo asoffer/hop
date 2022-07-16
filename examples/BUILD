@@ -10,3 +10,13 @@ cc_binary(
         "//jasmin:execute",
     ],
 )
+
+cc_binary(
+    name = "hello_world",
+    srcs = ["hello_world.cc"],
+    deps = [
+        "//jasmin/instructions:compare",
+        "//jasmin/instructions:core",
+        "//jasmin:execute",
+    ],
+)

@@ -2,7 +2,6 @@
 #define JASMIN_INSTRUCTION_H
 
 #include <concepts>
-#include <iostream>
 
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction_pointer.h"
@@ -104,12 +103,12 @@ struct StackMachineInstruction {
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       ++ip;
       ip += ip->value().as<ptrdiff_t>();
-      ++ip;
+
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      if (value_stack.pop<bool>()) { 
+      if (value_stack.pop<bool>()) {
         ip += (ip + 1)->value().as<ptrdiff_t>();
       } else {
         ip += 2;
@@ -132,8 +131,7 @@ struct StackMachineInstruction {
             ip->op_code())(value_stack, ip, call_stack);
       }
     } else {
-      using signature =
-          internal::ExtractSignature<decltype(&Inst::execute)>;
+      using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
 
       if constexpr (internal_instruction::
                         SignatureSatisfiesRequirementsWithImmediateValues<
@@ -251,14 +249,15 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
 // computes the list of all instructions in the list, in an InstructionSet in
 // the list transitively.
 template <Instruction... Processed>
-constexpr auto FlattenInstructionList(internal::type_list<Processed...>, internal::type_list<>) {
+constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
+                                      internal::type_list<>) {
   return internal::type_list<Processed...>{};
 }
 
 template <Instruction... Processed, InstructionOrInstructionSet I,
           InstructionOrInstructionSet... Is>
 constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
-                            internal::type_list<I, Is...>) {
+                                      internal::type_list<I, Is...>) {
   if constexpr (internal::AnyOf<I, Processed...>) {
     return FlattenInstructionList(internal::type_list<Processed...>{},
                                   internal::type_list<Is...>{});
@@ -278,13 +277,18 @@ using BuiltinInstructionList = internal::type_list<Call, Jump, JumpIf, Return>;
 }  // namespace internal_instruction
 
 template <internal_instruction::InstructionOrInstructionSet... Is>
-using MakeInstructionSet =
-    internal::Apply<internal_instruction::MakeInstructionSet,
-                    decltype(internal_instruction::FlattenInstructionList(
-                        /*processed=*/internal_instruction::BuiltinInstructionList{},
-                        /*unprocessed=*/internal::type_list<Is...>{}))>;
+using MakeInstructionSet = internal::Apply<
+    internal_instruction::MakeInstructionSet,
+    decltype(internal_instruction::FlattenInstructionList(
+        /*processed=*/internal_instruction::BuiltinInstructionList{},
+        /*unprocessed=*/internal::type_list<Is...>{}))>;
 
 namespace internal_instruction {
+
+template <typename T, typename...>
+struct First {
+  using type = T;
+};
 
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
@@ -294,8 +298,14 @@ constexpr size_t ImmediateValueCount() {
     return 1;
   } else {
     return internal::ExtractSignature<decltype(&I::execute)>::
-        invoke_with_argument_types([]<typename First, typename... Ts>() {
-          return std::is_same_v<First, ValueStack &> ? sizeof...(Ts) : 0;
+        invoke_with_argument_types([]<typename... Ts>() {
+          if constexpr (sizeof...(Ts) == 0) {
+            return 0;
+          } else {
+            return std::is_same_v<typename First<Ts...>::type, ValueStack &>
+                       ? (sizeof...(Ts) - 1)
+                       : 0;
+          }
         });
   }
 }
