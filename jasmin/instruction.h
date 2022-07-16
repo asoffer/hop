@@ -213,6 +213,9 @@ template <Instruction... Is>
 struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
   using jasmin_instructions = void(Is *...);
 
+  // Returns the number of instructions in the instruction set.
+  static constexpr size_t size() { return sizeof...(Is); }
+
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
   template <internal::AnyOf<Is...> I>

@@ -13,15 +13,33 @@ struct Duplicate : StackMachineInstruction<Duplicate> {
     v.push(v.peek_value());
   }
 };
+struct PushOne: StackMachineInstruction<PushOne> {
+  static void execute(ValueStack & v) { v.push(1); }
+};
+
 
 using Set = MakeInstructionSet<NoOp, Duplicate>;
 
+template <Instruction I>
+size_t CountInstructionMatch() {
+  size_t count = 0;
+  for (size_t i = 0; i < Set::size(); ++i) {
+    if (Set::InstructionFunction(i) == &I::template ExecuteImpl<Set>) { ++count; }
+  }
+  return count;
+}
+
 TEST(Instruction, Construction) {
-  EXPECT_EQ(Set::InstructionFunction(0), &NoOp::ExecuteImpl<Set>);
-  EXPECT_EQ(Set::InstructionFunction(1), &Duplicate::ExecuteImpl<Set>);
+  EXPECT_EQ(CountInstructionMatch<NoOp>(), 1);
+  EXPECT_EQ(CountInstructionMatch<Duplicate>(), 1);
+  EXPECT_EQ(CountInstructionMatch<JumpIf>(), 1);
+  EXPECT_EQ(CountInstructionMatch<Jump>(), 1);
+  EXPECT_EQ(CountInstructionMatch<Call>(), 1);
+  EXPECT_EQ(CountInstructionMatch<Return>(), 1);
+  EXPECT_EQ(CountInstructionMatch<PushOne>(), 0);
 
 #if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ Set::InstructionFunction(2); }, "Out-of-bounds op-code");
+  EXPECT_DEATH({ Set::InstructionFunction(Set::size()); }, "Out-of-bounds op-code");
 #endif  // defined(JASMIN_DEBUG)
 }
 
