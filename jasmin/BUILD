@@ -66,6 +66,7 @@ cc_library(
         ":value_stack",
         "//jasmin/internal:attributes",
         "//jasmin/internal:function_base",
+        "//jasmin/internal:type_list",
         "//jasmin/internal:type_traits",
     ],
 )

@@ -8,6 +8,7 @@
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/attributes.h"
 #include "jasmin/internal/function_base.h"
+#include "jasmin/internal/type_list.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
@@ -243,55 +244,40 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
   }
 };
 
-// Concatenates two type lists.
-template <typename, typename>
-struct Concatenate;
-template <typename... As, typename... Bs>
-struct Concatenate<void (*)(As...), void (*)(Bs...)> {
-  using type = void (*)(As..., Bs...);
-};
-
+// Given a list of `Instruction`s or `InstructionSet`s, `FlattenInstructionList`
+// computes the list of all instructions in the list, in an InstructionSet in
+// the list transitively.
 template <Instruction... Processed>
-auto FlattenInstructionList(void (*)(Processed *...), void (*)())
-    -> void (*)(Processed *...);
+constexpr auto FlattenInstructionList(internal::type_list<Processed...>, internal::type_list<>) {
+  return internal::type_list<Processed...>{};
+}
 
 template <Instruction... Processed, InstructionOrInstructionSet I,
           InstructionOrInstructionSet... Is>
-auto FlattenInstructionList(void (*done_set)(Processed *...),
-                            void (*)(I *, Is *...)) {
+constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
+                            internal::type_list<I, Is...>) {
   if constexpr ((std::is_same_v<I, Processed> or ...)) {
-    return FlattenInstructionList(done_set,
-                                  static_cast<void (*)(Is...)>(nullptr));
+    return FlattenInstructionList(internal::type_list<Processed...>{},
+                                  internal::type_list<Is...>{});
   } else if constexpr (Instruction<I>) {
-    return FlattenInstructionList(
-        static_cast<void (*)(Processed * ..., I *)>(nullptr),
-        static_cast<void (*)(Is * ...)>(nullptr));
+    return FlattenInstructionList(internal::type_list<Processed..., I>{},
+                                  internal::type_list<Is...>{});
   } else {
     return FlattenInstructionList(
-        static_cast<void (*)(Processed * ...)>(nullptr),
-        static_cast<typename Concatenate<
-            void (*)(Is * ...), typename I::jasmin_instructions *>::type>(
-            nullptr));
+        internal::type_list<Processed...>{},
+        internal::Concatenate<internal::type_list<Is...>,
+                              typename I::jasmin_instructions *>{});
   }
 }
-template <template <typename...> typename, typename>
-struct ApplyImpl;
-template <template <typename...> typename F, typename... Ts>
-struct ApplyImpl<F, void (*)(Ts *...)> {
-  using type = F<Ts...>;
-};
-
-template <template <typename...> typename F, typename TypeList>
-using Apply = typename ApplyImpl<F, TypeList>::type;
 
 }  // namespace internal_instruction
 
 template <internal_instruction::InstructionOrInstructionSet... Is>
-using MakeInstructionSet = internal_instruction::Apply<
-    internal_instruction::MakeInstructionSet,
-    decltype(internal_instruction::FlattenInstructionList(
-        /*processed=*/static_cast<void (*)()>(nullptr),
-        /*unprocessed=*/static_cast<void (*)(Is *...)>(nullptr)))>;
+using MakeInstructionSet =
+    internal::Apply<internal_instruction::MakeInstructionSet,
+                    decltype(internal_instruction::FlattenInstructionList(
+                        /*processed=*/internal::type_list<>{},
+                        /*unprocessed=*/internal::type_list<Is...>{}))>;
 
 namespace internal_instruction {
 
