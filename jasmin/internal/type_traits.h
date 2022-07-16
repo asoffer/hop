@@ -2,8 +2,9 @@
 #define JASMIN_INTERNAL_TYPE_TRAITS_H
 
 #include <utility>
+#include <type_traits>
 
-namespace jasmin::internal_type_traits {
+namespace jasmin::internal {
 
 // `ExtractSignature` is a struct template which, is only defined when
 // instantiated with a function pointer type. When instantiated with a function
@@ -38,6 +39,10 @@ struct ExtractSignature<R (*)(Arguments...)> {
   }
 };
 
-}  // namespace jasmin::internal_type_traits
+// A concept indicating that `T` is one of the types mentioned in `Ts...`.
+template <typename T, typename... Ts>
+concept AnyOf = (std::is_same_v<T, Ts> or ...);
+
+}  // namespace jasmin::internal
 
 #endif  // JASMIN_INTERNAL_TYPE_TRAITS_H

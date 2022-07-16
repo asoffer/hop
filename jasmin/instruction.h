@@ -133,7 +133,7 @@ struct StackMachineInstruction {
       }
     } else {
       using signature =
-          internal_type_traits::ExtractSignature<decltype(&Inst::execute)>;
+          internal::ExtractSignature<decltype(&Inst::execute)>;
 
       if constexpr (internal_instruction::
                         SignatureSatisfiesRequirementsWithImmediateValues<
@@ -198,11 +198,10 @@ struct Return : StackMachineInstruction<Return> {};
 //
 template <typename I>
 concept Instruction =
-    (std::is_same_v<I, Call> or std::is_same_v<I, Jump> or
-     std::is_same_v<I, JumpIf> or std::is_same_v<I, Return> or
+    (internal::AnyOf<I, Call, Jump, JumpIf, Return> or
      (std::derived_from<I, StackMachineInstruction<I>> and
       internal_instruction::SignatureSatisfiesRequirements<
-          internal_type_traits::ExtractSignature<decltype(&I::execute)>>));
+          internal::ExtractSignature<decltype(&I::execute)>>));
 
 namespace internal_instruction {
 template <typename I>
@@ -216,9 +215,8 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
 
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
-  template <Instruction I>
-  static constexpr uint64_t OpCodeFor() requires((std::is_same_v<I, Is> or
-                                                  ...)) {
+  template <internal::AnyOf<Is...> I>
+  static constexpr uint64_t OpCodeFor() {
     constexpr size_t value = OpCodeForImpl<I>();
     return value;
   }
@@ -235,9 +233,8 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
                                                 CallStack &) = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
 
-  template <Instruction I>
-  static constexpr uint64_t OpCodeForImpl() requires((std::is_same_v<I, Is> or
-                                                      ...)) {
+  template <internal::AnyOf<Is...> I>
+  static constexpr uint64_t OpCodeForImpl() {
     // Because the fold-expression below unconditionally adds one to `i` on its
     // first evaluation, we start `i` at its maximum value and allow it to wrap
     // around.
@@ -259,7 +256,7 @@ template <Instruction... Processed, InstructionOrInstructionSet I,
           InstructionOrInstructionSet... Is>
 constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
                             internal::type_list<I, Is...>) {
-  if constexpr ((std::is_same_v<I, Processed> or ...)) {
+  if constexpr (internal::AnyOf<I, Processed...>) {
     return FlattenInstructionList(internal::type_list<Processed...>{},
                                   internal::type_list<Is...>{});
   } else if constexpr (Instruction<I>) {
@@ -288,12 +285,12 @@ namespace internal_instruction {
 
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
-  if constexpr (std::is_same_v<I, Call> or std::is_same_v<I, Return>) {
+  if constexpr (internal::AnyOf<I, Call, Return>) {
     return 0;
-  } else if constexpr (std::is_same_v<I, Jump> or std::is_same_v<I, JumpIf>) {
+  } else if constexpr (internal::AnyOf<I, Jump, JumpIf>) {
     return 1;
   } else {
-    return internal_type_traits::ExtractSignature<decltype(&I::execute)>::
+    return internal::ExtractSignature<decltype(&I::execute)>::
         invoke_with_argument_types([]<typename First, typename... Ts>() {
           return std::is_same_v<First, ValueStack &> ? sizeof...(Ts) : 0;
         });

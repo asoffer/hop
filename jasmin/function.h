@@ -37,10 +37,10 @@ struct Function final : internal_function_base::FunctionBase {
   template <Instruction I, typename... Vs>
   constexpr void append(Vs... vs) requires(
       internal_function::ConvertibleArguments<
-          internal_type_traits::ExtractSignature<decltype(&I::execute)>,
+          internal::ExtractSignature<decltype(&I::execute)>,
           Vs...>) {
     op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
-    internal_type_traits::ExtractSignature<decltype(&I::execute)>::
+    internal::ExtractSignature<decltype(&I::execute)>::
         invoke_with_argument_types([&]<std::same_as<ValueStack&>,
                                        typename... Ts>() {
           return (std::convertible_to<Vs, Ts> and ...);

@@ -5,7 +5,7 @@
 
 #include "gtest/gtest.h"
 
-namespace jasmin::internal_type_traits {
+namespace jasmin::internal {
 namespace {
 
 TEST(ExtractSignature, ReturnType) {
@@ -58,5 +58,15 @@ TEST(ExtractSignature, Arguments) {
   ASSERT_EQ(d, 1);
 }
 
+TEST(AnyOf, AnyOf) {
+  EXPECT_TRUE((AnyOf<int, int>));
+  EXPECT_TRUE((AnyOf<int, bool, int>));
+  EXPECT_TRUE((AnyOf<int, int, bool>));
+
+  EXPECT_FALSE((AnyOf<int>));
+  EXPECT_FALSE((AnyOf<int, bool>));
+  EXPECT_FALSE((AnyOf<int, int const>));
+}
+
 }  // namespace
-}  // namespace jasmin::internal_type_traits
+}  // namespace jasmin::internal
