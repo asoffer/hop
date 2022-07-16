@@ -200,8 +200,16 @@ concept Instruction =
       internal_instruction::SignatureSatisfiesRequirements<
           internal_type_traits::ExtractSignature<decltype(&I::execute)>>));
 
+namespace internal_instruction {
+template <typename I>
+concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
+
+// Constructs an InstructionSet type from a list of instructions. Does no
+// checking to validate that `Is` do not contain repeats.
 template <Instruction... Is>
 struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
+  using jasmin_instructions = void(Is *...);
+
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
   template <Instruction I>
@@ -234,6 +242,56 @@ struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
     return i;
   }
 };
+
+// Concatenates two type lists.
+template <typename, typename>
+struct Concatenate;
+template <typename... As, typename... Bs>
+struct Concatenate<void (*)(As...), void (*)(Bs...)> {
+  using type = void (*)(As..., Bs...);
+};
+
+template <Instruction... Processed>
+auto FlattenInstructionList(void (*)(Processed *...), void (*)())
+    -> void (*)(Processed *...);
+
+template <Instruction... Processed, InstructionOrInstructionSet I,
+          InstructionOrInstructionSet... Is>
+auto FlattenInstructionList(void (*done_set)(Processed *...),
+                            void (*)(I *, Is *...)) {
+  if constexpr ((std::is_same_v<I, Processed> or ...)) {
+    return FlattenInstructionList(done_set,
+                                  static_cast<void (*)(Is...)>(nullptr));
+  } else if constexpr (Instruction<I>) {
+    return FlattenInstructionList(
+        static_cast<void (*)(Processed * ..., I *)>(nullptr),
+        static_cast<void (*)(Is * ...)>(nullptr));
+  } else {
+    return FlattenInstructionList(
+        static_cast<void (*)(Processed * ...)>(nullptr),
+        static_cast<typename Concatenate<
+            void (*)(Is * ...), typename I::jasmin_instructions *>::type>(
+            nullptr));
+  }
+}
+template <template <typename...> typename, typename>
+struct ApplyImpl;
+template <template <typename...> typename F, typename... Ts>
+struct ApplyImpl<F, void (*)(Ts *...)> {
+  using type = F<Ts...>;
+};
+
+template <template <typename...> typename F, typename TypeList>
+using Apply = typename ApplyImpl<F, TypeList>::type;
+
+}  // namespace internal_instruction
+
+template <internal_instruction::InstructionOrInstructionSet... Is>
+using MakeInstructionSet = internal_instruction::Apply<
+    internal_instruction::MakeInstructionSet,
+    decltype(internal_instruction::FlattenInstructionList(
+        /*processed=*/static_cast<void (*)()>(nullptr),
+        /*unprocessed=*/static_cast<void (*)(Is *...)>(nullptr)))>;
 
 namespace internal_instruction {
 
