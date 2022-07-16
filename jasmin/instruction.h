@@ -108,10 +108,11 @@ struct StackMachineInstruction {
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
+      ++ip;
       if (value_stack.pop<bool>()) {
-        ip += (ip + 1)->value().as<ptrdiff_t>();
+        ip += ip->value().as<ptrdiff_t>() - 1;
       } else {
-        ip += 2;
+        ++ip;
       }
 
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(

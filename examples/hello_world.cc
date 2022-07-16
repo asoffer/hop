@@ -1,5 +1,6 @@
 #include <cstdio>
 
+#include <iostream>
 #include "jasmin/execute.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
@@ -88,7 +89,9 @@ void Ordered() {
   func.append<PrintCString>();
   func.append<ReadIntegerFromStdIn>();
 
-  // Compare the top two values on the stack.
+  // Pop the top two values from the stack and push the boolean value indicating
+  // if the first is smaller than the second (first means pushed earlier; the
+  // second is the value that is on the top of the stack).
   func.append<jasmin::LessThan<int>>();
 
   // `JumpIf` pops the top value (a boolean) from the stack and jumps if that
@@ -96,8 +99,8 @@ void Ordered() {
   // we are using `append_with_placeholders` rather than `append`. That's
   // because we do not yet know where we're jumping to. We simply leave the slot
   // blank so we can tell it how far to jump later. The
-  // `append_with_placeholders` member function returns the index of the first
-  // placeholder slot.
+  // `append_with_placeholders` member function returns the current size of the
+  // function.
   size_t jump_if_slot = func.append_with_placeholders<jasmin::JumpIf>();
 
   // If we don't end up jumping, it's because the bool is false. We'll push a
@@ -113,38 +116,22 @@ void Ordered() {
   // `set_value` probably needs some explanation. Jumps are *relative* so we
   // want to say how far to jump. That's the difference between how big the
   // function was when we added the `JumpIf` instruction, and how big it is now.
-  // By that logic, we would expect `func.size() - jump_if_slot`. However,
-  // there's one more subtlety: Not all instructions are the same size. The
-  // `PrintCString` instruction has size 1, but the `Push` instruction has size
-  // 2. That's because it has one spot for the op-code (operation code), and a
-  // second for the `char const*` value. These values are called "immediate
-  // values", and each takes up an instruction slot. In other words, we're not
-  // counting instructions, but rather slots that are filled by op-codes or
-  // immediate values. In the call to `func.size()` below, we're asking about
-  // the size *after* we've appended both the `Push` op-code and its immediate
-  // value. If we don't subtract one, we'll end up jumping to the immediate
-  // value and attempting to execute it as if it were an op-code. This would be
-  // undefined behavior and, if we're lucky, lead to a crash (but, if the
-  // JASMIN_DEBUG macro is defined, this is guaranteed to be diagnosed causing
-  // the entire program to abort). Regardless, subtracting 1 corrects for this
-  // issue.
   func.append<jasmin::Push>("The numbers are in order.\n");
-  func.set_value(jump_if_slot,
-                 static_cast<ptrdiff_t>(func.size() - jump_if_slot - 1));
+  func.set_value(jump_if_slot - 1,
+                 static_cast<ptrdiff_t>(func.size() - jump_if_slot));
 
   // Now we can add a print instruction and either fall through from the `Push`
-  // above, or get here from the unconditional jump higher up above. This time
-  // whene we call `set_value`, we do not need to do the extra subtraction as
-  // bookkeeping because `PrintCString` takes up exactly one slot.
+  // above, or get here from the unconditional jump higher up above.
   func.append<PrintCString>();
-  func.set_value(jump_if_slot, static_cast<ptrdiff_t>(
+  func.set_value(jump_unconditionally_slot - 1, static_cast<ptrdiff_t>(
                                    func.size() - jump_unconditionally_slot));
   func.append<jasmin::Return>();
 
   // Now that our function has been defined, we can execute it.
   jasmin::Execute(func, {/* No arguments */});
 }
-int main([[maybe_unused]] int argc, [[maybe_unused]] char const *argv[]) {
+
+int main() {
   std::fputs(
       "Executing HelloWorld...\n"
       "=======================\n",

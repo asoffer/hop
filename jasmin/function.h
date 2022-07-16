@@ -56,17 +56,16 @@ struct Function final : internal_function_base::FunctionBase {
 
   // Appends an intsruction followed by space for `placeholder_count` values
   // which are left uninitialized. They may be initialized later via calls to
-  // `OpCodeOrValue::set_value`. Returns the index of the first uninitialized
-  // value.
+  // `OpCodeOrValue::set_value`. Returns the size of the function after all
+  // placeholders are saved.
   template <Instruction I>
   constexpr size_t append_with_placeholders() {
     constexpr size_t placeholders =
         internal_instruction::ImmediateValueCount<I>();
     op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
-    size_t result = op_codes_.size();
     op_codes_.resize(op_codes_.size() + placeholders,
                      OpCodeOrValue::UninitializedValue());
-    return result;
+   return op_codes_.size();
   }
 
   // Given the index into the function where a `Value` is stored, overwrites the

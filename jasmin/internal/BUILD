@@ -10,7 +10,6 @@ cc_library(
 cc_library(
     name = "debug",
     hdrs = ["debug.h"],
-    srcs = ["debug.cc"],
     visibility = ["//jasmin:__subpackages__"],
     deps = [],
 )

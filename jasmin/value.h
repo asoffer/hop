@@ -36,7 +36,7 @@ struct Value {
   // Constructs a `Value` holding the value `v`.
   constexpr Value(SmallTrivialValue auto v)
 #if defined(JASMIN_DEBUG)
-      : debug_type_id_(internal_debug::type_id<decltype(v)>)
+      : debug_type_id_(internal::type_id<decltype(v)>)
 #endif  // defined(JASMIN_DEBUG)
   {
     std::memcpy(value_, &v, sizeof(v));
@@ -52,8 +52,9 @@ struct Value {
     if constexpr (std::is_same_v<T, Value>) {
       return *this;
     } else {
-      JASMIN_INTERNAL_DEBUG_ASSERT(debug_type_id_ == internal_debug::type_id<T>,
-                                   "Value type mismatch");
+      JASMIN_INTERNAL_DEBUG_ASSERT(
+          debug_type_id_ == internal::type_id<T>, "Value type mismatch:\n  ",
+          debug_type_id_.name, " != ", internal::type_id<T>.name, "\n");
 
       T result;
       std::memcpy(&result, value_, sizeof(T));
@@ -66,7 +67,7 @@ struct Value {
       internal_value::ValueAlignment) char value_[internal_value::ValueSize];
 
 #if defined(JASMIN_DEBUG)
-  void const *debug_type_id_;
+  internal::TypeId debug_type_id_;
 #endif
 };
 
