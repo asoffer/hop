@@ -109,9 +109,12 @@ struct StackMachineInstruction {
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      ++ip;
-      if (value_stack.pop<bool>()) { ip += ip->value().as<ptrdiff_t>(); }
-      ++ip;
+      if (value_stack.pop<bool>()) { 
+        ip += (ip + 1)->value().as<ptrdiff_t>();
+      } else {
+        ip += 2;
+      }
+
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
           value_stack, ip, call_stack);
 
@@ -270,13 +273,15 @@ constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
   }
 }
 
+using BuiltinInstructionList = internal::type_list<Call, Jump, JumpIf, Return>;
+
 }  // namespace internal_instruction
 
 template <internal_instruction::InstructionOrInstructionSet... Is>
 using MakeInstructionSet =
     internal::Apply<internal_instruction::MakeInstructionSet,
                     decltype(internal_instruction::FlattenInstructionList(
-                        /*processed=*/internal::type_list<>{},
+                        /*processed=*/internal_instruction::BuiltinInstructionList{},
                         /*unprocessed=*/internal::type_list<Is...>{}))>;
 
 namespace internal_instruction {
