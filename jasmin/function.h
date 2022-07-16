@@ -10,6 +10,17 @@
 #include "jasmin/internal/function_base.h"
 
 namespace jasmin {
+namespace internal_function {
+
+template <
+    internal_instruction::SignatureSatisfiesRequirementsWithImmediateValues E,
+    typename... Vs>
+constexpr bool ConvertibleArguments = E::invoke_with_argument_types([
+]<std::same_as<ValueStack&>, typename... Ts>() {
+  return (std::convertible_to<Vs, Ts> and ...);
+});
+
+}  // namespace internal_function
 
 // A representation of a function that ties op-codes to instructions (via an
 // InstructionSet template parameter).
@@ -24,10 +35,24 @@ struct Function final : internal_function_base::FunctionBase {
   // Appends an op-code for the given `Instruction I` template parameter,
   // followed by `Value`s for each of the passed arguments.
   template <Instruction I, typename... Vs>
-  constexpr void append(Vs... vs) requires((std::is_convertible_v<Vs, Value> and
-                                            ...)) {
+  constexpr void append(Vs... vs) requires(
+      internal_function::ConvertibleArguments<
+          internal_type_traits::ExtractSignature<decltype(&I::execute)>,
+          Vs...>) {
     op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
+    internal_type_traits::ExtractSignature<decltype(&I::execute)>::
+        invoke_with_argument_types([&]<std::same_as<ValueStack&>,
+                                       typename... Ts>() {
+          return (std::convertible_to<Vs, Ts> and ...);
+        });
+
     (op_codes_.push_back(OpCodeOrValue::Value(vs)), ...);
+  }
+  // Same as `append` above for instructions with no immediate values.
+  template <Instruction I>
+  constexpr void append() requires(
+      internal_instruction::ImmediateValueCount<I>() == 0) {
+    op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
   }
 
   // Appends an intsruction followed by space for `placeholder_count` values
@@ -36,7 +61,8 @@ struct Function final : internal_function_base::FunctionBase {
   // value.
   template <Instruction I>
   constexpr size_t append_with_placeholders() {
-    constexpr size_t placeholders = internal_instruction::ImmediateValueCount<I>();
+    constexpr size_t placeholders =
+        internal_instruction::ImmediateValueCount<I>();
     op_codes_.push_back(OpCodeOrValue::OpCode(Set::template OpCodeFor<I>()));
     size_t result = op_codes_.size();
     op_codes_.resize(op_codes_.size() + placeholders,
