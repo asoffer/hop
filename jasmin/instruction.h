@@ -110,7 +110,7 @@ struct StackMachineInstruction {
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       ++ip;
       if (value_stack.pop<bool>()) {
-        ip += ip->value().as<ptrdiff_t>() - 1;
+        ip += ip->value().as<ptrdiff_t>();
       } else {
         ++ip;
       }

@@ -22,7 +22,7 @@ TEST(Function, AppendWithArguments) {
   Function<instruction_set> f(0, 0);
   f.append<MockFunction<int, bool>>(3, true);
   EXPECT_EQ(f.size(), 3);
-  EXPECT_EQ((f.append_with_placeholders<MockFunction<int, bool>>()), 4);
+  EXPECT_EQ((f.append_with_placeholders<MockFunction<int, bool>>()), 6);
   EXPECT_EQ(f.size(), 6);
 }
 

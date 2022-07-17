@@ -47,7 +47,7 @@ inline TypeId type_id{
 
 #else
 
-#define JASMIN_INTERNAL_DEBUG_ASSERT(expr, message)
+#define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)
 
 #endif  // defined(JASMIN_DEBUG)
 #endif  // JASMIN_DEBUG_H

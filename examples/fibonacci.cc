@@ -39,7 +39,7 @@ auto FibonacciWithSubtract() {
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
   func.append<jasmin::Return>();
-  func.set_value(index, static_cast<ptrdiff_t>(func.size() - index));
+  func.set_value(index - 1, static_cast<ptrdiff_t>(func.size() - index));
   return func;
 }
 
@@ -69,7 +69,7 @@ auto FibonacciWithHardCodedDecrements() {
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
   func.append<jasmin::Return>();
-  func.set_value(index, static_cast<ptrdiff_t>(func.size() - index));
+  func.set_value(index - 1, static_cast<ptrdiff_t>(func.size() - index));
   return func;
 }
 

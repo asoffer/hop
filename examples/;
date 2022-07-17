@@ -112,8 +112,8 @@ void Ordered() {
   size_t jump_unconditionally_slot =
       func.append_with_placeholders<jasmin::Jump>();
 
-  // This is where we're going to jump from the `JumpIf` instructions. The call
-  // to `set_value` probably needs some explanation. Jumps are *relative* so we
+  // This is where we're going to jump from the JumpIf instructions. The call to
+  // `set_value` probably needs some explanation. Jumps are *relative* so we
   // want to say how far to jump. That's the difference between how big the
   // function was when we added the `JumpIf` instruction, and how big it is now.
   // For that reason, we would expect `func.size() - jump_if_slot`. However, not
@@ -124,13 +124,6 @@ void Ordered() {
   // to jump to the instructions op-code, not its immediate values, so we
   // subtract one to account for this. We would subtract more if `Push` had
   // multiple immediate values.
-  //
-  // One further note: It's important that the type of the value being set
-  // matches that which is expected in the placeholder slot for `JumpIf`, which
-  // is `ptrdiff_t`. Simply substracting the values does not yield a `ptrdiff_t`
-  // on all platforms. The `static_cast<ptrdiff_t>` guarantees we choose the
-  // correct type. If the `JASMIN_DEBUG` macro is defined, this will be
-  // diagnosed and cause the program to abort.
   func.append<jasmin::Push>("The numbers are in order.\n");
   func.set_value(jump_if_slot - 1,
                  static_cast<ptrdiff_t>(func.size() - jump_if_slot - 1));

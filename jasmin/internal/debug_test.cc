@@ -4,7 +4,7 @@
 
 #include "gtest/gtest.h"
 
-namespace jasmin::internal_debug {
+namespace jasmin::internal {
 namespace {
 
 #if defined(JASMIN_DEBUG)
@@ -35,4 +35,4 @@ TEST(AssertMacro, AbortsOnlyOnFailure) {
 }
 
 }  // namespace
-}  // namespace jasmin::internal_debug
+}  // namespace jasmin::internal
