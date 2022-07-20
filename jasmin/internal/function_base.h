@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "jasmin/instruction_pointer.h"
+#include "jasmin/op_code.h"
 
 namespace jasmin::internal_function_base {
 
@@ -31,14 +32,39 @@ struct FunctionBase {
     return InstructionPointer(op_codes_.data());
   }
 
-  // Returns the number of instructions and values in the code for this
-  // function.
-  constexpr size_t size() const { return op_codes_.size(); }
+  // Given the index `index` into the immediate values of `range`, sets the
+  // corresponding `Value` to `value`. Behavior is undefined if `range` is not a
+  // valid range in `*this` function. This is typically used in conjunction with
+  // `append_with_placeholders` to defer setting a value, but may be used to
+  // overwrite any such `Value`.
+  void set_value(OpCodeRange range, size_t index, Value value) {
+    JASMIN_INTERNAL_DEBUG_ASSERT(index + 1 < range.size(), "Index larger than range");
+    op_codes_[range.offset() + index + 1] = OpCodeOrValue::Value(value); 
+  }
 
  protected:
-  std::vector<OpCodeOrValue> op_codes_;
+  // Appends the sequence of `OpCodeOrValue`s. To the instructions. The first
+  // must represent an op-code and the remainder must represent immediate values.
+  // Returns an `OpCodeRange` representing the appended sequence.
+  OpCodeRange append(std::initializer_list<OpCodeOrValue> range) {
+    size_t size = op_codes_.size();
+    op_codes_.insert(op_codes_.end(), range.begin(), range.end());
+    return OpCodeRange(size, range.size());
+  }
+
+  // Appends the sequence of `OpCodeOrValue`s. To the instructions. The first
+  // must represent an op-code and the remainder must represent immediate values.
+  // Returns an `OpCodeRange` representing the appended sequence.
+  OpCodeRange append(OpCodeOrValue op_code, size_t placeholders) {
+    size_t size = op_codes_.size();
+    op_codes_.push_back(op_code);
+    op_codes_.resize(op_codes_.size() + placeholders,
+                     OpCodeOrValue::UninitializedValue());
+    return OpCodeRange(size, placeholders + 1);
+  }
 
  private:
+  std::vector<OpCodeOrValue> op_codes_;
   uint8_t parameter_count_;
   uint8_t return_count_;
 };

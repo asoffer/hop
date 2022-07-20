@@ -26,7 +26,7 @@ auto FibonacciWithSubtract() {
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
-  auto index = func.append_with_placeholders<jasmin::JumpIf>();
+  jasmin::OpCodeRange jump = func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{1});
   func.append<jasmin::Subtract<uint64_t>>();
@@ -38,8 +38,8 @@ auto FibonacciWithSubtract() {
   func.append<jasmin::Push>(&func);
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
-  func.append<jasmin::Return>();
-  func.set_value(index - 1, static_cast<ptrdiff_t>(func.size() - index));
+  jasmin::OpCodeRange ret = func.append<jasmin::Return>();
+  func.set_value(jump, 0, ret - jump);
   return func;
 }
 
@@ -58,7 +58,7 @@ auto FibonacciWithHardCodedDecrements() {
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
-  auto index = func.append_with_placeholders<jasmin::JumpIf>();
+  jasmin::OpCodeRange jump = func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
   func.append<DecrementBy<uint64_t, 1>>();
   func.append<jasmin::Push>(&func);
@@ -68,8 +68,8 @@ auto FibonacciWithHardCodedDecrements() {
   func.append<jasmin::Push>(&func);
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
-  func.append<jasmin::Return>();
-  func.set_value(index - 1, static_cast<ptrdiff_t>(func.size() - index));
+  jasmin::OpCodeRange ret = func.append<jasmin::Return>();
+  func.set_value(jump, 0, ret - jump);
   return func;
 }
 

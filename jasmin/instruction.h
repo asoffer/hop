@@ -101,18 +101,16 @@ struct StackMachineInstruction {
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
-      ++ip;
-      ip += ip->value().as<ptrdiff_t>();
+      ip += (ip + 1)->value().as<ptrdiff_t>();
 
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      ++ip;
       if (value_stack.pop<bool>()) {
-        ip += ip->value().as<ptrdiff_t>();
+        ip += (ip + 1)->value().as<ptrdiff_t>();
       } else {
-        ++ip;
+        ip += 2;
       }
 
       JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(

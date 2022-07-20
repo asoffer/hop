@@ -46,15 +46,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "function_test",
-    srcs = ["function_test.cc"],
-    deps = [
-        ":function",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "instruction",
     hdrs = ["instruction.h"],
@@ -85,6 +76,7 @@ cc_library(
     hdrs = ["instruction_pointer.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":op_code",
         ":value",
         "//jasmin/internal:debug",
     ],
@@ -95,6 +87,25 @@ cc_test(
     srcs = ["instruction_pointer_test.cc"],
     deps = [
         ":instruction_pointer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "op_code",
+    hdrs = ["op_code.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":value",
+        "//jasmin/internal:debug",
+    ],
+)
+
+cc_test(
+    name = "op_code_test",
+    srcs = ["op_code_test.cc"],
+    deps = [
+        ":op_code",
         "@com_google_googletest//:gtest_main",
     ],
 )

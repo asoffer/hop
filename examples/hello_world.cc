@@ -33,7 +33,7 @@ void HelloWorld() {
   jasmin::Function<Instructions> func(0, 0);
   // We print the two strings separately. Of course, in this case it would be
   // easier to have one "Hello, world!\n" string. We could also push "Hello, "
-  // and print it, and then push "world!\n" and print it. We're choosing to
+  // and print it, and then push "world!\n" and print it. We are choosing to
   // push both strings (in reverse order!) to demonstrate that we are working
   // with a stack.
   func.append<jasmin::Push>("world!\n");
@@ -97,49 +97,33 @@ void Ordered() {
   // `JumpIf` pops the top value (a boolean) from the stack and jumps if that
   // bool is true. Otherwise, it falls through to the next instruction. Not that
   // we are using `append_with_placeholders` rather than `append`. That's
-  // because we do not yet know where we're jumping to. We simply leave the slot
-  // blank so we can tell it how far to jump later. The
-  // `append_with_placeholders` member function returns the current size of the
-  // function.
-  size_t jump_if_slot = func.append_with_placeholders<jasmin::JumpIf>();
+  // because we do not yet know where we are jumping to. We simply leave the
+  // slot blank so we can tell it how far to jump later. The
+  // `append_with_placeholders` member function returns an `OpCodeRange`
+  // representing the range of instruction slots covered by the jump that we can
+  // update later.  function.
+  jasmin::OpCodeRange jump_if = func.append_with_placeholders<jasmin::JumpIf>();
 
-  // If we don't end up jumping, it's because the bool is false. We'll push a
-  // string we want to print (but not print it yet). We'll follow this with the
-  // code for the case where the numbers are in order, but we don't want this
-  // path to execute that code, so we need another jump. This one can be
+  // If we don't end up jumping, it's because the bool is false. We will push a
+  // string we want to print (but not print it yet). We will follow this with
+  // the code for the case where the numbers are in order, but we don't want
+  // this path to execute that code, so we need another jump. This one can be
   // unconditional.
   func.append<jasmin::Push>("The numbers are out of order.\n");
-  size_t jump_unconditionally_slot =
+  jasmin::OpCodeRange jump_unconditionally =
       func.append_with_placeholders<jasmin::Jump>();
 
-  // This is where we're going to jump from the `JumpIf` instructions. The call
+  // This is where we are going to jump from the `JumpIf` instructions. The call
   // to `set_value` probably needs some explanation. Jumps are *relative* so we
   // want to say how far to jump. That's the difference between how big the
   // function was when we added the `JumpIf` instruction, and how big it is now.
-  // For that reason, we would expect `func.size() - jump_if_slot`. However, not
-  // all instructions are the same size. Every instruction takes up at least one
-  // slot for its op-code ("operation code" indicating which instruction it is),
-  // but may take up further slots for immediate values. In the case of `Push`,
-  // the `char const *` is an immediate value taking up a second slot. We want
-  // to jump to the instructions op-code, not its immediate values, so we
-  // subtract one to account for this. We would subtract more if `Push` had
-  // multiple immediate values.
-  //
-  // One further note: It's important that the type of the value being set
-  // matches that which is expected in the placeholder slot for `JumpIf`, which
-  // is `ptrdiff_t`. Simply substracting the values does not yield a `ptrdiff_t`
-  // on all platforms. The `static_cast<ptrdiff_t>` guarantees we choose the
-  // correct type. If the `JASMIN_DEBUG` macro is defined, this will be
-  // diagnosed and cause the program to abort.
-  func.append<jasmin::Push>("The numbers are in order.\n");
-  func.set_value(jump_if_slot - 1,
-                 static_cast<ptrdiff_t>(func.size() - jump_if_slot - 1));
+  jasmin::OpCodeRange push = func.append<jasmin::Push>("The numbers are in order.\n");
+  func.set_value(jump_if, 0, push - jump_if);
 
   // Now we can add a print instruction and either fall through from the `Push`
   // above, or get here from the unconditional jump higher up above.
-  func.append<PrintCString>();
-  func.set_value(jump_unconditionally_slot - 1, static_cast<ptrdiff_t>(
-                                   func.size() - jump_unconditionally_slot));
+  jasmin::OpCodeRange print = func.append<PrintCString>();
+  func.set_value(jump_unconditionally, 0, print - jump_unconditionally);
   func.append<jasmin::Return>();
 
   // Now that our function has been defined, we can execute it.
