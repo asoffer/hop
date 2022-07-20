@@ -45,7 +45,9 @@ cc_library(
     name = "type_list",
     hdrs = ["type_list.h"],
     visibility = ["//jasmin:__subpackages__"],
-    deps = [],
+    deps = [
+        ":type_traits",
+    ],
 )
 
 cc_test(

@@ -284,11 +284,6 @@ using MakeInstructionSet = internal::Apply<
 
 namespace internal_instruction {
 
-template <typename T, typename...>
-struct First {
-  using type = T;
-};
-
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
   if constexpr (internal::AnyOf<I, Call, Return>) {
@@ -301,7 +296,7 @@ constexpr size_t ImmediateValueCount() {
           if constexpr (sizeof...(Ts) == 0) {
             return 0;
           } else {
-            return std::is_same_v<typename First<Ts...>::type, ValueStack &>
+            return std::is_same_v<internal::first_of<Ts...>, ValueStack &>
                        ? (sizeof...(Ts) - 1)
                        : 0;
           }

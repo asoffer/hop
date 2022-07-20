@@ -43,7 +43,7 @@ auto FibonacciWithSubtract() {
   return func;
 }
 
-template <typename T, T N>
+template <std::integral T, T N>
 struct DecrementBy : jasmin::StackMachineInstruction<DecrementBy<T, N>> {
   static constexpr T execute(T x) { return x - N; }
 };

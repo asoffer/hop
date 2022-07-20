@@ -3,6 +3,8 @@
 
 #include <type_traits>
 
+#include "jasmin/internal/type_traits.h"
+
 // Jasmin uses the type `void (*)(Ts*...)` to represent type-lists. This has the
 // benefit over the slightly more common practice of `template <typename...>
 // struct TypeList {}` of reducing template instantiations. Moreover, by using
@@ -44,6 +46,14 @@ struct ApplyImpl<F, type_list<Ts...>> {
   using type = F<Ts...>;
 };
 
+template <auto, TypeList>
+struct InvokeImpl;
+
+template <auto Lambda, typename... Ts>
+struct InvokeImpl<Lambda, type_list<Ts...>> {
+  static constexpr auto value = Lambda.template operator()<Ts...>();
+};
+
 }  // namespace internal_type_list
 
 // Given two type-lists, evaluates to a type-list consisting of the
@@ -55,6 +65,18 @@ using Concatenate = typename internal_type_list::ConcatenateImpl<A, B>::type;
 // the type `F<Ts...>`;
 template <template <typename...> typename F, typename TypeList>
 using Apply = typename internal_type_list::ApplyImpl<F, TypeList>::type;
+
+// Given an invocable `lambda` that can be invoked by passing a bunch of
+// template arguments, invokes `lambda` with the arguments from the given type
+// list `L`.
+template <auto Lambda, TypeList L>
+inline constexpr auto Invoke = internal_type_list::InvokeImpl<Lambda, L>::value;
+
+// A concept indicating that the matching type is contained in the given type
+// list.
+template <typename T, typename L>
+concept ContainedIn = TypeList<L> and
+    Invoke<[]<typename... Ts>() { return (std::is_same_v<T, Ts> or ...); }, L>;
 
 }  // namespace jasmin::internal
 

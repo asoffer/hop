@@ -38,8 +38,9 @@ struct FunctionBase {
   // `append_with_placeholders` to defer setting a value, but may be used to
   // overwrite any such `Value`.
   void set_value(OpCodeRange range, size_t index, Value value) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(index + 1 < range.size(), "Index larger than range");
-    instructions_[range.offset() + index + 1] = value; 
+    JASMIN_INTERNAL_DEBUG_ASSERT(index + 1 < range.size(),
+                                 "Index larger than range");
+    instructions_[range.offset() + index + 1] = value;
   }
 
  protected:
@@ -58,7 +59,8 @@ struct FunctionBase {
   OpCodeRange append(Value fn, size_t placeholders) {
     size_t size = instructions_.size();
     instructions_.push_back(fn);
-    instructions_.resize(instructions_.size() + placeholders, Value::Uninitialized());
+    instructions_.resize(instructions_.size() + placeholders,
+                         Value::Uninitialized());
     return OpCodeRange(size, placeholders + 1);
   }
 

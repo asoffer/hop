@@ -13,20 +13,21 @@ namespace jasmin::internal {
 // speakiung, we would prefer to test compatibility, but this is generally not
 // possible via this mechanism.
 struct TypeId {
-  void const * value;
-  char const * name;
+  void const *value;
+  char const *name;
 
-  friend bool operator==(TypeId const & lhs, TypeId const & rhs) {
+  friend bool operator==(TypeId const &lhs, TypeId const &rhs) {
     return lhs.value == rhs.value;
   }
-  friend bool operator!=(TypeId const & lhs, TypeId const & rhs) {
-    return not (lhs == rhs);
+  friend bool operator!=(TypeId const &lhs, TypeId const &rhs) {
+    return not(lhs == rhs);
   }
 };
+
 template <typename T>
 inline TypeId type_id{
-  .value = &type_id<std::conditional_t<std::is_pointer_v<T>, void *, T>>,
-  .name = typeid(T).name(),
+    .value = &type_id<std::conditional_t<std::is_pointer_v<T>, void *, T>>,
+    .name  = typeid(T).name(),
 };
 
 // Writes the strings to stderr and aborts execution.
@@ -40,8 +41,8 @@ inline TypeId type_id{
 #define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)                                \
   do {                                                                         \
     if (not(expr)) {                                                           \
-      ::jasmin::internal::DebugAbort("Failed assertion: " #expr "\n",    \
-                                           __VA_ARGS__);                       \
+      ::jasmin::internal::DebugAbort("Failed assertion: " #expr "\n",          \
+                                     __VA_ARGS__);                             \
     }                                                                          \
   } while (false)
 

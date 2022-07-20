@@ -14,8 +14,8 @@ namespace jasmin {
 struct CallStack {
   // Push the function `f` onto the call stack, tracking the existing stack size
   // as well as the location of the instruction pointer.
-  void push(internal::FunctionBase const *f,
-            size_t value_stack_size, InstructionPointer ip) {
+  void push(internal::FunctionBase const *f, size_t value_stack_size,
+            InstructionPointer ip) {
     JASMIN_INTERNAL_DEBUG_ASSERT(
         stack_.empty() or
             value_stack_size >=

@@ -68,5 +68,11 @@ TEST(AnyOf, AnyOf) {
   EXPECT_FALSE((AnyOf<int, int const>));
 }
 
+TEST(AnyOf, first_of) {
+  EXPECT_TRUE((std::is_same_v<first_of<int>, int>));
+  EXPECT_TRUE((std::is_same_v<first_of<int, bool>, int>));
+  EXPECT_TRUE((std::is_same_v<first_of<bool, int>, bool>));
+}
+
 }  // namespace
 }  // namespace jasmin::internal

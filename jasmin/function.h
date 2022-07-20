@@ -8,6 +8,7 @@
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/debug.h"
 #include "jasmin/internal/function_base.h"
+#include "jasmin/internal/type_list.h"
 
 namespace jasmin {
 namespace internal_function {
@@ -34,7 +35,8 @@ struct Function final : internal::FunctionBase {
 
   // Appends an op-code for the given `Instruction I` template parameter,
   // followed by `Value`s for each of the passed arguments.
-  template <Instruction I, typename... Vs>
+  template <internal::ContainedIn<typename Set::jasmin_instructions*> I,
+            typename... Vs>
   constexpr OpCodeRange append(Vs... vs) requires(
       internal_function::ConvertibleArguments<
           internal::ExtractSignature<decltype(&I::execute)>, Vs...>) {
@@ -43,7 +45,7 @@ struct Function final : internal::FunctionBase {
   }
 
   // Same as `append` above for instructions with no immediate values.
-  template <Instruction I>
+  template <internal::ContainedIn<typename Set::jasmin_instructions*> I>
   constexpr OpCodeRange append() requires(
       internal_instruction::ImmediateValueCount<I>() == 0) {
     return internal::FunctionBase::append(
@@ -53,7 +55,7 @@ struct Function final : internal::FunctionBase {
   // Appends an intsruction followed by space for `placeholder_count` values
   // which are left uninitialized. They may be initialized later via calls to
   // `Function<...>::set_value`. Returns the corresponding OpCodeRange.
-  template <Instruction I>
+  template <internal::ContainedIn<typename Set::jasmin_instructions*> I>
   constexpr OpCodeRange append_with_placeholders() {
     return internal::FunctionBase::append(
         Value(&I::template ExecuteImpl<Set>),
