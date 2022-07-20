@@ -14,7 +14,7 @@ namespace jasmin {
 struct CallStack {
   // Push the function `f` onto the call stack, tracking the existing stack size
   // as well as the location of the instruction pointer.
-  void push(internal_function_base::FunctionBase const *f,
+  void push(internal::FunctionBase const *f,
             size_t value_stack_size, InstructionPointer ip) {
     JASMIN_INTERNAL_DEBUG_ASSERT(
         stack_.empty() or
@@ -32,7 +32,7 @@ struct CallStack {
 
   // Returns a pointer to the function currently at the top of the stack. During
   // execution, this is the function currently being executed.
-  internal_function_base::FunctionBase const *current() const {
+  internal::FunctionBase const *current() const {
     JASMIN_INTERNAL_DEBUG_ASSERT(stack_.size() > 0,
                                  "Unexpectedly empty call stack");
     return stack_.back().function;
@@ -88,7 +88,7 @@ struct CallStack {
 
  private:
   struct Frame {
-    internal_function_base::FunctionBase const *function;
+    internal::FunctionBase const *function;
     size_t stack_size_before_call;
     InstructionPointer previous_instruction_pointer;
   };

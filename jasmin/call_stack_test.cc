@@ -15,8 +15,8 @@ TEST(CallStack, Construction) {
 }
 
 TEST(CallStack, PushPop) {
-  internal_function_base::FunctionBase f1(0, 0);
-  internal_function_base::FunctionBase f2(1, 2);
+  internal::FunctionBase f1(0, 0);
+  internal::FunctionBase f2(1, 2);
   CallStack call_stack;
   call_stack.push(&f1, 10, f1.entry());
   EXPECT_FALSE(call_stack.empty());
@@ -52,7 +52,7 @@ TEST(CallStack, PushPop) {
 TEST(CallStack, ErasableRange) {
   {
     CallStack call_stack;
-    internal_function_base::FunctionBase f(0, 0);
+    internal::FunctionBase f(0, 0);
     call_stack.push(&f, 0, f.entry());
     EXPECT_EQ(call_stack.erasable_range(0),
               (CallStack::ErasableRange{.start_index = 0, .end_index = 0}));
@@ -68,7 +68,7 @@ TEST(CallStack, ErasableRange) {
 
   {
     CallStack call_stack;
-    internal_function_base::FunctionBase f(0, 5);
+    internal::FunctionBase f(0, 5);
     call_stack.push(&f, 0, f.entry());
 #if defined(JASMIN_DEBUG)
     EXPECT_DEATH({ call_stack.erasable_range(0); }, "frame clobbered");
@@ -90,7 +90,7 @@ TEST(CallStack, ErasableRange) {
 
   {
     CallStack call_stack;
-    internal_function_base::FunctionBase f(5, 0);
+    internal::FunctionBase f(5, 0);
     call_stack.push(&f, 6, f.entry());
 #if defined(JASMIN_DEBUG)
     EXPECT_DEATH({ call_stack.erasable_range(0); }, "frame clobbered");
@@ -111,7 +111,7 @@ TEST(CallStack, ErasableRange) {
 
   {
     CallStack call_stack;
-    internal_function_base::FunctionBase f(3, 8);
+    internal::FunctionBase f(3, 8);
     call_stack.push(&f, 5, f.entry());
 #if defined(JASMIN_DEBUG)
     EXPECT_DEATH({ call_stack.erasable_range(9); }, "frame clobbered");

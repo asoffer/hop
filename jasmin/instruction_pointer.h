@@ -15,9 +15,6 @@ struct InstructionPointer {
 
   // Compares two instruction pointers for equality. Behavior is undefined if
   // the two instructionpointers do not point into the same function.
-  //
-  // TODO: Detetrmine if you need to call std::equal_to to ensure this is
-  // defined even if the pointers refer to different buffers.
   constexpr bool operator==(InstructionPointer const &) const = default;
   constexpr bool operator!=(InstructionPointer const &) const = default;
 

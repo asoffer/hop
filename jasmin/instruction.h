@@ -95,8 +95,7 @@ struct StackMachineInstruction {
     using exec_fn_type =
         void (*)(ValueStack &, InstructionPointer &, CallStack &);
     if constexpr (std::is_same_v<Inst, Call>) {
-      auto const *f =
-          value_stack.pop<internal_function_base::FunctionBase const *>();
+      auto const *f = value_stack.pop<internal::FunctionBase const *>();
       call_stack.push(f, value_stack.size(), ip);
       ip = f->entry();
       JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,

@@ -6,7 +6,7 @@
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/op_code.h"
 
-namespace jasmin::internal_function_base {
+namespace jasmin::internal {
 
 // `FunctionBase` is the base class for any function-type defined via Jasmin's
 // infrastructure. Op-codes are only meaningful in the presence of an
@@ -68,6 +68,6 @@ struct FunctionBase {
   uint8_t return_count_;
 };
 
-}  // namespace jasmin::internal_function_base
+}  // namespace jasmin::internal
 
-#endif  // JASMIN_INTERNAL_FUNCTION_BASE_H
+#endif  // JASMIN_internal_H

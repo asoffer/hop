@@ -25,7 +25,7 @@ constexpr bool ConvertibleArguments = E::invoke_with_argument_types([
 // A representation of a function that ties op-codes to instructions (via an
 // InstructionSet template parameter).
 template <InstructionSet Set>
-struct Function final : internal_function_base::FunctionBase {
+struct Function final : internal::FunctionBase {
   // Constructs an empty `Function` given a `parameter_count` representing the
   // number of parameters to the function, and a `return_count` representing the
   // number of return values for the function.
@@ -38,7 +38,7 @@ struct Function final : internal_function_base::FunctionBase {
   constexpr OpCodeRange append(Vs... vs) requires(
       internal_function::ConvertibleArguments<
           internal::ExtractSignature<decltype(&I::execute)>, Vs...>) {
-    return internal_function_base::FunctionBase::append(
+    return internal::FunctionBase::append(
         {Value(&I::template ExecuteImpl<Set>), Value(vs)...});
   }
 
@@ -46,7 +46,7 @@ struct Function final : internal_function_base::FunctionBase {
   template <Instruction I>
   constexpr OpCodeRange append() requires(
       internal_instruction::ImmediateValueCount<I>() == 0) {
-    return internal_function_base::FunctionBase::append(
+    return internal::FunctionBase::append(
         {Value(&I::template ExecuteImpl<Set>)});
   }
 
@@ -55,7 +55,7 @@ struct Function final : internal_function_base::FunctionBase {
   // `Function<...>::set_value`. Returns the corresponding OpCodeRange.
   template <Instruction I>
   constexpr OpCodeRange append_with_placeholders() {
-    return internal_function_base::FunctionBase::append(
+    return internal::FunctionBase::append(
         Value(&I::template ExecuteImpl<Set>),
         internal_instruction::ImmediateValueCount<I>());
   }

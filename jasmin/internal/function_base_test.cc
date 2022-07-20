@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 
-namespace jasmin::internal_function_base {
+namespace jasmin::internal {
 namespace {
 
 TEST(FunctionBase, Simple) {
@@ -12,4 +12,4 @@ TEST(FunctionBase, Simple) {
 }
 
 }  // namespace
-}  // namespace jasmin::internal_function_base
+}  // namespace jasmin::internal
