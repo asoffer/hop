@@ -30,10 +30,14 @@ TEST(CallStack, PushPop) {
   EXPECT_EQ(call_stack.current(), &f2);
 
 #if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ call_stack.push(&f2, 21, f2.entry()); }, "Value stack invariant broken");
-  EXPECT_DEATH({ call_stack.push(&f2, 20, f2.entry()); }, "Value stack invariant broken");
-  EXPECT_DEATH({ call_stack.push(&f2, 0, f2.entry()); }, "Value stack invariant broken");
-  EXPECT_DEATH({ call_stack.push(&f1, 20, f1.entry()); }, "Value stack invariant broken");
+  EXPECT_DEATH({ call_stack.push(&f2, 21, f2.entry()); },
+               "Value stack invariant broken");
+  EXPECT_DEATH({ call_stack.push(&f2, 20, f2.entry()); },
+               "Value stack invariant broken");
+  EXPECT_DEATH({ call_stack.push(&f2, 0, f2.entry()); },
+               "Value stack invariant broken");
+  EXPECT_DEATH({ call_stack.push(&f1, 20, f1.entry()); },
+               "Value stack invariant broken");
 #endif  // defined(JASMIN_DEBUG)
 
   EXPECT_EQ(call_stack.pop(), f2.entry());

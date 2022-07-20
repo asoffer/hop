@@ -29,7 +29,7 @@ struct FunctionBase {
   // Returns an `InstructionPointer` pointing to the first intsruction in this
   // function.
   constexpr InstructionPointer entry() const {
-    return InstructionPointer(op_codes_.data());
+    return InstructionPointer(instructions_.data());
   }
 
   // Given the index `index` into the immediate values of `range`, sets the
@@ -39,32 +39,31 @@ struct FunctionBase {
   // overwrite any such `Value`.
   void set_value(OpCodeRange range, size_t index, Value value) {
     JASMIN_INTERNAL_DEBUG_ASSERT(index + 1 < range.size(), "Index larger than range");
-    op_codes_[range.offset() + index + 1] = OpCodeOrValue::Value(value); 
+    instructions_[range.offset() + index + 1] = value; 
   }
 
  protected:
-  // Appends the sequence of `OpCodeOrValue`s. To the instructions. The first
-  // must represent an op-code and the remainder must represent immediate values.
+  // Appends the sequence of `Value`s. To the instructions. The first must
+  // represent an op-code and the remainder must represent immediate values.
   // Returns an `OpCodeRange` representing the appended sequence.
-  OpCodeRange append(std::initializer_list<OpCodeOrValue> range) {
-    size_t size = op_codes_.size();
-    op_codes_.insert(op_codes_.end(), range.begin(), range.end());
+  OpCodeRange append(std::initializer_list<Value> range) {
+    size_t size = instructions_.size();
+    instructions_.insert(instructions_.end(), range.begin(), range.end());
     return OpCodeRange(size, range.size());
   }
 
-  // Appends the sequence of `OpCodeOrValue`s. To the instructions. The first
-  // must represent an op-code and the remainder must represent immediate values.
+  // Appends the sequence of `Value`s. To the instructions. The first must
+  // represent an op-code and the remainder must represent immediate values.
   // Returns an `OpCodeRange` representing the appended sequence.
-  OpCodeRange append(OpCodeOrValue op_code, size_t placeholders) {
-    size_t size = op_codes_.size();
-    op_codes_.push_back(op_code);
-    op_codes_.resize(op_codes_.size() + placeholders,
-                     OpCodeOrValue::UninitializedValue());
+  OpCodeRange append(Value fn, size_t placeholders) {
+    size_t size = instructions_.size();
+    instructions_.push_back(fn);
+    instructions_.resize(instructions_.size() + placeholders, Value::Uninitialized());
     return OpCodeRange(size, placeholders + 1);
   }
 
  private:
-  std::vector<OpCodeOrValue> op_codes_;
+  std::vector<Value> instructions_;
   uint8_t parameter_count_;
   uint8_t return_count_;
 };

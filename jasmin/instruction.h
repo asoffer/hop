@@ -92,30 +92,31 @@ struct StackMachineInstruction {
   template <InstructionSet Set>
   static void ExecuteImpl(ValueStack &value_stack, InstructionPointer &ip,
                           CallStack &call_stack) {
-    using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &);
+    using exec_fn_type =
+        void (*)(ValueStack &, InstructionPointer &, CallStack &);
     if constexpr (std::is_same_v<Inst, Call>) {
       auto const *f =
           value_stack.pop<internal_function_base::FunctionBase const *>();
       call_stack.push(f, value_stack.size(), ip);
       ip = f->entry();
-      JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
-          value_stack, ip, call_stack);
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
+                                                              call_stack);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
-      ip += (ip + 1)->value().as<ptrdiff_t>();
+      ip += (ip + 1)->as<ptrdiff_t>();
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
-          value_stack, ip, call_stack);
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
+                                                              call_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       if (value_stack.pop<bool>()) {
-        ip += (ip + 1)->value().as<ptrdiff_t>();
+        ip += (ip + 1)->as<ptrdiff_t>();
       } else {
         ip += 2;
       }
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
-          value_stack, ip, call_stack);
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
+                                                              call_stack);
 
     } else if constexpr (std::is_same_v<Inst, Return>) {
       // When a call instruction is executed, all the arguments are pushed onto
@@ -127,8 +128,8 @@ struct StackMachineInstruction {
       if (call_stack.empty()) {
         return;
       } else {
-        JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
-            value_stack, ip, call_stack);
+        JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
+                                                                call_stack);
       }
     } else {
       using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
@@ -141,9 +142,8 @@ struct StackMachineInstruction {
                                            std::convertible_to<Value>... Ts>() {
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
-              std::apply(Inst::execute,
-                         std::tuple<ValueStack &, Ts...>{
-                             value_stack, (++ip)->value().as<Ts>()...});
+              std::apply(Inst::execute, std::tuple<ValueStack &, Ts...>{
+                                            value_stack, (++ip)->as<Ts>()...});
             });
         ++ip;
       } else {
@@ -163,8 +163,8 @@ struct StackMachineInstruction {
       }
     }
 
-    JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
-        value_stack, ip, call_stack);
+    JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
+                                                            call_stack);
   }
 };
 

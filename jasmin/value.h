@@ -33,6 +33,11 @@ concept SmallTrivialValue = (not std::is_same_v<T, Value> and
 // in the instructions. Values must be trivially copyable and representable in
 // no more than 64 bits.
 struct Value {
+  static Value Uninitialized() {
+    Value v;
+    return v;
+  }
+
   // Constructs a `Value` holding the value `v`.
   constexpr Value(SmallTrivialValue auto v)
 #if defined(JASMIN_DEBUG)
@@ -63,6 +68,15 @@ struct Value {
   }
 
  private:
+  struct uninitialized_t {};
+
+  explicit Value()
+#if defined(JASMIN_DEBUG)
+      : debug_type_id_(internal::type_id<uninitialized_t>)
+#endif  // defined(JASMIN_DEBUG)
+  {
+  }
+
   alignas(
       internal_value::ValueAlignment) char value_[internal_value::ValueSize];
 

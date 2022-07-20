@@ -5,29 +5,33 @@
 namespace jasmin {
 namespace {
 
-TEST(OpCodeOrValue, OpCodeOrValue) {
-  auto op_code = OpCodeOrValue::OpCode(1);
-  auto value = OpCodeOrValue::Value(2);
-  EXPECT_EQ(op_code.op_code(), 1);
-  EXPECT_EQ(value.value().as<int>(), 2);
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ op_code.value(); }, "holds an op-code");
-  EXPECT_DEATH({ value.op_code(); }, "holds a Value");
-#endif  // defined(JASMIN_DEBUG)
+TEST(OpCodeRange, OpCodeRange) {
+  {
+    OpCodeRange r1(3, 5);
+    OpCodeRange r2(10, 2);
+    EXPECT_EQ(OpCodeRange::Distance(r2, r1), 7);
+    EXPECT_EQ(OpCodeRange::Distance(r1, r2), -7);
 
-  value.set_value(true);
-  EXPECT_TRUE(value.value().as<bool>());
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ op_code.set_value(3); }, "holds an op-code");
-#endif  // defined(JASMIN_DEBUG)
-  
- 
-  auto uninit = OpCodeOrValue::UninitializedValue();
-  uninit.set_value(true);
-  EXPECT_TRUE(uninit.value().as<bool>());
+    EXPECT_EQ(r1.offset(), 3);
+    EXPECT_EQ(r1.size(), 5);
+
+    EXPECT_EQ(r2.offset(), 10);
+    EXPECT_EQ(r2.size(), 2);
+  }
+
+  {
+    OpCodeRange r1(3, 5);
+    OpCodeRange r2(3, 2);
+    EXPECT_EQ(OpCodeRange::Distance(r2, r1), 0);
+    EXPECT_EQ(OpCodeRange::Distance(r1, r2), 0);
+
+    EXPECT_EQ(r1.offset(), 3);
+    EXPECT_EQ(r1.size(), 5);
+
+    EXPECT_EQ(r2.offset(), 3);
+    EXPECT_EQ(r2.size(), 2);
+  }
 }
-
-// TODO: Improve test coverage.
 
 }  // namespace
 }  // namespace jasmin

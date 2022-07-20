@@ -18,9 +18,10 @@ TEST(Value, Construction) {
   EXPECT_TRUE((std::constructible_from<Value, BarelyFits>));
   EXPECT_FALSE((std::constructible_from<Value, Large>));
 
-  struct alignas(2 * internal_value::ValueAlignment) OverlyStrictAlignmentRequirement {
-  };
-  EXPECT_FALSE((std::constructible_from<Value, OverlyStrictAlignmentRequirement>));
+  struct alignas(2 * internal_value::ValueAlignment)
+      OverlyStrictAlignmentRequirement {};
+  EXPECT_FALSE(
+      (std::constructible_from<Value, OverlyStrictAlignmentRequirement>));
 
   struct NotTriviallyCopyable {
     NotTriviallyCopyable(NotTriviallyCopyable const &) {}
@@ -37,12 +38,12 @@ TEST(Value, Access) {
   EXPECT_DEATH({ v.as<unsigned int>(); }, "Value type mismatch");
 #endif  // defined(JASMIN_DEBUG)
 
-  v = 1;
+  v    = 1;
   copy = v.as<Value>();
   EXPECT_EQ(std::memcmp(&copy, &v, sizeof(Value)), 0);
   EXPECT_EQ(v.as<int>(), 1);
 
-  v = true;
+  v    = true;
   copy = v.as<Value>();
   EXPECT_EQ(std::memcmp(&copy, &v, sizeof(Value)), 0);
   EXPECT_TRUE(v.as<bool>());

@@ -6,9 +6,8 @@ namespace jasmin {
 namespace {
 
 TEST(InstructionPointer, Comparison) {
-  std::vector<OpCodeOrValue> v;
-  for (int i = 0; i < 10; ++i) { v.push_back(OpCodeOrValue::Value(i)); }
-
+  std::vector<Value> v;
+  for (int i = 0; i < 10; ++i) { v.push_back(i); }
 
   InstructionPointer p(&v[5]);
   InstructionPointer q(&v[6]);
@@ -22,32 +21,32 @@ TEST(InstructionPointer, Comparison) {
 }
 
 TEST(InstructionPointer, Access) {
-  std::vector<OpCodeOrValue> v;
-  for (int i = 0; i < 10; ++i) { v.push_back(OpCodeOrValue::Value(i)); }
+  std::vector<Value> v;
+  for (int i = 0; i < 10; ++i) { v.push_back(i); }
 
   InstructionPointer p(&v[5]);
-  EXPECT_EQ(p->value().as<int>(), 5);
+  EXPECT_EQ(p->as<int>(), 5);
 
-  EXPECT_EQ((++p)->value().as<int>(), 6);
-  EXPECT_EQ(p->value().as<int>(), 6);
+  EXPECT_EQ((++p)->as<int>(), 6);
+  EXPECT_EQ(p->as<int>(), 6);
 
-  EXPECT_EQ((--p)->value().as<int>(), 5);
-  EXPECT_EQ(p->value().as<int>(), 5);
+  EXPECT_EQ((--p)->as<int>(), 5);
+  EXPECT_EQ(p->as<int>(), 5);
 
-  EXPECT_EQ((p++)->value().as<int>(), 5);
-  EXPECT_EQ(p->value().as<int>(), 6);
+  EXPECT_EQ((p++)->as<int>(), 5);
+  EXPECT_EQ(p->as<int>(), 6);
 
-  EXPECT_EQ((p--)->value().as<int>(), 6);
-  EXPECT_EQ(p->value().as<int>(), 5);
+  EXPECT_EQ((p--)->as<int>(), 6);
+  EXPECT_EQ(p->as<int>(), 5);
 
   EXPECT_EQ(&(p += 2), &p);
-  EXPECT_EQ(p->value().as<int>(), 7);
+  EXPECT_EQ(p->as<int>(), 7);
   EXPECT_EQ(&(p -= 3), &p);
-  EXPECT_EQ(p->value().as<int>(), 4);
+  EXPECT_EQ(p->as<int>(), 4);
 
-  EXPECT_EQ((p + 1)->value().as<int>(), 5);
-  EXPECT_EQ((1 + p)->value().as<int>(), 5);
-  EXPECT_EQ((p - 1)->value().as<int>(), 3);
+  EXPECT_EQ((p + 1)->as<int>(), 5);
+  EXPECT_EQ((1 + p)->as<int>(), 5);
+  EXPECT_EQ((p - 1)->as<int>(), 3);
 }
 
 }  // namespace

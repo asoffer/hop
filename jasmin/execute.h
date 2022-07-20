@@ -21,8 +21,9 @@ void Execute(Function<Set> const &f, ValueStack &value_stack) {
   CallStack call_stack;
   InstructionPointer ip = f.entry();
   call_stack.push(&f, value_stack.size(), ip);
-  using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &);
-  return ip->value().as<exec_fn_type>()(value_stack, ip, call_stack);
+  using exec_fn_type =
+      void (*)(ValueStack &, InstructionPointer &, CallStack &);
+  return ip->as<exec_fn_type>()(value_stack, ip, call_stack);
 }
 
 // Interprets the given function `f` with arguments provided in the

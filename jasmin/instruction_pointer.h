@@ -4,15 +4,14 @@
 #include <cstdint>
 
 #include "jasmin/internal/debug.h"
-#include "jasmin/op_code.h"
 #include "jasmin/value.h"
 
 namespace jasmin {
 
 struct InstructionPointer {
-  // Consturcts an `InstructionPointer` from an underlying `OpCodeOrValue`
+  // Consturcts an `InstructionPointer` from an underlying `Value`
   // pointer `p`.
-  explicit constexpr InstructionPointer(OpCodeOrValue const *p) : pointer_(p) {}
+  explicit constexpr InstructionPointer(Value const *p) : pointer_(p) {}
 
   // Compares two instruction pointers for equality. Behavior is undefined if
   // the two instructionpointers do not point into the same function.
@@ -22,8 +21,8 @@ struct InstructionPointer {
   constexpr bool operator==(InstructionPointer const &) const = default;
   constexpr bool operator!=(InstructionPointer const &) const = default;
 
-  // Returns the underlying `OpCodeOrValue` pointer.
-  constexpr OpCodeOrValue const *operator->() const { return pointer_; }
+  // Returns the underlying `Value` pointer.
+  constexpr Value const *operator->() const { return pointer_; }
 
   // Moves the instruction pointer forward one instruction, returning the
   // modified InstructionPointer.
@@ -88,7 +87,7 @@ struct InstructionPointer {
   }
 
  private:
-  OpCodeOrValue const *pointer_;
+  Value const *pointer_;
 };
 
 }  // namespace jasmin

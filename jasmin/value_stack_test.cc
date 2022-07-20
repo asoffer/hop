@@ -120,12 +120,14 @@ TEST(ValueStack, PopSuffix) {
 #if defined(JASMIN_DEBUG)
   {
     ValueStack value_stack{1, true, 3.14};
-    EXPECT_DEATH({ (value_stack.pop_suffix<bool, int>()); }, "Value type mismatch");
+    EXPECT_DEATH({ (value_stack.pop_suffix<bool, int>()); },
+                 "Value type mismatch");
   }
 
   {
     ValueStack value_stack{1, true, 3.14};
-    EXPECT_DEATH({ (value_stack.pop_suffix<int, int, bool, double>()); }, "too few elements");
+    EXPECT_DEATH({ (value_stack.pop_suffix<int, int, bool, double>()); },
+                 "too few elements");
   }
 #endif  // defined(JASMIN_DEBUG)
 }

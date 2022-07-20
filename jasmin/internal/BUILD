@@ -29,7 +29,6 @@ cc_library(
     visibility = ["//jasmin:__subpackages__"],
     deps = [
         "//jasmin:instruction_pointer",
-        "//jasmin:op_code",
     ],
 )
 

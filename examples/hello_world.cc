@@ -1,6 +1,6 @@
 #include <cstdio>
-
 #include <iostream>
+
 #include "jasmin/execute.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
@@ -117,13 +117,15 @@ void Ordered() {
   // to `set_value` probably needs some explanation. Jumps are *relative* so we
   // want to say how far to jump. That's the difference between how big the
   // function was when we added the `JumpIf` instruction, and how big it is now.
-  jasmin::OpCodeRange push = func.append<jasmin::Push>("The numbers are in order.\n");
-  func.set_value(jump_if, 0, push - jump_if);
+  jasmin::OpCodeRange push =
+      func.append<jasmin::Push>("The numbers are in order.\n");
+  func.set_value(jump_if, 0, jasmin::OpCodeRange::Distance(push, jump_if));
 
   // Now we can add a print instruction and either fall through from the `Push`
   // above, or get here from the unconditional jump higher up above.
   jasmin::OpCodeRange print = func.append<PrintCString>();
-  func.set_value(jump_unconditionally, 0, print - jump_unconditionally);
+  func.set_value(jump_unconditionally, 0,
+                 jasmin::OpCodeRange::Distance(print, jump_unconditionally));
   func.append<jasmin::Return>();
 
   // Now that our function has been defined, we can execute it.

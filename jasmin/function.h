@@ -38,22 +38,26 @@ struct Function final : internal_function_base::FunctionBase {
   constexpr OpCodeRange append(Vs... vs) requires(
       internal_function::ConvertibleArguments<
           internal::ExtractSignature<decltype(&I::execute)>, Vs...>) {
-    return internal_function_base::FunctionBase::append({
-        OpCodeOrValue::Value(&I::template ExecuteImpl<Set>), OpCodeOrValue::Value(vs)...});
+    return internal_function_base::FunctionBase::append(
+        {Value(&I::template ExecuteImpl<Set>), Value(vs)...});
   }
 
   // Same as `append` above for instructions with no immediate values.
   template <Instruction I>
-  constexpr OpCodeRange append() requires(internal_instruction::ImmediateValueCount<I>() == 0) {
-    return internal_function_base::FunctionBase::append({OpCodeOrValue::Value(&I::template ExecuteImpl<Set>)});
+  constexpr OpCodeRange append() requires(
+      internal_instruction::ImmediateValueCount<I>() == 0) {
+    return internal_function_base::FunctionBase::append(
+        {Value(&I::template ExecuteImpl<Set>)});
   }
 
   // Appends an intsruction followed by space for `placeholder_count` values
   // which are left uninitialized. They may be initialized later via calls to
-  // `OpCodeOrValue::set_value`. Returns the corresponding OpCodeRange.
+  // `Function<...>::set_value`. Returns the corresponding OpCodeRange.
   template <Instruction I>
   constexpr OpCodeRange append_with_placeholders() {
-    return internal_function_base::FunctionBase::append(OpCodeOrValue::Value(&I::template ExecuteImpl<Set>), internal_instruction::ImmediateValueCount<I>());
+    return internal_function_base::FunctionBase::append(
+        Value(&I::template ExecuteImpl<Set>),
+        internal_instruction::ImmediateValueCount<I>());
   }
 };
 
