@@ -92,18 +92,19 @@ struct StackMachineInstruction {
   template <InstructionSet Set>
   static void ExecuteImpl(ValueStack &value_stack, InstructionPointer &ip,
                           CallStack &call_stack) {
+    using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &);
     if constexpr (std::is_same_v<Inst, Call>) {
       auto const *f =
           value_stack.pop<internal_function_base::FunctionBase const *>();
       call_stack.push(f, value_stack.size(), ip);
       ip = f->entry();
-      JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
+      JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       ip += (ip + 1)->value().as<ptrdiff_t>();
 
-      JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
+      JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
@@ -113,7 +114,7 @@ struct StackMachineInstruction {
         ip += 2;
       }
 
-      JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
+      JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
           value_stack, ip, call_stack);
 
     } else if constexpr (std::is_same_v<Inst, Return>) {
@@ -126,8 +127,8 @@ struct StackMachineInstruction {
       if (call_stack.empty()) {
         return;
       } else {
-        JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(
-            ip->op_code())(value_stack, ip, call_stack);
+        JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
+            value_stack, ip, call_stack);
       }
     } else {
       using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
@@ -162,7 +163,7 @@ struct StackMachineInstruction {
       }
     }
 
-    JASMIN_INTERNAL_TAIL_CALL return Set::InstructionFunction(ip->op_code())(
+    JASMIN_INTERNAL_TAIL_CALL return ip->value().as<exec_fn_type>()(
         value_stack, ip, call_stack);
   }
 };
