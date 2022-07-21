@@ -5,6 +5,7 @@ cc_toolchain_suite(
     name = "clang",
     toolchains = {
         "darwin_arm64": ":macosx_toolchain",
+        "k8": ":k8_toolchain",
     },
 )
 
@@ -26,6 +27,31 @@ cc_toolchain(
 cc_toolchain_config(
     name = "macosx_toolchain_config",
     os = "macosx",
+    compiler_path = "/usr/bin/clang",
+    warnings = [
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+        "-Wuninitialized",
+    ]
+)
+
+cc_toolchain(
+    name = "k8_toolchain",
+    toolchain_identifier = "clang-toolchain",
+    toolchain_config = ":k8_toolchain_config",
+    all_files = ":empty",
+    compiler_files = ":empty",
+    dwp_files = ":empty",
+    linker_files = ":empty",
+    objcopy_files = ":empty",
+    strip_files = ":empty",
+    supports_param_files = 0,
+)
+
+cc_toolchain_config(
+    name = "k8_toolchain_config",
+    os = "k8",
     compiler_path = "/usr/bin/clang",
     warnings = [
         "-Wall",

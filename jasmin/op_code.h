@@ -1,6 +1,8 @@
 #ifndef JASMIN_OP_CODE_H
 #define JASMIN_OP_CODE_H
 
+#include <cstddef>
+
 #include "jasmin/internal/debug.h"
 #include "jasmin/value.h"
 

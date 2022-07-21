@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstdio>
 #include <cstdlib>
+#include <typeinfo>
 #include <type_traits>
 
 namespace jasmin::internal {

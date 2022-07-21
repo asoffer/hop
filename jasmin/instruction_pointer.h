@@ -1,6 +1,7 @@
 #ifndef JASMIN_INSTRUCTION_POINTETR_H
 #define JASMIN_INSTRUCTION_POINTETR_H
 
+#include <cstddef>
 #include <cstdint>
 
 #include "jasmin/internal/debug.h"
