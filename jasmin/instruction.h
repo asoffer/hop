@@ -121,12 +121,15 @@ struct StackMachineInstruction {
       // When a call instruction is executed, all the arguments are pushed onto
       // the stack followed by the to-be-called function.
       auto [start, end] = call_stack.erasable_range(value_stack.size());
-      value_stack.erase(start, end);
+      if (start != end) [[unlikely]] {
+          value_stack.erase(start, end);
+        }
       ip = call_stack.pop();
       ++ip;
-      if (call_stack.empty()) {
-        return;
-      } else {
+      if (call_stack.empty()) [[unlikely]] {
+          return;
+        }
+      else {
         JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
                                                                 call_stack);
       }
@@ -154,8 +157,7 @@ struct StackMachineInstruction {
         } else {
           signature::invoke_with_argument_types(
               [&]<std::convertible_to<Value>... Ts>() {
-                value_stack.push(
-                    std::apply(Inst::execute, value_stack.pop_suffix<Ts...>()));
+                value_stack.call_on_suffix<&Inst::execute, Ts...>();
               });
         }
         ++ip;

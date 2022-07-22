@@ -2,11 +2,11 @@
 #define JASMIN_VALUE_STACK_H
 
 #include <initializer_list>
-#include <iterator>
+#include <memory>
 #include <tuple>
-#include <vector>
 
 #include "jasmin/internal/debug.h"
+#include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 
 namespace jasmin {
@@ -14,31 +14,44 @@ namespace jasmin {
 // A stack of `Value`s to be used as a core component in the stack machine.
 struct ValueStack {
   // Constructs an empty `ValueStack`.
-  ValueStack() = default;
+  ValueStack()
+      : cap_(16),
+        values_(static_cast<Value *>(operator new[](16 * sizeof(Value)))),
+        head_(values_.get()) {
+    for (size_t i = 0; i < cap_; ++i) {
+      new (&values_[i]) Value(Value::Uninitialized());
+    }
+  }
 
   // Construts a value stack with the given initializer_list elements pushed
   // onto the stack in the same order as they appear in `list`.
-  ValueStack(std::initializer_list<Value> list)
-      : values_(list.begin(), list.end()) {}
+  ValueStack(std::initializer_list<Value> list) : ValueStack() {
+    for (Value v : list) { push(v); }
+  }
 
   // Returns the number of elements on the stack.
-  constexpr size_t size() const { return values_.size(); }
+  constexpr size_t size() const { return head_ - values_.get(); }
 
   // Returns true if the stack has no elements and false otherwise.
-  constexpr bool empty() const { return values_.empty(); }
+  constexpr bool empty() const { return size() == 0; }
 
   // Pushes the given value `v` onto the stack.
-  constexpr void push(Value const &v) { values_.push_back(v); }
-  constexpr void push(SmallTrivialValue auto v) { values_.emplace_back(v); }
+  void push(Value const &v) {
+    if (head_ == values_.get() + cap_) [[unlikely]] {
+        reallocate();
+      }
+    JASMIN_INTERNAL_DEBUG_ASSERT(head_ != values_.get() + cap_,
+                                 "Something went wrong with reallocate()");
+    *head_ = v;
+    ++head_;
+  }
+  void push(SmallTrivialValue auto v) { push(Value(v)); }
 
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
   // the stack is empty.
   Value pop_value() {
-    JASMIN_INTERNAL_DEBUG_ASSERT(not values_.empty(),
-                                 "Unexpectedly empty ValueStack");
-    Value result = values_.back();
-    values_.pop_back();
-    return result;
+    JASMIN_INTERNAL_DEBUG_ASSERT(not empty(), "Unexpectedly empty ValueStack");
+    return *--head_;
   }
 
   // Pop a value of type `T` off the stack and return it. Behavior is undefined
@@ -51,9 +64,8 @@ struct ValueStack {
   // Returns a copy of the top `Value` on the stack. Behavior is undefined if
   // the stack is empty.
   constexpr Value peek_value() const {
-    JASMIN_INTERNAL_DEBUG_ASSERT(not values_.empty(),
-                                 "Unexpectedly empty ValueStack");
-    return values_.back();
+    JASMIN_INTERNAL_DEBUG_ASSERT(not empty(), "Unexpectedly empty ValueStack");
+    return *(head_ - 1);
   }
 
   // Returns a copy of the top value of type `T` on the stack. Behavior is
@@ -69,14 +81,10 @@ struct ValueStack {
   void swap_with(size_t n) {
     JASMIN_INTERNAL_DEBUG_ASSERT(
         n != 0, "Unexpectedly attempting to swap an element with itself");
-    JASMIN_INTERNAL_DEBUG_ASSERT(values_.size() > n,
+    JASMIN_INTERNAL_DEBUG_ASSERT(size() > n,
                                  "Unexpectedly too few elements in ValueStack");
-    auto iter       = values_.rbegin();
-    Value &lhs      = *iter;
-    Value &rhs      = *std::next(iter, n);
-    Value temporary = lhs;
-    lhs             = rhs;
-    rhs             = temporary;
+    auto *p = head_ - 1;
+    std::swap(*p, *(p - n));
   }
 
   // Pops the last `sizeof...(Ts)` elements off the stack and returns a
@@ -88,13 +96,26 @@ struct ValueStack {
   // `Ts...`.
   template <SmallTrivialValue... Ts>
   std::tuple<Ts...> pop_suffix() {
-    JASMIN_INTERNAL_DEBUG_ASSERT(values_.size() >= sizeof...(Ts),
+    JASMIN_INTERNAL_DEBUG_ASSERT(size() >= sizeof...(Ts),
                                  "Unexpectedly too few elements in ValueStack");
-    auto iter   = std::next(values_.rbegin(), sizeof...(Ts));
-    auto result = std::tuple<Ts...>((--iter)->template as<Ts>()...);
-    ((static_cast<void>(static_cast<Ts const *>(nullptr)), values_.pop_back()),
-     ...);
-    return result;
+    head_ -= sizeof...(Ts);
+    auto *p = head_;
+    return std::tuple<Ts...>{(p++)->template as<Ts>()...};
+  }
+
+  // TODO: qualify `F`.
+  template <auto F, typename... Ts>
+  void call_on_suffix() {
+    if constexpr (sizeof...(Ts) == 0) {
+      push(F());
+    } else if constexpr (sizeof...(Ts) == 1) {
+      auto *p = head_ - 1;
+      *p      = F(p->as<Ts...>());
+    } else {
+      auto result = std::apply(F, pop_suffix<Ts...>());
+      *head_      = result;
+      ++head_;
+    }
   }
 
   // Erase elements from the stack starting at position `start` up to but not
@@ -105,15 +126,36 @@ struct ValueStack {
   void erase(size_t start, size_t end) {
     JASMIN_INTERNAL_DEBUG_ASSERT(start <= end,
                                  "Unexpectedly invalid range to erase");
-    JASMIN_INTERNAL_DEBUG_ASSERT(end <= values_.size(),
+    JASMIN_INTERNAL_DEBUG_ASSERT(end <= size(),
                                  "Unexpectedly too few elements in ValueStack");
 
-    auto iter = values_.begin();
-    values_.erase(iter + start, iter + end);
+    std::memcpy(values_.get() + start, values_.get() + end,
+                sizeof(Value) * (head_ - values_.get() - end));
+    head_ -= end - start;
   }
 
  private:
-  std::vector<Value> values_;
+  void reallocate() {
+    std::unique_ptr<Value[]> buffer(
+        static_cast<Value *>(operator new[](2 * cap_ * sizeof(Value))));
+
+    std::memcpy(buffer.get(), values_.get(), sizeof(Value) * cap_);
+
+    // This whole loop we really hope to be optimized down to a no-op, but it is
+    // technically necessary to start the lifetime of `Value`s in the back half
+    // of the buffer.
+    for (size_t i = cap_; i < cap_ * 2; ++i) {
+      buffer[i] = Value::Uninitialized();
+    }
+
+    head_ = buffer.get() + cap_;
+    cap_ *= 2;
+    values_ = std::move(buffer);
+  }
+
+  size_t cap_;
+  std::unique_ptr<Value[]> values_;
+  Value *head_;
 };
 
 }  // namespace jasmin

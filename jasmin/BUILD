@@ -117,6 +117,7 @@ cc_library(
     deps = [
         ":value",
         "//jasmin/internal:debug",
+        "//jasmin/internal:type_traits",
     ],
 )
 
