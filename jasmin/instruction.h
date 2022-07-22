@@ -96,7 +96,7 @@ struct StackMachineInstruction {
         void (*)(ValueStack &, InstructionPointer &, CallStack &);
     if constexpr (std::is_same_v<Inst, Call>) {
       auto const *f = value_stack.pop<internal::FunctionBase const *>();
-      call_stack.push(f, value_stack.size(), ip);
+      call_stack.push(f, ip);
       ip = f->entry();
       JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
                                                               call_stack);
@@ -118,12 +118,6 @@ struct StackMachineInstruction {
                                                               call_stack);
 
     } else if constexpr (std::is_same_v<Inst, Return>) {
-      // When a call instruction is executed, all the arguments are pushed onto
-      // the stack followed by the to-be-called function.
-      auto [start, end] = call_stack.erasable_range(value_stack.size());
-      if (start != end) [[unlikely]] {
-          value_stack.erase(start, end);
-        }
       ip = call_stack.pop();
       ++ip;
       if (call_stack.empty()) [[unlikely]] {

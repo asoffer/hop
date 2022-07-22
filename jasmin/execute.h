@@ -20,7 +20,7 @@ template <InstructionSet Set>
 void Execute(Function<Set> const &f, ValueStack &value_stack) {
   CallStack call_stack;
   InstructionPointer ip = f.entry();
-  call_stack.push(&f, value_stack.size(), ip);
+  call_stack.push(&f, ip);
   using exec_fn_type =
       void (*)(ValueStack &, InstructionPointer &, CallStack &);
   return ip->as<exec_fn_type>()(value_stack, ip, call_stack);
