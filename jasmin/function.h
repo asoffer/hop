@@ -9,6 +9,7 @@
 #include "jasmin/internal/debug.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/type_list.h"
+#include "jasmin/internal/type_traits.h"
 
 namespace jasmin {
 namespace internal_function {
@@ -40,8 +41,13 @@ struct Function final : internal::FunctionBase {
   constexpr OpCodeRange append(Vs... vs) requires(
       internal_function::ConvertibleArguments<
           internal::ExtractSignature<decltype(&I::execute)>, Vs...>) {
-    return internal::FunctionBase::append(
-        {Value(&I::template ExecuteImpl<Set>), Value(vs)...});
+    return internal::ExtractSignature<decltype(&I::execute)>::
+        invoke_with_argument_types([&]<typename DropFirstArgument,
+                                       typename... Arguments>() {
+          return internal::FunctionBase::append(
+              {Value(&I::template ExecuteImpl<Set>),
+               Value(static_cast<Arguments>(vs))...});
+        });
   }
 
   // Same as `append` above for instructions with no immediate values.

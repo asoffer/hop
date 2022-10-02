@@ -10,6 +10,16 @@ cc_library(
     ],
 )
 
+
+cc_test(
+    name = "function_test",
+    srcs = ["function_test.cc"],
+    deps = [
+        ":execute",
+        ":function",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 cc_test(
     name = "call_stack_test",
     srcs = ["call_stack_test.cc"],
