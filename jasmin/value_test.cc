@@ -52,5 +52,11 @@ TEST(Value, Access) {
 #endif  // defined(JASMIN_DEBUG)
 }
 
+TEST(Value, Address) {
+  Value v(17);
+  void const * ptr = v.address();
+  EXPECT_EQ(*reinterpret_cast<int const *>(ptr), 17);
+}
+
 }  // namespace
 }  // namespace jasmin

@@ -67,6 +67,9 @@ struct Value {
     }
   }
 
+  // Returns the address of the stored value.
+  void const* address() const { return value_; }
+
  private:
   struct uninitialized_t {};
 
