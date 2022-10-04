@@ -173,5 +173,15 @@ TEST(ValueStack, Erase) {
 #endif  // defined(JASMIN_DEBUG)
 }
 
+TEST(ValueStack, End) {
+  ValueStack value_stack{1, true, 3.14};
+  EXPECT_EQ((value_stack.end() - 1)->as<double>(), 3.14);
+  EXPECT_EQ((value_stack.end() - 2)->as<bool>(), true);
+  EXPECT_EQ((value_stack.end() - 3)->as<int>(), 1);
+  value_stack.pop_value();
+  EXPECT_EQ((value_stack.end() - 1)->as<bool>(), true);
+  EXPECT_EQ((value_stack.end() - 2)->as<int>(), 1);
+}
+
 }  // namespace
 }  // namespace jasmin

@@ -47,6 +47,11 @@ struct ValueStack {
   }
   void push(SmallTrivialValue auto v) { push(Value(v)); }
 
+  using const_iterator  = Value const *;
+
+  // Returns an iterator referrencing one passed the end. of the `ValueStack`.
+  const_iterator end() const { return head_; }
+
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
   // the stack is empty.
   Value pop_value() {
