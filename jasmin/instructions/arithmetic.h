@@ -62,7 +62,7 @@ struct Mod : StackMachineInstruction<Mod<T>> {
   static constexpr T execute(T x, T y) { return x % y; }
 };
 
-template <Modable T>
+template <Negatable T>
 struct Negate : StackMachineInstruction<Negate<T>> {
   static constexpr T execute(T x) { return -x; }
 };
