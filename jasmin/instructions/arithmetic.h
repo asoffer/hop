@@ -9,27 +9,32 @@ namespace jasmin {
 
 template <typename T>
 concept Addable = requires(T t) {
-  { t - t } -> std::same_as<T>;
+  { t + t } -> std::convertible_to<T>;
 };
 
 template <typename T>
 concept Subtractable = requires(T t) {
-  { t - t } -> std::same_as<T>;
+  { t - t } -> std::convertible_to<T>;
 };
 
 template <typename T>
 concept Multiplicable = requires(T t) {
-  { t *t } -> std::same_as<T>;
+  { t *t } -> std::convertible_to<T>;
 };
 
 template <typename T>
 concept Divisible = requires(T t) {
-  { t / t } -> std::same_as<T>;
+  { t / t } -> std::convertible_to<T>;
 };
 
 template <typename T>
 concept Modable = requires(T t) {
-  { t % t } -> std::same_as<T>;
+  { t % t } -> std::convertible_to<T>;
+};
+
+template <typename T>
+concept Negatable = requires(T t) {
+  { -t } -> std::convertible_to<T>;
 };
 
 template <Addable T>
@@ -55,6 +60,11 @@ struct Divide : StackMachineInstruction<Divide<T>> {
 template <Modable T>
 struct Mod : StackMachineInstruction<Mod<T>> {
   static constexpr T execute(T x, T y) { return x % y; }
+};
+
+template <Modable T>
+struct Negate : StackMachineInstruction<Negate<T>> {
+  static constexpr T execute(T x) { return -x; }
 };
 
 }  // namespace jasmin
