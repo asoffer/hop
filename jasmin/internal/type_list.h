@@ -54,6 +54,27 @@ struct TransformImpl<F, type_list<Ts...>> {
   using type = type_list<F<Ts>...>;
 };
 
+
+// Implementation of `Filter`, defined below.
+template <template <typename> typename, typename, typename>
+struct FilterImpl;
+template <template <typename> typename P, typename T, typename... Ts,
+          typename... Results>
+requires(P<T>::value)  //
+    struct FilterImpl<P, type_list<T, Ts...>, type_list<Results...>>
+    : FilterImpl<P, type_list<Ts...>, type_list<Results..., T>> {
+};
+template <template <typename> typename P, typename T, typename... Ts,
+          typename... Results>
+requires(not P<T>::value)  //
+    struct FilterImpl<P, type_list<T, Ts...>, type_list<Results...>>
+    : FilterImpl<P, type_list<Ts...>, type_list<Results...>> {
+};
+template <template <typename> typename P, typename... Results>
+struct FilterImpl<P, type_list<>, type_list<Results...>> {
+  using type = type_list<Results...>;
+};
+
 // Implementation of `Unique`, defined below.
 template <typename, typename>
 struct UniqueImpl;
@@ -96,6 +117,14 @@ using Apply = typename internal_type_list::ApplyImpl<F, TypeList>::type;
 // the type-list `type_list<F<Ts>...>`;
 template <template <typename...> typename F, typename TypeList>
 using Transform = typename internal_type_list::TransformImpl<F, TypeList>::type;
+
+// Given a type-predicate `P` and a type-list `type_list<Ts...>`, evaluates to
+// the type-list consisting precisely of those elements in `T` in `Ts...` for
+// which `P<T>` evaluates to `true`. The resulting type-list will have the these
+// elements in the same order they were present in the input list.
+template <template <typename> typename P, typename TypeList>
+using Filter =
+    typename internal_type_list::FilterImpl<P, TypeList, type_list<>>::type;
 
 // Given a type-list, evaluates to a new type-list in which
 // * No element of the result is repeated

@@ -67,11 +67,26 @@ TEST(TypeList, Transform) {
                       type_list<bool*, int**>>));
 }
 
-TEST(TypeList, Unique) {
+TEST(TypeList, Filter) {
   EXPECT_TRUE(
-      (std::is_same_v<Unique< type_list<>>, type_list<>>));
-  EXPECT_TRUE((std::is_same_v<Unique< type_list<int>>,
-                              type_list<int>>));
+      (std::is_same_v<Filter<std::is_pointer, type_list<>>, type_list<>>));
+  EXPECT_TRUE(
+      (std::is_same_v<Filter<std::is_pointer, type_list<int>>, type_list<>>));
+  EXPECT_TRUE((std::is_same_v<Filter<std::is_pointer, type_list<int*>>,
+                              type_list<int*>>));
+  EXPECT_TRUE((std::is_same_v<Filter<std::is_pointer, type_list<bool*, int>>,
+                              type_list<bool*>>));
+  EXPECT_TRUE((std::is_same_v<Filter<std::is_pointer, type_list<bool, int*>>,
+                              type_list<int*>>));
+  EXPECT_TRUE((std::is_same_v<Filter<std::is_pointer, type_list<bool, int>>,
+                              type_list<>>));
+  EXPECT_TRUE((std::is_same_v<Filter<std::is_pointer, type_list<bool*, int*>>,
+                              type_list<bool*, int*>>));
+}
+
+TEST(TypeList, Unique) {
+  EXPECT_TRUE((std::is_same_v<Unique<type_list<>>, type_list<>>));
+  EXPECT_TRUE((std::is_same_v<Unique<type_list<int>>, type_list<int>>));
   EXPECT_TRUE(
       (std::is_same_v<Unique<type_list<bool, int>>, type_list<int, bool>>));
   EXPECT_TRUE((std::is_same_v<Unique<type_list<bool, int, bool>>,
