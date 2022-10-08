@@ -10,15 +10,15 @@ namespace {
 TEST(Value, Construction) {
   EXPECT_TRUE((std::constructible_from<Value, char>));
   struct BarelyFits {
-    char data[internal_value::ValueSize];
+    char data[internal::ValueSize];
   };
   struct Large {
-    char data[internal_value::ValueSize + 1];
+    char data[internal::ValueSize + 1];
   };
   EXPECT_TRUE((std::constructible_from<Value, BarelyFits>));
   EXPECT_FALSE((std::constructible_from<Value, Large>));
 
-  struct alignas(2 * internal_value::ValueAlignment)
+  struct alignas(2 * internal::ValueAlignment)
       OverlyStrictAlignmentRequirement {};
   EXPECT_FALSE(
       (std::constructible_from<Value, OverlyStrictAlignmentRequirement>));
@@ -54,7 +54,7 @@ TEST(Value, Access) {
 
 TEST(Value, Address) {
   Value v(17);
-  void const * ptr = v.address();
+  void const *ptr = v.address();
   EXPECT_EQ(*reinterpret_cast<int const *>(ptr), 17);
 }
 

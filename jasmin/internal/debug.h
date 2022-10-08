@@ -11,7 +11,7 @@
 namespace jasmin::internal {
 
 // A type-id mechanism which treats all pointers as equivalent. Strictly
-// speakiung, we would prefer to test compatibility, but this is generally not
+// speaking, we would prefer to test compatibility, but this is generally not
 // possible via this mechanism.
 struct TypeId {
   void const *value;

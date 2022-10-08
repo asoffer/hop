@@ -8,14 +8,13 @@
 #include "jasmin/internal/debug.h"
 
 namespace jasmin {
-
-namespace internal_value {
+namespace internal {
 
 // The size and alignment of a `jasmin::Value` object.
 inline size_t constexpr ValueAlignment = 8;
 inline size_t constexpr ValueSize      = 8;
 
-}  // namespace internal_value
+}  // namespace internal
 
 // Forward declaration of type Defined below so it can be used in the
 // `SmallTrivialValue` concept.
@@ -26,8 +25,8 @@ struct Value;
 template <typename T>
 concept SmallTrivialValue = (not std::is_same_v<T, Value> and
                              std::is_trivially_copyable_v<T> and
-                             sizeof(T) <= internal_value::ValueSize and
-                             alignof(T) <= internal_value::ValueAlignment);
+                             sizeof(T) <= internal::ValueSize and
+                             alignof(T) <= internal::ValueAlignment);
 
 // A value that can be stored either on the value stack or as an immediate value
 // in the instructions. Values must be trivially copyable and representable in
@@ -80,8 +79,7 @@ struct Value {
   {
   }
 
-  alignas(
-      internal_value::ValueAlignment) char value_[internal_value::ValueSize];
+  alignas(internal::ValueAlignment) char value_[internal::ValueSize];
 
 #if defined(JASMIN_DEBUG)
   internal::TypeId debug_type_id_;

@@ -12,17 +12,16 @@
 #include "jasmin/internal/type_traits.h"
 
 namespace jasmin {
-namespace internal_function {
+namespace internal {
 
-template <
-    internal_instruction::SignatureSatisfiesRequirementsWithImmediateValues E,
-    typename... Vs>
+template <internal::SignatureSatisfiesRequirementsWithImmediateValues E,
+          typename... Vs>
 constexpr bool ConvertibleArguments = E::invoke_with_argument_types([
 ]<std::same_as<ValueStack&>, typename... Ts>() {
   return (std::convertible_to<Vs, Ts> and ...);
 });
 
-}  // namespace internal_function
+}  // namespace internal
 
 // A representation of a function that ties op-codes to instructions (via an
 // InstructionSet template parameter).
@@ -39,21 +38,21 @@ struct Function final : internal::FunctionBase {
   template <internal::ContainedIn<typename Set::jasmin_instructions*> I,
             typename... Vs>
   constexpr OpCodeRange append(Vs... vs) requires(
-      internal_function::ConvertibleArguments<
+      internal::ConvertibleArguments<
           internal::ExtractSignature<decltype(&I::execute)>, Vs...>) {
     return internal::ExtractSignature<decltype(&I::execute)>::
-        invoke_with_argument_types([&]<typename DropFirstArgument,
-                                       typename... Arguments>() {
-          return internal::FunctionBase::append(
-              {Value(&I::template ExecuteImpl<Set>),
-               Value(static_cast<Arguments>(vs))...});
-        });
+        invoke_with_argument_types(
+            [&]<typename DropFirstArgument, typename... Arguments>() {
+              return internal::FunctionBase::append(
+                  {Value(&I::template ExecuteImpl<Set>),
+                   Value(static_cast<Arguments>(vs))...});
+            });
   }
 
   // Same as `append` above for instructions with no immediate values.
   template <internal::ContainedIn<typename Set::jasmin_instructions*> I>
-  constexpr OpCodeRange append() requires(
-      internal_instruction::ImmediateValueCount<I>() == 0) {
+  constexpr OpCodeRange append() requires(internal::ImmediateValueCount<I>() ==
+                                          0) {
     return internal::FunctionBase::append(
         {Value(&I::template ExecuteImpl<Set>)});
   }
@@ -63,9 +62,8 @@ struct Function final : internal::FunctionBase {
   // `Function<...>::set_value`. Returns the corresponding OpCodeRange.
   template <internal::ContainedIn<typename Set::jasmin_instructions*> I>
   constexpr OpCodeRange append_with_placeholders() {
-    return internal::FunctionBase::append(
-        Value(&I::template ExecuteImpl<Set>),
-        internal_instruction::ImmediateValueCount<I>());
+    return internal::FunctionBase::append(Value(&I::template ExecuteImpl<Set>),
+                                          internal::ImmediateValueCount<I>());
   }
 };
 

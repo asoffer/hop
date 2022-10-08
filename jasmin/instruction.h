@@ -13,7 +13,7 @@
 #include "jasmin/value_stack.h"
 
 namespace jasmin {
-namespace internal_instruction {
+namespace internal {
 
 // Base class used solely to indicate that any struct inherting from it is an
 // instruction set.
@@ -51,13 +51,12 @@ concept SignatureSatisfiesRequirements =
     (SignatureSatisfiesRequirementsNoImmediateValues<Signature> or
      SignatureSatisfiesRequirementsWithImmediateValues<Signature>);
 
-}  // namespace internal_instruction
+}  // namespace internal
 
 // A concept indicating which types constitute instruction sets understandable
 // by Jasmin's interpreter.
 template <typename T>
-concept InstructionSet =
-    std::derived_from<T, internal_instruction::InstructionSetBase>;
+concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
 
 // Forward declarations for instructions that need special treatement in
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
@@ -121,18 +120,16 @@ struct StackMachineInstruction {
       ip = call_stack.pop();
       ++ip;
       if (call_stack.empty()) [[unlikely]] {
-          return;
-        }
-      else {
+        return;
+      } else {
         JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
                                                                 call_stack);
       }
     } else {
       using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
 
-      if constexpr (internal_instruction::
-                        SignatureSatisfiesRequirementsWithImmediateValues<
-                            signature>) {
+      if constexpr (internal::SignatureSatisfiesRequirementsWithImmediateValues<
+                        signature>) {
         signature::
             invoke_with_argument_types([&]<std::same_as<ValueStack &>,
                                            std::convertible_to<Value>... Ts>() {
@@ -193,17 +190,17 @@ template <typename I>
 concept Instruction =
     (internal::AnyOf<I, Call, Jump, JumpIf, Return> or
      (std::derived_from<I, StackMachineInstruction<I>> and
-      internal_instruction::SignatureSatisfiesRequirements<
+      internal::SignatureSatisfiesRequirements<
           internal::ExtractSignature<decltype(&I::execute)>>));
 
-namespace internal_instruction {
+namespace internal {
 template <typename I>
 concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
 
 // Constructs an InstructionSet type from a list of instructions. Does no
 // checking to validate that `Is` do not contain repeats.
 template <Instruction... Is>
-struct MakeInstructionSet final : internal_instruction::InstructionSetBase {
+struct MakeInstructionSet final : internal::InstructionSetBase {
   using jasmin_instructions = void(Is *...);
 
   // Returns the number of instructions in the instruction set.
@@ -269,16 +266,16 @@ constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
 
 using BuiltinInstructionList = internal::type_list<Call, Jump, JumpIf, Return>;
 
-}  // namespace internal_instruction
+}  // namespace internal
 
-template <internal_instruction::InstructionOrInstructionSet... Is>
-using MakeInstructionSet = internal::Apply<
-    internal_instruction::MakeInstructionSet,
-    decltype(internal_instruction::FlattenInstructionList(
-        /*processed=*/internal_instruction::BuiltinInstructionList{},
-        /*unprocessed=*/internal::type_list<Is...>{}))>;
+template <internal::InstructionOrInstructionSet... Is>
+using MakeInstructionSet =
+    internal::Apply<internal::MakeInstructionSet,
+                    decltype(internal::FlattenInstructionList(
+                        /*processed=*/internal::BuiltinInstructionList{},
+                        /*unprocessed=*/internal::type_list<Is...>{}))>;
 
-namespace internal_instruction {
+namespace internal {
 
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
@@ -300,7 +297,7 @@ constexpr size_t ImmediateValueCount() {
   }
 }
 
-}  // namespace internal_instruction
+}  // namespace internal
 }  // namespace jasmin
 
 #endif  // JASMIN_INSTRUCTION_H
