@@ -57,5 +57,28 @@ TEST(TypeList, Apply) {
                               std::integral_constant<size_t, 3>>));
 }
 
+TEST(TypeList, Transform) {
+  EXPECT_TRUE((
+      std::is_same_v<Transform<std::add_pointer_t, type_list<>>, type_list<>>));
+  EXPECT_TRUE((std::is_same_v<Transform<std::add_pointer_t, type_list<int*>>,
+                              type_list<int**>>));
+  EXPECT_TRUE(
+      (std::is_same_v<Transform<std::add_pointer_t, type_list<bool, int*>>,
+                      type_list<bool*, int**>>));
+}
+
+TEST(TypeList, Unique) {
+  EXPECT_TRUE(
+      (std::is_same_v<Unique< type_list<>>, type_list<>>));
+  EXPECT_TRUE((std::is_same_v<Unique< type_list<int>>,
+                              type_list<int>>));
+  EXPECT_TRUE(
+      (std::is_same_v<Unique<type_list<bool, int>>, type_list<int, bool>>));
+  EXPECT_TRUE((std::is_same_v<Unique<type_list<bool, int, bool>>,
+                              type_list<int, bool>>));
+  EXPECT_TRUE((std::is_same_v<Unique<type_list<bool, int, bool, bool, int>>,
+                              type_list<int, bool>>));
+}
+
 }  // namespace
 }  // namespace jasmin::internal

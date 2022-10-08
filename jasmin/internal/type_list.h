@@ -46,6 +46,32 @@ struct ApplyImpl<F, type_list<Ts...>> {
   using type = F<Ts...>;
 };
 
+// Implementation of `Transform`, defined below.
+template <template <typename...> typename, typename>
+struct TransformImpl;
+template <template <typename...> typename F, typename... Ts>
+struct TransformImpl<F, type_list<Ts...>> {
+  using type = type_list<F<Ts>...>;
+};
+
+// Implementation of `Unique`, defined below.
+template <typename, typename>
+struct UniqueImpl;
+template <typename T, typename... Ts, typename... Results>
+requires(std::is_same_v<T, Results> or ...)  //
+    struct UniqueImpl<type_list<T, Ts...>, type_list<Results...>>
+    : UniqueImpl<type_list<Ts...>, type_list<Results...>> {
+};
+template <typename T, typename... Ts, typename... Results>
+requires((not std::is_same_v<T, Results>)and...)  //
+    struct UniqueImpl<type_list<T, Ts...>, type_list<Results...>>
+    : UniqueImpl<type_list<Ts...>, type_list<T, Results...>> {
+};
+template <typename... Results>
+struct UniqueImpl<type_list<>, type_list<Results...>> {
+  using type = type_list<Results...>;
+};
+
 template <auto, TypeList>
 struct InvokeImpl;
 
@@ -65,6 +91,23 @@ using Concatenate = typename internal_type_list::ConcatenateImpl<A, B>::type;
 // the type `F<Ts...>`;
 template <template <typename...> typename F, typename TypeList>
 using Apply = typename internal_type_list::ApplyImpl<F, TypeList>::type;
+
+// Given a type-function `F` and a type-list `type_list<Ts...>`, evaluates to
+// the type-list `type_list<F<Ts>...>`;
+template <template <typename...> typename F, typename TypeList>
+using Transform = typename internal_type_list::TransformImpl<F, TypeList>::type;
+
+// Given a type-list, evaluates to a new type-list in which
+// * No element of the result is repeated
+// * Each element of the resulting type-list is contained in the input
+//   type-list.
+// * Each element in the original type-list is contained in the resulting
+//   type-list.
+// No guarantee is provided on the ordering of the elements in the resulting
+// type-list.
+template <typename TypeList>
+using Unique =
+    typename internal_type_list::UniqueImpl<TypeList, type_list<>>::type;
 
 // Given an invocable `lambda` that can be invoked by passing a bunch of
 // template arguments, invokes `lambda` with the arguments from the given type
