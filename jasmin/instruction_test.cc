@@ -64,5 +64,25 @@ TEST(ImmediateValueCount, Value) {
   };
   EXPECT_EQ(internal::ImmediateValueCount<SomeImmediates>(), 2);
 }
+
+TEST(InstructionSet, FunctionStateStack) {
+  struct Stateless : StackMachineInstruction<Stateless> {
+    static int execute(int, int) { return 0; }
+  };
+  struct Stateful : StackMachineInstruction<Stateful> {
+    using JasminFunctionState = int;
+    static int execute(int, int) { return 0; }
+  };
+  using Set = MakeInstructionSet<Stateless, Stateful>;
+  EXPECT_TRUE((std::is_same_v<internal::FunctionStateList<Set>,
+                              internal::type_list<int>>));
+  EXPECT_TRUE(
+      (std::is_same_v<FunctionStateStack<Set>, std::stack<std::tuple<int>>>));
+  EXPECT_TRUE(
+      (std::is_same_v<FunctionStateStack<MakeInstructionSet<Stateless>>, void>));
+  EXPECT_TRUE((std::is_same_v<FunctionStateStack<MakeInstructionSet<Stateful>>,
+                              std::stack<std::tuple<int>>>));
+}
+
 }  // namespace
 }  // namespace jasmin

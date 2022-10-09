@@ -12,6 +12,15 @@ cc_binary(
 )
 
 cc_binary(
+    name = "function_state",
+    srcs = ["function_state.cc"],
+    deps = [
+        "//jasmin/instructions:core",
+        "//jasmin:execute",
+    ],
+)
+
+cc_binary(
     name = "hello_world",
     srcs = ["hello_world.cc"],
     deps = [

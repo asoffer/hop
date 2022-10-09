@@ -109,15 +109,19 @@ struct ValueStack {
   }
 
   // TODO: qualify `F`.
-  template <auto F, typename... Ts>
-  void call_on_suffix() {
+  template <auto F, typename... Ts, typename... Args>
+  void call_on_suffix(Args &&...args) {
     if constexpr (sizeof...(Ts) == 0) {
-      push(F());
+      push(F(std::forward<Args>(args)...));
     } else if constexpr (sizeof...(Ts) == 1) {
       auto *p = head_ - 1;
-      *p      = F(p->as<Ts...>());
+      *p      = F(std::forward<Args>(args)..., p->as<Ts...>());
     } else {
-      auto result = std::apply(F, pop_suffix<Ts...>());
+      auto result = std::apply(
+          [&](auto... suffix) {
+            return F(std::forward<Args>(args)..., suffix...);
+          },
+          pop_suffix<Ts...>());
       *head_      = result;
       ++head_;
     }

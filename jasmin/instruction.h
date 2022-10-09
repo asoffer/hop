@@ -2,6 +2,7 @@
 #define JASMIN_INSTRUCTION_H
 
 #include <concepts>
+#include <stack>
 
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction_pointer.h"
@@ -28,7 +29,7 @@ concept VoidOrConvertibleToValue =
 // Implementation detail. A concept capturing one way a type can adhere to the
 // `Instruction` concept defined below.
 template <typename Signature>
-concept SignatureSatisfiesRequirementsNoImmediateValues =
+concept StatelessWithoutImmediateValues =
     VoidOrConvertibleToValue<typename Signature::return_type> and
     Signature::invoke_with_argument_types([
     ]<std::convertible_to<Value>... Ts>() { return true; });
@@ -36,20 +37,88 @@ concept SignatureSatisfiesRequirementsNoImmediateValues =
 // Implementation detail. A concept capturing one way a type can adhere to the
 // `Instruction` concept defined below.
 template <typename Signature>
-concept SignatureSatisfiesRequirementsWithImmediateValues =
+concept StatelessWithImmediateValues =
     std::is_void_v<typename Signature::return_type> and
     Signature::invoke_with_argument_types([
     ]<std::same_as<ValueStack &>, std::convertible_to<Value>... Ts>() {
       return not(std::is_reference_v<Ts> or ...);
     });
 
-// Implementation detail. A concept capturing that the signature for an
-// `execute` static member function satisfies the requirements for the
-// Instruction concept.
+// Implementation detail. A concept capturing one way a type can adhere to the
+// `Instruction` concept defined below.
+template <typename Signature, typename I>
+concept StatefulWithImmediateValues =
+    std::is_void_v<typename Signature::return_type> and
+    Signature::invoke_with_argument_types(
+        []<std::same_as<ValueStack &>,
+           std::same_as<typename I::JasminFunctionState &>,
+           std::convertible_to<Value>... Ts>() {
+          return not(std::is_reference_v<Ts> or ...);
+        });
+
+// Implementation detail. A concept capturing one way a type can adhere to the
+// `Instruction` concept defined below.
+template <typename Signature, typename I>
+concept StatefulWithoutImmediateValues =
+    VoidOrConvertibleToValue<typename Signature::return_type> and
+    Signature::invoke_with_argument_types(
+        []<std::same_as<typename I::JasminFunctionState &>,
+           std::convertible_to<Value>... Ts>() { return true; });
+
+// Implementation detail. A concept capturing that the `execute` static member
+// function's signature is a valid signature for a stateful instruction `I`.
+template <typename Signature, typename I>
+concept ValidStatefulSignature = (StatefulWithImmediateValues<Signature, I> or
+                                  StatefulWithoutImmediateValues<Signature, I>);
+
+// Implementation detail. A concept capturing that the `execute` static member
+// function's signature for a stateless instruction.
 template <typename Signature>
-concept SignatureSatisfiesRequirements =
-    (SignatureSatisfiesRequirementsNoImmediateValues<Signature> or
-     SignatureSatisfiesRequirementsWithImmediateValues<Signature>);
+concept ValidStatelessSignature = (StatelessWithImmediateValues<Signature> or
+                                   StatelessWithoutImmediateValues<Signature>);
+
+template <typename I>
+concept InstructionWithoutImediateValues =
+    (StatelessWithoutImmediateValues<ExtractSignature<decltype(&I::execute)>> or
+     StatefulWithoutImmediateValues<ExtractSignature<decltype(&I::execute)>,
+                                    I>);
+
+// Implementation detail. A concept capturing that the `execute` static member
+// function of the instruction adheres to one of the supported signatures.
+template <typename I,
+          typename Signature = ExtractSignature<decltype(&I::execute)>>
+concept HasValidSignature = (ValidStatefulSignature<Signature, I> or
+                             ValidStatelessSignature<Signature>);
+
+template <typename T>
+struct NotVoid {
+  static constexpr bool value = not std::is_void_v<T>;
+};
+
+template <typename T>
+concept HasFunctionState = requires {
+  typename T::JasminFunctionState;
+};
+
+template <typename T>
+struct GetFunctionStateImpl {
+  using type = void;
+};
+
+template <HasFunctionState T>
+struct GetFunctionStateImpl<T> {
+  using type = typename T::JasminFunctionState;
+};
+
+template <typename T>
+using GetFunctionState = typename GetFunctionStateImpl<T>::type;
+
+// A list of all types required to represent the state of all functions in
+// the instruction set `Set`.
+template <typename Set>
+using FunctionStateList = Filter<
+    NotVoid,
+    Unique<Transform<GetFunctionState, typename Set::jasmin_instructions *>>>;
 
 }  // namespace internal
 
@@ -57,6 +126,15 @@ concept SignatureSatisfiesRequirements =
 // by Jasmin's interpreter.
 template <typename T>
 concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
+
+// A type-function accepting an instruction set and returning a type sufficient
+// to hold all state required by all instructions in `Set`, or `void` if all
+// instructions in `Set` are stateless.
+template <InstructionSet Set>
+using FunctionStateStack = std::conditional_t<
+    std::is_same_v<internal::FunctionStateList<Set>, internal::type_list<>>,
+    void,
+    std::stack<internal::Apply<std::tuple, internal::FunctionStateList<Set>>>>;
 
 // Forward declarations for instructions that need special treatement in
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
@@ -71,7 +149,7 @@ struct Return;
 // Moreover, other than the builtin-instructions forward-declared above, they
 // must also have a static member function `execute` that is not part of an
 // overload set (so that `&Inst::execute` is well-formed) and this function must
-// either:
+// adhere to one of the following:
 //
 //   (a) Return void and accept a `jasmin::ValueStack&`, and then some number of
 //       arguments convertible to `Value`. These arguments are intperpreted as
@@ -79,32 +157,50 @@ struct Return;
 //       indicates that execution should fall through to the following
 //       instruction.
 //
-//   (b) Accept some number of arguments convertible to `Value` and return
+//   (b) Return void and accept a `jasmin::ValueStack&`, a mutable reference to
+//       a `typename I::JasminFunctionState` (provided this symbol is
+//       well-formed), and then some number of arguments convertible to `Value`.
+//       These arguments are intperpreted as the immediate values for the
+//       instruction. The void return type indicates that execution should fall
+//       through to the following instruction.
+//
+//   (c) Accept some number of arguments convertible to `Value` and return
 //       either `void` or another type convertible to `Value`. The arguments are
 //       to be popped from the value stack, and the returned value, if any, will
 //       be pushed onto the value stack. Execution will fall through to the
 //       following instruction.
+//
+//   (d) Accept a mutable reference to a `typename I::JasminFunctionState`
+//       (provided this symbol is well-formed), and then some number of
+//       arguments convertible to `Value` and return either `void` or another
+//       type convertible to `Value`. The arguments are to be popped from the
+//       value stack, and the returned value, if any, will be pushed onto the
+//       value stack. Execution will fall through to the following instruction.
 //
 template <typename Inst>
 struct StackMachineInstruction {
  private:
   template <InstructionSet Set>
   static void ExecuteImpl(ValueStack &value_stack, InstructionPointer &ip,
-                          CallStack &call_stack) {
-    using exec_fn_type =
-        void (*)(ValueStack &, InstructionPointer &, CallStack &);
+                          CallStack &call_stack,
+                          FunctionStateStack<Set> *state_stack) {
+    using exec_fn_type = void (*)(ValueStack &, InstructionPointer &,
+                                  CallStack &, FunctionStateStack<Set> *);
     if constexpr (std::is_same_v<Inst, Call>) {
       auto const *f = value_stack.pop<internal::FunctionBase const *>();
       call_stack.push(f, ip);
       ip = f->entry();
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
-                                                              call_stack);
+      if constexpr (not std::is_void_v<FunctionStateStack<Set>>) {
+        state_stack->emplace();
+      }
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+          value_stack, ip, call_stack, state_stack);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       ip += (ip + 1)->as<ptrdiff_t>();
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
-                                                              call_stack);
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+          value_stack, ip, call_stack, state_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       if (value_stack.pop<bool>()) {
@@ -113,23 +209,25 @@ struct StackMachineInstruction {
         ip += 2;
       }
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
-                                                              call_stack);
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+          value_stack, ip, call_stack, state_stack);
 
     } else if constexpr (std::is_same_v<Inst, Return>) {
       ip = call_stack.pop();
+      if constexpr (not std::is_void_v<FunctionStateStack<Set>>) {
+        state_stack->pop();
+      }
       ++ip;
       if (call_stack.empty()) [[unlikely]] {
         return;
       } else {
-        JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
-                                                                call_stack);
+        JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+            value_stack, ip, call_stack, state_stack);
       }
     } else {
       using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
 
-      if constexpr (internal::SignatureSatisfiesRequirementsWithImmediateValues<
-                        signature>) {
+      if constexpr (internal::StatelessWithImmediateValues<signature>) {
         signature::
             invoke_with_argument_types([&]<std::same_as<ValueStack &>,
                                            std::convertible_to<Value>... Ts>() {
@@ -139,7 +237,8 @@ struct StackMachineInstruction {
                                             value_stack, (++ip)->as<Ts>()...});
             });
         ++ip;
-      } else {
+      } else if constexpr (internal::StatelessWithoutImmediateValues<
+                               signature>) {
         if constexpr (std::is_void_v<typename signature::return_type>) {
           signature::invoke_with_argument_types(
               [&]<std::convertible_to<Value>... Ts>() {
@@ -152,11 +251,53 @@ struct StackMachineInstruction {
               });
         }
         ++ip;
+      } else if constexpr (internal::StatefulWithImmediateValues<signature,
+                                                                 Inst>) {
+        signature::invoke_with_argument_types(
+            [&]<std::same_as<ValueStack &>,
+                std::same_as<typename Inst::JasminFunctionState &>,
+                std::convertible_to<Value>... Ts>() {
+              // Brace-initialization forces the order of evaluation to be in
+              // the order the elements appear in the list.
+              std::apply(
+                  Inst::execute,
+                  std::tuple<ValueStack &, typename Inst::JasminFunctionState &,
+                             Ts...>{
+                      value_stack,
+                      std::get<typename Inst::JasminFunctionState>(
+                          state_stack->top()),
+                      (++ip)->as<Ts>()...});
+            });
+        ++ip;
+      } else {
+        if constexpr (std::is_void_v<typename signature::return_type>) {
+          signature::invoke_with_argument_types(
+              [&]<std::same_as<typename Inst::JasminFunctionState &>,
+                  std::convertible_to<Value>... Ts>() {
+                std::apply(
+                    [&](auto... values) {
+                      Inst::execute(
+                          std::get<typename Inst::JasminFunctionState>(
+                              state_stack->top()),
+                          values...);
+                    },
+                    value_stack.pop_suffix<Ts...>());
+              });
+        } else {
+          signature::invoke_with_argument_types(
+              [&]<std::same_as<typename Inst::JasminFunctionState &>,
+                  std::convertible_to<Value>... Ts>() {
+                value_stack.call_on_suffix<&Inst::execute, Ts...>(
+                    std::get<typename Inst::JasminFunctionState>(
+                        state_stack->top()));
+              });
+        }
+        ++ip;
       }
     }
 
-    JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(value_stack, ip,
-                                                            call_stack);
+    JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+        value_stack, ip, call_stack, state_stack);
   }
 };
 
@@ -180,18 +321,30 @@ struct Return : StackMachineInstruction<Return> {};
 //       indicates that execution should fall through to the following
 //       instruction.
 //
-//   (b) Accept some number of arguments convertible to `Value` and return
+//   (b) Return void and accept a `jasmin::ValueStack&`, a mutable reference to
+//       a `typename I::JasminFunctionState` (provided this symbol is
+//       well-formed), and then some number of arguments convertible to `Value`.
+//       These arguments are intperpreted as the immediate values for the
+//       instruction. The void return type indicates that execution should fall
+//       through to the following instruction.
+//
+//   (c) Accept some number of arguments convertible to `Value` and return
 //       either `void` or another type convertible to `Value`. The arguments are
 //       to be popped from the value stack, and the returned value, if any, will
 //       be pushed onto the value stack. Execution will fall through to the
 //       following instruction.
 //
+//   (d) Accept a mutable reference to a `typename I::JasminFunctionState`
+//       (provided this symbol is well-formed), and then some number of
+//       arguments convertible to `Value` and return either `void` or another
+//       type convertible to `Value`. The arguments are to be popped from the
+//       value stack, and the returned value, if any, will be pushed onto the
+//       value stack. Execution will fall through to the following instruction.
+//
 template <typename I>
-concept Instruction =
-    (internal::AnyOf<I, Call, Jump, JumpIf, Return> or
-     (std::derived_from<I, StackMachineInstruction<I>> and
-      internal::SignatureSatisfiesRequirements<
-          internal::ExtractSignature<decltype(&I::execute)>>));
+concept Instruction = (internal::AnyOf<I, Call, Jump, JumpIf, Return> or
+                       (std::derived_from<I, StackMachineInstruction<I>> and
+                        internal::HasValidSignature<I>));
 
 namespace internal {
 template <typename I>
@@ -200,7 +353,7 @@ concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
 // Constructs an InstructionSet type from a list of instructions. Does no
 // checking to validate that `Is` do not contain repeats.
 template <Instruction... Is>
-struct MakeInstructionSet final : internal::InstructionSetBase {
+struct MakeInstructionSet final : InstructionSetBase {
   using jasmin_instructions = void(Is *...);
 
   // Returns the number of instructions in the instruction set.
@@ -208,7 +361,7 @@ struct MakeInstructionSet final : internal::InstructionSetBase {
 
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
-  template <internal::AnyOf<Is...> I>
+  template <AnyOf<Is...> I>
   static constexpr uint64_t OpCodeFor() {
     constexpr size_t value = OpCodeForImpl<I>();
     return value;
@@ -223,10 +376,10 @@ struct MakeInstructionSet final : internal::InstructionSetBase {
  private:
   static constexpr void (*table[sizeof...(Is)])(ValueStack &,
                                                 InstructionPointer &,
-                                                CallStack &) = {
+                                                CallStack &, void *) = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
 
-  template <internal::AnyOf<Is...> I>
+  template <AnyOf<Is...> I>
   static constexpr uint64_t OpCodeForImpl() {
     // Because the fold-expression below unconditionally adds one to `i` on its
     // first evaluation, we start `i` at its maximum value and allow it to wrap
@@ -241,30 +394,28 @@ struct MakeInstructionSet final : internal::InstructionSetBase {
 // computes the list of all instructions in the list, in an InstructionSet in
 // the list transitively.
 template <Instruction... Processed>
-constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
-                                      internal::type_list<>) {
-  return internal::type_list<Processed...>{};
+constexpr auto FlattenInstructionList(type_list<Processed...>, type_list<>) {
+  return type_list<Processed...>{};
 }
 
 template <Instruction... Processed, InstructionOrInstructionSet I,
           InstructionOrInstructionSet... Is>
-constexpr auto FlattenInstructionList(internal::type_list<Processed...>,
-                                      internal::type_list<I, Is...>) {
-  if constexpr (internal::AnyOf<I, Processed...>) {
-    return FlattenInstructionList(internal::type_list<Processed...>{},
-                                  internal::type_list<Is...>{});
+constexpr auto FlattenInstructionList(type_list<Processed...>,
+                                      type_list<I, Is...>) {
+  if constexpr (AnyOf<I, Processed...>) {
+    return FlattenInstructionList(type_list<Processed...>{},
+                                  type_list<Is...>{});
   } else if constexpr (Instruction<I>) {
-    return FlattenInstructionList(internal::type_list<Processed..., I>{},
-                                  internal::type_list<Is...>{});
+    return FlattenInstructionList(type_list<Processed..., I>{},
+                                  type_list<Is...>{});
   } else {
     return FlattenInstructionList(
-        internal::type_list<Processed...>{},
-        internal::Concatenate<internal::type_list<Is...>,
-                              typename I::jasmin_instructions *>{});
+        type_list<Processed...>{},
+        Concatenate<type_list<Is...>, typename I::jasmin_instructions *>{});
   }
 }
 
-using BuiltinInstructionList = internal::type_list<Call, Jump, JumpIf, Return>;
+using BuiltinInstructionList = type_list<Call, Jump, JumpIf, Return>;
 
 }  // namespace internal
 
@@ -279,17 +430,17 @@ namespace internal {
 
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
-  if constexpr (internal::AnyOf<I, Call, Return>) {
+  if constexpr (AnyOf<I, Call, Return>) {
     return 0;
-  } else if constexpr (internal::AnyOf<I, Jump, JumpIf>) {
+  } else if constexpr (AnyOf<I, Jump, JumpIf>) {
     return 1;
   } else {
-    return internal::ExtractSignature<decltype(&I::execute)>::
-        invoke_with_argument_types([]<typename... Ts>() {
+    return ExtractSignature<decltype(&I::execute)>::invoke_with_argument_types(
+        []<typename... Ts>() {
           if constexpr (sizeof...(Ts) == 0) {
             return 0;
           } else {
-            return std::is_same_v<internal::first_of<Ts...>, ValueStack &>
+            return std::is_same_v<first_of<Ts...>, ValueStack &>
                        ? (sizeof...(Ts) - 1)
                        : 0;
           }
