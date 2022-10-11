@@ -23,3 +23,12 @@ cc_library(
         "//jasmin:instruction",
     ],
 )
+
+cc_library(
+    name = "stack",
+    hdrs = ["stack.h"],
+    deps = [
+        "//jasmin:instruction",
+        "//jasmin:value_stack",
+    ],
+)
