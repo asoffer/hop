@@ -10,16 +10,6 @@ cc_library(
     ],
 )
 
-
-cc_test(
-    name = "function_test",
-    srcs = ["function_test.cc"],
-    deps = [
-        ":execute",
-        ":function",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
 cc_test(
     name = "call_stack_test",
     srcs = ["call_stack_test.cc"],
@@ -53,6 +43,16 @@ cc_library(
         ":instruction",
         "//jasmin/internal:debug",
         "//jasmin/internal:function_base",
+    ],
+)
+
+cc_test(
+    name = "function_test",
+    srcs = ["function_test.cc"],
+    deps = [
+        ":execute",
+        ":function",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -140,8 +140,6 @@ cc_test(
     ],
 )
 
-# TODO: A testing utility that enables describing expectations about the top of a ValueStack.
-
 cc_library(
     name = "value",
     hdrs = ["value.h"],
@@ -157,5 +155,16 @@ cc_test(
     deps = [
         ":value",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "testing",
+    testonly = True,
+    hdrs = ["testing.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":instruction",
+        ":value_stack",
     ],
 )

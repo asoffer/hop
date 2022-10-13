@@ -43,9 +43,9 @@ struct StackAllocate : StackMachineInstruction<StackAllocate> {
 // offset by the amount `offset`.
 struct StackOffset : StackMachineInstruction<StackOffset> {
   using JasminFunctionState = internal::StackFrame;
-  static constexpr std::byte *execute(ValueStack &, JasminFunctionState &frame,
-                                      size_t offset) {
-    return frame.data() + offset;
+  static constexpr void execute(ValueStack &value_stack,
+                                JasminFunctionState &frame, size_t offset) {
+    value_stack.push(frame.data() + offset);
   }
 };
 
