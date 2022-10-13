@@ -16,6 +16,7 @@ struct StackFrame {
         data() == nullptr,
         "`allocate_once` must only be called once per stack frame.");
     data_.reset(new std::byte[size_in_bytes]);
+    return data_.get();
   }
 
   std::byte const *data() const { return data_.get(); }
@@ -40,7 +41,7 @@ struct StackAllocate : StackMachineInstruction<StackAllocate> {
 
 // Returns a pointer into the stack frame associated with the current function,
 // offset by the amount `offset`.
-struct StackOffset : MachineInstruction<StackOffset> {
+struct StackOffset : StackMachineInstruction<StackOffset> {
   using JasminFunctionState = internal::StackFrame;
   static constexpr std::byte *execute(ValueStack &, JasminFunctionState &frame,
                                       size_t offset) {
