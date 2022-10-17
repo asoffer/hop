@@ -23,6 +23,13 @@ struct Swap : StackMachineInstruction<Swap> {
   }
 };
 
+struct Load : StackMachineInstruction<Load> {
+  static void execute(ValueStack &value_stack, uint8_t size) {
+    std::byte const *p = value_stack.pop<std::byte const *>();
+    value_stack.push(Value::Load(p, size));
+  }
+};
+
 }  // namespace jasmin
 
 #endif  // JASMIN_INSTRUCTIONS_CORE_H

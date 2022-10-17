@@ -58,5 +58,12 @@ TEST(Value, Address) {
   EXPECT_EQ(*reinterpret_cast<int const *>(ptr), 17);
 }
 
+TEST(Value, Load) {
+  int n           = 17;
+  Value v         = Value::Load(&n, sizeof(int));
+  void const *ptr = v.address();
+  EXPECT_EQ(*reinterpret_cast<int const *>(ptr), 17);
+}
+
 }  // namespace
 }  // namespace jasmin

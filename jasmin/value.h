@@ -37,6 +37,17 @@ struct Value {
     return v;
   }
 
+  static Value Load(void const* ptr, size_t bytes_to_load) {
+    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_load <= internal::ValueSize,
+                                 "Bytes to load must not exceed 8.");
+    Value v;
+    std::memcpy(&v.value_, ptr, bytes_to_load);
+#if defined(JASMIN_DEBUG)
+    v.debug_type_id_ = internal::type_id<unknown_t>;
+#endif
+    return v;
+  }
+
   // Constructs a `Value` holding the value `v`.
   constexpr Value(SmallTrivialValue auto v)
 #if defined(JASMIN_DEBUG)
@@ -57,8 +68,10 @@ struct Value {
       return *this;
     } else {
       JASMIN_INTERNAL_DEBUG_ASSERT(
-          debug_type_id_ == internal::type_id<T>, "Value type mismatch:\n  ",
-          debug_type_id_.name, " != ", internal::type_id<T>.name, "\n");
+          (debug_type_id_ == internal::type_id<T> or
+           debug_type_id_ == internal::type_id<unknown_t>),
+          "Value type mismatch:\n  ", debug_type_id_.name,
+          " != ", internal::type_id<T>.name, "\n");
 
       T result;
       std::memcpy(&result, value_, sizeof(T));
@@ -71,6 +84,7 @@ struct Value {
 
  private:
   struct uninitialized_t {};
+  struct unknown_t {};
 
   explicit Value()
 #if defined(JASMIN_DEBUG)

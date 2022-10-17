@@ -14,8 +14,8 @@ namespace jasmin::internal {
 // speaking, we would prefer to test compatibility, but this is generally not
 // possible via this mechanism.
 struct TypeId {
-  void const *value;
-  char const *name;
+  void const *value = nullptr;
+  char const *name  = "unknown";
 
   friend bool operator==(TypeId const &lhs, TypeId const &rhs) {
     return lhs.value == rhs.value;

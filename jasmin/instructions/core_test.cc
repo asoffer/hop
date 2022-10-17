@@ -41,4 +41,30 @@ TEST(Instruction, Swap) {
   EXPECT_EQ(value_stack.pop<int>(), 2);
 }
 
+TEST(Instruction, Load) {
+  int8_t n8   = 8;
+  int16_t n16 = 16;
+  int32_t n32 = 32;
+  int64_t n64 = 64;
+  jasmin::ValueStack value_stack;
+
+  value_stack.push(&n8);
+  jasmin::ExecuteInstruction<jasmin::Load>(value_stack, sizeof(int8_t));
+
+  value_stack.push(&n16);
+  jasmin::ExecuteInstruction<jasmin::Load>(value_stack, sizeof(int16_t));
+
+  value_stack.push(&n32);
+  jasmin::ExecuteInstruction<jasmin::Load>(value_stack, sizeof(int32_t));
+
+  value_stack.push(&n64);
+  jasmin::ExecuteInstruction<jasmin::Load>(value_stack, sizeof(int64_t));
+
+  EXPECT_EQ(value_stack.size(), 4);
+  EXPECT_EQ(value_stack.pop<int8_t>(), 64);
+  EXPECT_EQ(value_stack.pop<int8_t>(), 32);
+  EXPECT_EQ(value_stack.pop<int8_t>(), 16);
+  EXPECT_EQ(value_stack.pop<int8_t>(), 8);
+}
+
 }  // namespace
