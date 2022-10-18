@@ -36,6 +36,12 @@ struct Store : StackMachineInstruction<Store> {
   }
 };
 
+struct StoreConstant : StackMachineInstruction<StoreConstant> {
+  static void execute(ValueStack &value_stack, void *location, uint8_t size) {
+    Value::Store(value_stack.pop_value(), location, size);
+  }
+};
+
 }  // namespace jasmin
 
 #endif  // JASMIN_INSTRUCTIONS_CORE_H
