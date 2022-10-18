@@ -66,18 +66,21 @@ struct ValueStack {
     return pop_value().as<T>();
   }
 
-  // Returns a copy of the top `Value` on the stack. Behavior is undefined if
-  // the stack is empty.
-  constexpr Value peek_value() const {
-    JASMIN_INTERNAL_DEBUG_ASSERT(not empty(), "Unexpectedly empty ValueStack");
-    return *(head_ - 1);
+  // Returns a copy of the `Value` that is `count_back` entries from the top of
+  // the stack. Behavior is undefined if the stack does not contain at least
+  // `count_back + 1` values.
+  constexpr Value peek_value(size_t count_back = 0) const {
+    JASMIN_INTERNAL_DEBUG_ASSERT(size() > count_back,
+                                 "Unexpectedly short ValueStack");
+    return *(head_ - (count_back + 1));
   }
 
-  // Returns a copy of the top value of type `T` on the stack. Behavior is
-  // undefined if the stack is empty or the top value is not of type `T`.
+  // Returns a copy of the value of type `T` that is `count_back` entries from
+  // the top of the stack. Behavior is undefined if the stack does not contain
+  // at least `count_back + 1` values, or the value is not of type `T`.
   template <SmallTrivialValue T>
-  constexpr T peek() const {
-    return peek_value().as<T>();
+  constexpr T peek(size_t count_back = 0) const {
+    return peek_value(count_back).as<T>();
   }
 
   // Swaps the top of the stack with the element `n` entries from the top of the

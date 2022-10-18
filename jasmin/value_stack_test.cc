@@ -183,5 +183,15 @@ TEST(ValueStack, End) {
   EXPECT_EQ((value_stack.end() - 2)->as<int>(), 1);
 }
 
+TEST(ValueStack, Peek) {
+  ValueStack value_stack{1, true, 3.14};
+  EXPECT_EQ(value_stack.peek<double>(0), 3.14);
+  EXPECT_EQ(value_stack.peek<bool>(1), true);
+  EXPECT_EQ(value_stack.peek<int>(2), 1);
+  value_stack.pop_value();
+  EXPECT_EQ(value_stack.peek<bool>(0), true);
+  EXPECT_EQ(value_stack.peek<int>(1), 1);
+}
+
 }  // namespace
 }  // namespace jasmin

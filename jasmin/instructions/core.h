@@ -17,6 +17,12 @@ struct Duplicate : StackMachineInstruction<Duplicate> {
   }
 };
 
+struct DuplicateAt : StackMachineInstruction<DuplicateAt> {
+  static constexpr void execute(ValueStack &value_stack, size_t index) {
+    value_stack.push(value_stack.peek_value(index));
+  }
+};
+
 struct Swap : StackMachineInstruction<Swap> {
   static constexpr void execute(ValueStack &value_stack) {
     value_stack.swap_with(1);

@@ -18,8 +18,7 @@ TEST(Instruction, Push) {
 }
 
 TEST(Instruction, Duplicate) {
-  jasmin::ValueStack value_stack;
-  value_stack.push(3);
+  jasmin::ValueStack value_stack{3};
 
   jasmin::ExecuteInstruction<jasmin::Duplicate>(value_stack);
   EXPECT_EQ(value_stack.size(), 2);
@@ -27,6 +26,18 @@ TEST(Instruction, Duplicate) {
 
   jasmin::ExecuteInstruction<jasmin::Duplicate>(value_stack);
   EXPECT_EQ(value_stack.size(), 3);
+  EXPECT_EQ(value_stack.peek<int>(), 3);
+}
+
+TEST(Instruction, DuplicateAt) {
+  jasmin::ValueStack value_stack{3, 4, 5};
+
+  jasmin::ExecuteInstruction<jasmin::DuplicateAt>(value_stack, 1);
+  EXPECT_EQ(value_stack.size(), 4);
+  EXPECT_EQ(value_stack.peek<int>(), 4);
+
+  jasmin::ExecuteInstruction<jasmin::DuplicateAt>(value_stack, 3);
+  EXPECT_EQ(value_stack.size(), 5);
   EXPECT_EQ(value_stack.peek<int>(), 3);
 }
 
