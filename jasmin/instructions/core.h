@@ -11,6 +11,12 @@ struct Push : StackMachineInstruction<Push> {
   }
 };
 
+struct Drop : StackMachineInstruction<Drop> {
+  static constexpr void execute(ValueStack &value_stack, size_t count) {
+    value_stack.erase(value_stack.size() - count, value_stack.size());
+  }
+};
+
 struct Duplicate : StackMachineInstruction<Duplicate> {
   static constexpr void execute(ValueStack &value_stack) {
     value_stack.push(value_stack.peek_value());
