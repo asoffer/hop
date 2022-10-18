@@ -31,8 +31,10 @@ struct Load : StackMachineInstruction<Load> {
 };
 
 struct Store : StackMachineInstruction<Store> {
-  static void execute(ValueStack &value_stack, void *location, uint8_t size) {
-    Value::Store(value_stack.pop_value(), location, size);
+  static void execute(ValueStack &value_stack, uint8_t size) {
+    Value value    = value_stack.pop_value();
+    void *location = value_stack.pop<void *>();
+    Value::Store(value, location, size);
   }
 };
 
