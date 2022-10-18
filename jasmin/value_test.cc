@@ -65,5 +65,12 @@ TEST(Value, Load) {
   EXPECT_EQ(*reinterpret_cast<int const *>(ptr), 17);
 }
 
+TEST(Value, Store) {
+  int n           = 0;
+  Value v         = 17;
+  Value::Store(v, &n, sizeof(int));
+  EXPECT_EQ(n, 17);
+}
+
 }  // namespace
 }  // namespace jasmin

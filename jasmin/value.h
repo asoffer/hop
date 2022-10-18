@@ -37,6 +37,9 @@ struct Value {
     return v;
   }
 
+  // Returns a `Value` holding the value stored at `ptr` whose size is
+  // `bytes_to_load`. Requires that the value stored at `ptr` be trivially
+  // copyable and have size precisely `bytes_to_load`.
   static Value Load(void const* ptr, size_t bytes_to_load) {
     JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_load <= internal::ValueSize,
                                  "Bytes to load must not exceed 8.");
@@ -46,6 +49,14 @@ struct Value {
     v.debug_type_id_ = internal::type_id<unknown_t>;
 #endif
     return v;
+  }
+
+  // Stores `value` into the location `ptr`. Requires that `value` represent a
+  // value the size of whose type is `bytes_to_store`.
+  static void Store(Value value, void* ptr, size_t bytes_to_store) {
+    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_store <= internal::ValueSize,
+                                 "Bytes to load must not exceed 8.");
+    std::memcpy(ptr, &value.value_, bytes_to_store);
   }
 
   // Constructs a `Value` holding the value `v`.
