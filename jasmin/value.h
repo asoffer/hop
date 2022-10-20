@@ -8,13 +8,16 @@
 #include "jasmin/internal/debug.h"
 
 namespace jasmin {
-namespace internal {
 
-// The size and alignment of a `jasmin::Value` object.
+// The size and alignment requirements for any data to be stored in a
+// `jasmin::Value` object. Objects may have smaller size or less strict
+// alignment requirements.
+//
+// Note that `ValueSize` may not be equal to `sizeof(Value)`. In some
+// compilation modes, `Value` stores extra debugging metadata. Similarly,
+// `ValueAlignment` may not be equal to `alignof(Value)`.
 inline size_t constexpr ValueAlignment = 8;
 inline size_t constexpr ValueSize      = 8;
-
-}  // namespace internal
 
 // Forward declaration of type Defined below so it can be used in the
 // `SmallTrivialValue` concept.
@@ -25,8 +28,8 @@ struct Value;
 template <typename T>
 concept SmallTrivialValue = (not std::is_same_v<T, Value> and
                              std::is_trivially_copyable_v<T> and
-                             sizeof(T) <= internal::ValueSize and
-                             alignof(T) <= internal::ValueAlignment);
+                             sizeof(T) <= ValueSize and
+                             alignof(T) <= ValueAlignment);
 
 // A value that can be stored either on the value stack or as an immediate value
 // in the instructions. Values must be trivially copyable and representable in
@@ -41,7 +44,7 @@ struct Value {
   // `bytes_to_load`. Requires that the value stored at `ptr` be trivially
   // copyable and have size precisely `bytes_to_load`.
   static Value Load(void const* ptr, size_t bytes_to_load) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_load <= internal::ValueSize,
+    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_load <= ValueSize,
                                  "Bytes to load must not exceed 8.");
     Value v;
     std::memcpy(&v.value_, ptr, bytes_to_load);
@@ -54,7 +57,7 @@ struct Value {
   // Stores `value` into the location `ptr`. Requires that `value` represent a
   // value the size of whose type is `bytes_to_store`.
   static void Store(Value value, void* ptr, size_t bytes_to_store) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_store <= internal::ValueSize,
+    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_store <= ValueSize,
                                  "Bytes to load must not exceed 8.");
     std::memcpy(ptr, &value.value_, bytes_to_store);
   }
@@ -104,7 +107,7 @@ struct Value {
   {
   }
 
-  alignas(internal::ValueAlignment) char value_[internal::ValueSize];
+  alignas(ValueAlignment) char value_[ValueSize];
 
 #if defined(JASMIN_DEBUG)
   internal::TypeId debug_type_id_;

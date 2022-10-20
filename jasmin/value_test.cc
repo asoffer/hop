@@ -10,15 +10,15 @@ namespace {
 TEST(Value, Construction) {
   EXPECT_TRUE((std::constructible_from<Value, char>));
   struct BarelyFits {
-    char data[internal::ValueSize];
+    char data[ValueSize];
   };
   struct Large {
-    char data[internal::ValueSize + 1];
+    char data[ValueSize + 1];
   };
   EXPECT_TRUE((std::constructible_from<Value, BarelyFits>));
   EXPECT_FALSE((std::constructible_from<Value, Large>));
 
-  struct alignas(2 * internal::ValueAlignment)
+  struct alignas(2 * ValueAlignment)
       OverlyStrictAlignmentRequirement {};
   EXPECT_FALSE(
       (std::constructible_from<Value, OverlyStrictAlignmentRequirement>));
