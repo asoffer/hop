@@ -1,6 +1,7 @@
 #ifndef JASMIN_INTERNAL_FUNCTION_BASE_H
 #define JASMIN_INTERNAL_FUNCTION_BASE_H
 
+#include <span>
 #include <vector>
 
 #include "jasmin/instruction_pointer.h"
@@ -31,6 +32,11 @@ struct FunctionBase {
   constexpr InstructionPointer entry() const {
     return InstructionPointer(instructions_.data());
   }
+
+  // Returns a span over all values representing instructions in the function.
+  // Values in the span are not distinguished separately as `OpCode`s or
+  // arguments passed to an `OpCode`.
+  std::span<Value const> raw_instructions() const { return instructions_; }
 
   // Given the index `index` into the immediate values of `range`, sets the
   // corresponding `Value` to `value`. Behavior is undefined if `range` is not a
