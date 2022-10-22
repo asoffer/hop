@@ -84,8 +84,8 @@ ready to make any guarantees, even for short-term stability.
 In the future we intend to provide significant long-term support, but in a
 somewhat unconventional way: Jasmin will never make guarantees of either API
 stability or ABI stability. While we aim to make API changes unobtrusive, we
-will add, change, or remove APIs. This enables us to make to always be able
-to provide the best possible software for our users.
+will add, change, or remove APIs. This enables us to always be able to provide
+the best possible software for our users.
 
 Though any change can be a breaking change, we aim to advertize the potential
 breakge (e.g., removing a public function). Moreover, we aim to make such
