@@ -1,4 +1,5 @@
 # Jasmin
+[![CI badge](https://github.com/asoffer/jasmin/workflows/CI/badge.svg)](https://github.com/asoffer/jasmin/actions?query=workflow%3ACI)
 
 ## Introduction
 
