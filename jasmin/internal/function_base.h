@@ -49,6 +49,15 @@ struct FunctionBase {
     instructions_[range.offset() + index + 1] = value;
   }
 
+  // Reserves space for up to `capacity` op-codes or immediate values before
+  // reallocation would become necessary.
+  void reserve(size_t capacity) { instructions_.reserve(capacity); }
+
+  // Appends a value directly without regards to whether it is an op-code or
+  // immediate value.
+  void raw_append(Value v) { instructions_.push_back(v); }
+
+
  protected:
   // Appends the sequence of `Value`s. To the instructions. The first must
   // represent an op-code and the remainder must represent immediate values.

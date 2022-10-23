@@ -1,9 +1,16 @@
 #include "jasmin/internal/type_list.h"
 
+#include <unordered_map>
+
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 namespace jasmin::internal {
 namespace {
+
+using ::testing::IsEmpty;
+using ::testing::Pair;
+using ::testing::UnorderedElementsAre;
 
 TEST(TypeList, Concept) {
   EXPECT_TRUE((TypeList<type_list<>>));
@@ -93,6 +100,21 @@ TEST(TypeList, Unique) {
                               type_list<int, bool>>));
   EXPECT_TRUE((std::is_same_v<Unique<type_list<bool, int, bool, bool, int>>,
                               type_list<int, bool>>));
+}
+
+TEST(TypeList, ForEach) {
+  std::map<int, int> sizes;
+  ForEach<type_list<>>([&]<typename T>() { ++sizes[sizeof(T)]; });
+  EXPECT_THAT(sizes, IsEmpty());
+
+  sizes.clear();
+  ForEach<type_list<int>>([&]<typename T>() { ++sizes[sizeof(T)]; });
+  EXPECT_THAT(sizes, UnorderedElementsAre(Pair(sizeof(int), 1)));
+
+  sizes.clear();
+  ForEach<type_list<int8_t, int32_t, uint32_t>>(
+      [&]<typename T>() { ++sizes[sizeof(T)]; });
+  EXPECT_THAT(sizes, UnorderedElementsAre(Pair(1, 1), Pair(4, 2)));
 }
 
 }  // namespace

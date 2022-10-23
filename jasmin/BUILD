@@ -121,6 +121,27 @@ cc_test(
 )
 
 cc_library(
+    name = "serialization",
+    hdrs = ["serialization.h"],
+    deps = [
+        ":function",
+        ":instruction",
+        "//jasmin/internal:debug",
+        "//jasmin/internal:type_list",
+    ],
+)
+
+cc_test(
+    name = "serialization_test",
+    srcs = ["serialization_test.cc"],
+    deps = [
+        ":serialization",
+        "//jasmin/instructions:core",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "value_stack",
     hdrs = ["value_stack.h"],
     visibility = ["//visibility:public"],

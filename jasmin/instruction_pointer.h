@@ -22,6 +22,9 @@ struct InstructionPointer {
   // Returns the underlying `Value` pointer.
   constexpr Value const *operator->() const { return pointer_; }
 
+  // Returns a reference to the underlying `Value`.
+  constexpr Value const &operator*() const { return *pointer_; }
+
   // Moves the instruction pointer forward one op-code, returning the modified
   // InstructionPointer.
   constexpr InstructionPointer operator++() {

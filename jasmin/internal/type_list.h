@@ -101,6 +101,14 @@ struct InvokeImpl<Lambda, type_list<Ts...>> {
   static constexpr auto value = Lambda.template operator()<Ts...>();
 };
 
+template <TypeList>
+struct ForEachImpl;
+
+template <typename... Ts>
+struct ForEachImpl<type_list<Ts...>> {
+  void operator()(auto &&f) const { (f.template operator()<Ts>(), ...); }
+};
+
 }  // namespace internal_type_list
 
 // Given two type-lists, evaluates to a type-list consisting of the
@@ -143,6 +151,14 @@ using Unique =
 // list `L`.
 template <auto Lambda, TypeList L>
 inline constexpr auto Invoke = internal_type_list::InvokeImpl<Lambda, L>::value;
+
+// Given an invocable `f` that can be invoked by passing a single template
+// arguments, invokes `f` once with each template argument given by each element
+// of the type list `L`.
+template <TypeList L, typename F>
+inline constexpr auto ForEach(F &&f) {
+  internal_type_list::ForEachImpl<L>{}(std::forward<F>(f));
+}
 
 // A concept indicating that the matching type is contained in the given type
 // list.
