@@ -51,17 +51,7 @@ auto const& InstructionMap() {
 // Copies raw instructions to output, returning a pointer to the first byte of
 // the first instruction.
 char* CopyRawInstructions(std::span<Value const> raw_instructions,
-                          std::string& output) {
-  output.reserve(output.size() + raw_instructions.size() * ValueSize);
-  char* p = output.data() + output.size();
-
-  for (Value const& value : raw_instructions) {
-    char buffer[ValueSize];
-    Value::Store(value, buffer, ValueSize);
-    output.append(std::begin(buffer), std::end(buffer));
-  }
-  return p;
-}
+                          std::string& output);
 
 // Replaces the instruction execution function with its op-code, and returns the
 // number of immediate values for the instruction.
