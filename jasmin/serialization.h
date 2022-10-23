@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <string>
 #include <string_view>
 
@@ -34,7 +33,6 @@ auto InstructionMapImpl() {
         .op_code               = Set::template OpCodeFor<I>(),
         .immediate_value_count = ImmediateValueCount<I>(),
     };
-    std::cerr << typeid(I).name() << " imm: " << ImmediateValueCount<I>() << "\n";
   });
 
 
