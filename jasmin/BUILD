@@ -139,6 +139,7 @@ cc_test(
     deps = [
         ":serialization",
         "//jasmin/instructions:core",
+        "//jasmin/instructions:stack",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -16,6 +16,9 @@
 namespace jasmin {
 namespace internal {
 
+using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &,
+                              void *);
+
 // Base class used solely to indicate that any struct inherting from it is an
 // instruction set.
 struct InstructionSetBase {};
@@ -182,24 +185,21 @@ struct StackMachineInstruction {
  private:
   template <InstructionSet Set>
   static void ExecuteImpl(ValueStack &value_stack, InstructionPointer &ip,
-                          CallStack &call_stack,
-                          FunctionStateStack<Set> *state_stack) {
-    using exec_fn_type = void (*)(ValueStack &, InstructionPointer &,
-                                  CallStack &, FunctionStateStack<Set> *);
+                          CallStack &call_stack, void *state_stack) {
     if constexpr (std::is_same_v<Inst, Call>) {
       auto const *f = value_stack.pop<internal::FunctionBase const *>();
       call_stack.push(f, ip);
       ip = f->entry();
       if constexpr (not std::is_void_v<FunctionStateStack<Set>>) {
-        state_stack->emplace();
+        reinterpret_cast<FunctionStateStack<Set> *>(state_stack)->emplace();
       }
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
           value_stack, ip, call_stack, state_stack);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       ip += (ip + 1)->as<ptrdiff_t>();
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
           value_stack, ip, call_stack, state_stack);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
@@ -209,19 +209,19 @@ struct StackMachineInstruction {
         ip += 2;
       }
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+      JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
           value_stack, ip, call_stack, state_stack);
 
     } else if constexpr (std::is_same_v<Inst, Return>) {
       ip = call_stack.pop();
       if constexpr (not std::is_void_v<FunctionStateStack<Set>>) {
-        state_stack->pop();
+        reinterpret_cast<FunctionStateStack<Set> *>(state_stack)->pop();
       }
       ++ip;
       if (call_stack.empty()) [[unlikely]] {
         return;
       } else {
-        JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+        JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
             value_stack, ip, call_stack, state_stack);
       }
     } else {
@@ -265,7 +265,9 @@ struct StackMachineInstruction {
                              Ts...>{
                       value_stack,
                       std::get<typename Inst::JasminFunctionState>(
-                          state_stack->top()),
+                          reinterpret_cast<FunctionStateStack<Set> *>(
+                              state_stack)
+                              ->top()),
                       (++ip)->as<Ts>()...});
             });
         ++ip;
@@ -278,7 +280,9 @@ struct StackMachineInstruction {
                     [&](auto... values) {
                       Inst::execute(
                           std::get<typename Inst::JasminFunctionState>(
-                              state_stack->top()),
+                              reinterpret_cast<FunctionStateStack<Set> *>(
+                                  state_stack)
+                                  ->top()),
                           values...);
                     },
                     value_stack.pop_suffix<Ts...>());
@@ -289,14 +293,15 @@ struct StackMachineInstruction {
                   std::convertible_to<Value>... Ts>() {
                 value_stack.call_on_suffix<&Inst::execute, Ts...>(
                     std::get<typename Inst::JasminFunctionState>(
-                        state_stack->top()));
+                        reinterpret_cast<FunctionStateStack<Set> *>(state_stack)
+                            ->top()));
               });
         }
         ++ip;
       }
     }
 
-    JASMIN_INTERNAL_TAIL_CALL return ip->as<exec_fn_type>()(
+    JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
         value_stack, ip, call_stack, state_stack);
   }
 };
@@ -374,9 +379,7 @@ struct MakeInstructionSet final : InstructionSetBase {
   }
 
  private:
-  static constexpr void (*table[sizeof...(Is)])(ValueStack &,
-                                                InstructionPointer &,
-                                                CallStack &, void *) = {
+  static constexpr exec_fn_type table[sizeof...(Is)] = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
 
   template <AnyOf<Is...> I>
@@ -435,16 +438,18 @@ constexpr size_t ImmediateValueCount() {
   } else if constexpr (AnyOf<I, Jump, JumpIf>) {
     return 1;
   } else {
-    return ExtractSignature<decltype(&I::execute)>::invoke_with_argument_types(
-        []<typename... Ts>() {
-          if constexpr (sizeof...(Ts) == 0) {
-            return 0;
-          } else {
-            return std::is_same_v<first_of<Ts...>, ValueStack &>
-                       ? (sizeof...(Ts) - 1)
-                       : 0;
-          }
-        });
+    using signature = ExtractSignature<decltype(&I::execute)>;
+    if constexpr (StatelessWithoutImmediateValues<signature>) {
+      return 0;
+    } else if constexpr (StatelessWithImmediateValues<signature>) {
+      return signature::invoke_with_argument_types(
+          []<typename... Ts>() { return sizeof...(Ts) - 1; });
+    } else if constexpr (StatefulWithImmediateValues<signature, I>) {
+      return signature::invoke_with_argument_types(
+          []<typename... Ts>() { return sizeof...(Ts) - 2; });
+    } else if constexpr (StatefulWithoutImmediateValues<signature, I>) {
+      return 0;
+    }
   }
 }
 

@@ -14,6 +14,12 @@ struct Duplicate : StackMachineInstruction<Duplicate> {
 struct PushOne : StackMachineInstruction<PushOne> {
   static void execute(ValueStack& v) { v.push(1); }
 };
+struct Count : StackMachineInstruction<Count> {
+  using JasminFunctionState = int;
+  static void execute(ValueStack& v, JasminFunctionState& state) {
+    v.push(state++);
+  }
+};
 
 using Set = MakeInstructionSet<NoOp, Duplicate>;
 
@@ -48,6 +54,7 @@ TEST(ImmediateValueCount, Value) {
   EXPECT_EQ(internal::ImmediateValueCount<Call>(), 0);
   EXPECT_EQ(internal::ImmediateValueCount<Jump>(), 1);
   EXPECT_EQ(internal::ImmediateValueCount<JumpIf>(), 1);
+  EXPECT_EQ(internal::ImmediateValueCount<Count>(), 0);
 
   struct NoImmediates : StackMachineInstruction<NoImmediates> {
     static int execute(int, int) { return 0; }
