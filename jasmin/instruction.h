@@ -2,7 +2,9 @@
 #define JASMIN_INSTRUCTION_H
 
 #include <concepts>
+#include <limits>
 #include <stack>
+#include <type_traits>
 
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction_pointer.h"
