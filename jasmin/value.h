@@ -68,6 +68,7 @@ struct Value {
       : debug_type_id_(internal::type_id<decltype(v)>)
 #endif  // defined(JASMIN_DEBUG)
   {
+    std::memset(&value_, 0, sizeof(value_));
     std::memcpy(value_, &v, sizeof(v));
   }
 

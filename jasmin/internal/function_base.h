@@ -37,6 +37,7 @@ struct FunctionBase {
   // Values in the span are not distinguished separately as `OpCode`s or
   // arguments passed to an `OpCode`.
   std::span<Value const> raw_instructions() const { return instructions_; }
+  std::span<Value> raw_instructions() { return instructions_; }
 
   // Given the index `index` into the immediate values of `range`, sets the
   // corresponding `Value` to `value`. Behavior is undefined if `range` is not a

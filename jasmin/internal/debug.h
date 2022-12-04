@@ -39,13 +39,20 @@ inline TypeId type_id{
 
 }  // namespace jasmin::internal
 
-#define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)                                \
+#define JASMIN_INTERNAL_DEBUG_ASSERT_IMPL_(expr, file, line, ...)              \
   do {                                                                         \
     if (not(expr)) {                                                           \
-      ::jasmin::internal::DebugAbort("Failed assertion: " #expr "\n",          \
+      ::jasmin::internal::DebugAbort("Failed assertion on at " file "(" #line  \
+                                     "): " #expr "\n",                         \
                                      __VA_ARGS__);                             \
     }                                                                          \
   } while (false)
+
+#define JASMIN_INTERNAL_DEBUG_ASSERT_IMPL(expr, file, line, ...)               \
+  JASMIN_INTERNAL_DEBUG_ASSERT_IMPL_(expr, file, line, __VA_ARGS__)
+
+#define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)                                \
+  JASMIN_INTERNAL_DEBUG_ASSERT_IMPL(expr, __FILE__, __LINE__, __VA_ARGS__)
 
 #else
 

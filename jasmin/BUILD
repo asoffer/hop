@@ -123,7 +123,6 @@ cc_test(
 cc_library(
     name = "serialization",
     hdrs = ["serialization.h"],
-    srcs = ["serialization.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":function",
