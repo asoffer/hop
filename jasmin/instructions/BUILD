@@ -1,6 +1,24 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "bool",
+    hdrs = ["bool.h"],
+    deps = [
+        "//jasmin:instruction",
+    ],
+)
+
+cc_test(
+    name = "bool_test",
+    srcs = ["bool_test.cc"],
+    deps = [
+        ":bool",
+        "//jasmin:testing",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
+cc_library(
     name = "core",
     hdrs = ["core.h"],
     deps = [
