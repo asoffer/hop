@@ -8,32 +8,32 @@
 namespace jasmin {
 
 template <typename T>
-concept Addable = requires(T t) {
+concept Addable = not std::same_as<bool, T> and requires(T t) {
   { t + t } -> std::convertible_to<T>;
 };
 
 template <typename T>
-concept Subtractable = requires(T t) {
+concept Subtractable = not std::same_as<bool, T> and requires(T t) {
   { t - t } -> std::convertible_to<T>;
 };
 
 template <typename T>
-concept Multiplicable = requires(T t) {
+concept Multiplicable = not std::same_as<bool, T> and requires(T t) {
   { t *t } -> std::convertible_to<T>;
 };
 
 template <typename T>
-concept Divisible = requires(T t) {
+concept Divisible = not std::same_as<bool, T> and requires(T t) {
   { t / t } -> std::convertible_to<T>;
 };
 
 template <typename T>
-concept Modable = requires(T t) {
+concept Modable = not std::same_as<bool, T> and requires(T t) {
   { t % t } -> std::convertible_to<T>;
 };
 
 template <typename T>
-concept Negatable = requires(T t) {
+concept Negatable = not std::same_as<bool, T> and requires(T t) {
   { -t } -> std::convertible_to<T>;
 };
 
