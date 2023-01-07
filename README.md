@@ -32,8 +32,8 @@ Jasmin is a collection of C++20 libraries, and relies heavily on Bazel for
 building and testing. You will need a C++20-compliant compiler and a relatively
 recent copy of [Bazel](https://bazel.build/). Specifically,
 
-* Bazel version 5.2.0 or greater
-* Clang 13.0.0
+* Bazel version 5.4.0 or greater
+* Clang 14.0.0
 
 Jasmin libraries is intended to be used from your C++ code and always built from
 source. For this reason, Jasmin does not have any installation or setup process.
@@ -69,13 +69,12 @@ common mistakes relying on behavior that is not defined by Jasmin's APIs.
 
 ## Continuous Integration
 
-Coming soon...
-
-Currently Jasmin is only tested on ARM-based macOS platforms. We are open (in
-fact, ecstatic) to receive pull requests that support more environments and
-platforms (new hardware, operating systems, compilers, etc).  However, we are
-unlikely to prioritize support for anything other than the few most-recent
-versions of any particular operating system or compiler.
+Currently Jasmin is only [tested](
+https://github.com/asoffer/jasmin/actions?query=workflow%3ACI) on Ubuntu-like
+platforms. We are open (in fact, ecstatic) to receive pull requests that support
+more environments and platforms (new hardware, operating systems, compilers, etc).
+However, we are unlikely to prioritize support for anything other than the few
+most-recent versions of any particular operating system or compiler.
 
 ## Long Term Support
 
