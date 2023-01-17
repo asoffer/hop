@@ -29,7 +29,8 @@ struct PrintInt : jasmin::StackMachineInstruction<PrintInt> {
 // increments the counter, prints it, calls `f3`, and prints the counter again.
 // The function `f3` just increments the counter and prints it. We expect the
 // values 1, 2, 3, 3, 3 to be printed in order because the counter's value is
-// retained across function invocations.
+// retained across function invocations. Executing it a second time with the
+// same state, we expect the values to be 4, 5, 6, 6, 6.
 void Counter() {
   using Instructions = jasmin::MakeInstructionSet<IncrementCount, PushCount,
                                                   PrintInt, jasmin::Push>;
@@ -61,8 +62,12 @@ void Counter() {
   f3.append<PrintInt>();
   f3.append<jasmin::Return>();
 
+  int n;
+  jasmin::ExecutionState<Instructions> state(n);
+
   // Now that our function has been defined, we can execute it.
-  jasmin::Execute(f1, {/* No arguments */});
+  jasmin::Execute(f1, state, {/* No arguments */});
+  jasmin::Execute(f1, state, {/* No arguments */});
 }
 
 int main() {
