@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "jasmin/call_stack.h"
+#include "jasmin/execution_state.h"
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/attributes.h"
 #include "jasmin/internal/function_base.h"
@@ -20,11 +21,6 @@ namespace jasmin {
 template <typename T>
 concept HasFunctionState = requires {
   typename T::JasminFunctionState;
-};
-
-template <typename T>
-concept HasExecutionState = requires {
-  typename T::JasminExecutionState;
 };
 
 namespace internal {
@@ -147,11 +143,6 @@ concept HasValidSignature =
                                           HasFuncState>()));
 
 template <typename T>
-struct NotVoid {
-  static constexpr bool value = not std::is_void_v<T>;
-};
-
-template <typename T>
 struct GetFunctionStateImpl {
   using type = void;
 };
@@ -164,30 +155,12 @@ struct GetFunctionStateImpl<T> {
 template <typename T>
 using GetFunctionState = typename GetFunctionStateImpl<T>::type;
 
-template <typename T>
-struct GetExecutionStateImpl {
-  using type = void;
-};
-
-template <HasExecutionState T>
-struct GetExecutionStateImpl<T> {
-  using type = typename T::JasminExecutionState;
-};
-
-template <typename T>
-using GetExecutionState = typename GetExecutionStateImpl<T>::type;
-
 // A list of all types required to represent the state of all functions in
 // the instruction set `Set`.
 template <typename Set>
 using FunctionStateList = Filter<
     NotVoid,
     Unique<Transform<GetFunctionState, typename Set::jasmin_instructions *>>>;
-
-template <typename Set>
-using ExecutionStateList = Filter<
-    NotVoid,
-    Unique<Transform<GetExecutionState, typename Set::jasmin_instructions *>>>;
 
 }  // namespace internal
 
@@ -207,15 +180,6 @@ using FunctionStateStack = std::conditional_t<
 
 namespace internal {
 
-
-template <typename ExecState>
-struct ExecStateImpl;
-
-template <typename... States>
-struct ExecStateImpl<void (*)(States *...)> {
-  std::tuple<States...> execution_state;
-};
-
 template <typename FuncStateStack>
 struct FuncStateImpl {
   FuncStateStack function_state_stack;
@@ -224,13 +188,15 @@ struct FuncStateImpl {
 template <>
 struct FuncStateImpl<void> {};
 
-template <typename ExecStateList, typename FuncState>
-struct StateImpl : ExecStateImpl<ExecStateList>, FuncStateImpl<FuncState> {
+template <typename ExecutionState, typename FuncState>
+struct StateImpl : FuncStateImpl<FuncState> {
   static constexpr bool has_function_state = not std::is_void_v<FuncState>;
+
+  ExecutionState *exec_state;
 };
 
 template <InstructionSet Set>
-using State = StateImpl<ExecutionStateList<Set>, FunctionStateStack<Set>>;
+using State = StateImpl<ExecutionState<Set>, FunctionStateStack<Set>>;
 
 }  // namespace internal
 
@@ -343,8 +309,8 @@ struct StackMachineInstruction {
                   std::tuple<ValueStack &,
                              typename Inst::JasminExecutionState &, Ts...>{
                       value_stack,
-                      std::get<typename Inst::JasminExecutionState>(
-                          state->execution_state),
+                      state->exec_state
+                          ->template get<typename Inst::JasminExecutionState>(),
                       std::get<typename Inst::JasminFunctionState>(
                           state->function_state_stack.top()),
                       (++ip)->as<Ts>()...});
@@ -361,8 +327,8 @@ struct StackMachineInstruction {
                   std::tuple<ValueStack &,
                              typename Inst::JasminExecutionState &, Ts...>{
                       value_stack,
-                      std::get<typename Inst::JasminExecutionState>(
-                          state->execution_state),
+                      state->exec_state
+                          ->template get<typename Inst::JasminExecutionState>(),
                       (++ip)->as<Ts>()...});
             });
       } else if constexpr (VS and not ES and FS) {
@@ -397,8 +363,8 @@ struct StackMachineInstruction {
                 std::convertible_to<Value>... Ts>() {
               std::apply(
                   [&](auto... values) {
-                    Inst::execute(std::get<typename Inst::JasminExecutionState>(
-                                      state->execution_state),
+                    Inst::execute(state->exec_state->template get<
+                                      typename Inst::JasminExecutionState>(),
                                   std::get<typename Inst::JasminFunctionState>(
                                       state->function_state_stack.top()),
                                   values...);
@@ -411,8 +377,8 @@ struct StackMachineInstruction {
                 std::convertible_to<Value>... Ts>() {
               std::apply(
                   [&](auto... values) {
-                    Inst::execute(std::get<typename Inst::JasminExecutionState>(
-                                      state->execution_state),
+                    Inst::execute(state->exec_state->template get<
+                                      typename Inst::JasminExecutionState>(),
                                   values...);
                   },
                   value_stack.pop_suffix<Ts...>());
@@ -440,8 +406,8 @@ struct StackMachineInstruction {
                 std::same_as<typename Inst::JasminFunctionState &>,
                 std::convertible_to<Value>... Ts>() {
               value_stack.call_on_suffix<&Inst::execute, Ts...>(
-                  std::get<typename Inst::JasminExecutionState>(
-                      state->execution_state),
+                  state->exec_state
+                      ->template get<typename Inst::JasminExecutionState>(),
                   std::get<typename Inst::JasminFunctionState>(
                       state->function_state_stack.top()));
             });
@@ -450,8 +416,8 @@ struct StackMachineInstruction {
             [&]<std::same_as<typename Inst::JasminExecutionState &>,
                 std::convertible_to<Value>... Ts>() {
               value_stack.call_on_suffix<&Inst::execute, Ts...>(
-                  std::get<typename Inst::JasminExecutionState>(
-                      state->execution_state));
+                  state->exec_state
+                      ->template get<typename Inst::JasminExecutionState>());
             });
       } else if constexpr (not RV and not VS and not ES and FS) {
         signature::invoke_with_argument_types(

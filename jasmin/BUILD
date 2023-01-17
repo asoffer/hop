@@ -34,6 +34,16 @@ cc_library(
 )
 
 cc_library(
+    name = "execution_state",
+    hdrs = ["execution_state.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//jasmin/internal:type_list",
+        "//jasmin/internal:type_traits",
+    ],
+)
+
+cc_library(
     name = "function",
     hdrs = ["function.h"],
     visibility = ["//visibility:public"],
@@ -62,6 +72,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":call_stack",
+        ":execution_state",
         ":instruction_pointer",
         ":value",
         ":value_stack",
