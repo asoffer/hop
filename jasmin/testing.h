@@ -4,19 +4,20 @@
 #include "jasmin/instruction.h"
 
 namespace jasmin {
+namespace internal {
 
-template <Instruction Inst, typename... ImmediateArguments,
-          internal::StatelessWithImmediateValues Signature =
-              internal::ExtractSignature<decltype(&Inst::execute)>>
-void ExecuteInstruction(ValueStack &value_stack,
-                        ImmediateArguments... immediate_arguments) {
-  Inst::execute(value_stack, immediate_arguments...);
-}
+template <typename Inst, bool Imm, bool E, bool F>
+concept ValidInstruction =
+    Instruction<Inst> and
+    (HasValueStack<internal::ExtractSignature<decltype(&Inst::execute)>> ==
+     Imm) and
+    (HasExecutionState<Inst> == E) and (HasFunctionState<Inst> == F);
 
-template <Instruction Inst, int &...,
-          internal::StatelessWithoutImmediateValues Signature =
-              internal::ExtractSignature<decltype(&Inst::execute)>>
+}  // namespace internal
+
+template <internal::ValidInstruction<false, false, false> Inst>
 void ExecuteInstruction(ValueStack &value_stack) {
+  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
   if constexpr (std::is_void_v<typename Signature::return_type>) {
     Signature::invoke_with_argument_types([&]<
                                           std::convertible_to<Value>... Ts>() {
@@ -30,26 +31,78 @@ void ExecuteInstruction(ValueStack &value_stack) {
   }
 }
 
-template <Instruction Inst, typename... ImmediateArguments,
-          internal::StatefulWithImmediateValues<Inst> Signature =
-              internal::ExtractSignature<decltype(&Inst::execute)>>
+template <internal::ValidInstruction<false, false, true> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminFunctionState &state,
-                        ImmediateArguments... immediate_values) {
-  Inst::execute(value_stack, state, immediate_values...);
-}
-
-template <Instruction Inst, int &...,
-          internal::StatefulWithoutImmediateValues<Inst> Signature =
-              internal::ExtractSignature<decltype(&Inst::execute)>>
-void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminFunctionState &state) {
+                        typename Inst::JasminFunctionState &fn_state) {
+  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
   Signature::invoke_with_argument_types(
       [&]<std::same_as<typename Inst::JasminFunctionState &>,
           std::convertible_to<Value>... Ts>() {
-        std::apply([&](auto... values) { Inst::execute(state, values...); },
+        std::apply([&](auto... values) { Inst::execute(fn_state, values...); },
                    value_stack.pop_suffix<Ts...>());
       });
+}
+
+template <internal::ValidInstruction<false, true, false> Inst>
+void ExecuteInstruction(ValueStack &value_stack,
+                        typename Inst::JasminExecutionState &exec_state) {
+  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
+  Signature::invoke_with_argument_types(
+      [&]<std::same_as<typename Inst::JasminExecutionState &>,
+          std::convertible_to<Value>... Ts>() {
+        std::apply(
+            [&](auto... values) { Inst::execute(exec_state, values...); },
+            value_stack.pop_suffix<Ts...>());
+      });
+}
+
+template <internal::ValidInstruction<false, true, true> Inst>
+void ExecuteInstruction(ValueStack &value_stack,
+                        typename Inst::JasminExecutionState &exec_state,
+                        typename Inst::JasminFunctionState &fn_state) {
+  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
+  Signature::invoke_with_argument_types(
+      [&]<std::same_as<typename Inst::JasminExecutionState &>,
+          std::same_as<typename Inst::JasminFunctionState &>,
+          std::convertible_to<Value>... Ts>() {
+        std::apply(
+            [&](auto... values) {
+              Inst::execute(exec_state, fn_state, values...);
+            },
+            value_stack.pop_suffix<Ts...>());
+      });
+}
+
+template <internal::ValidInstruction<true, false, false> Inst,
+          typename... ImmediateArguments>
+void ExecuteInstruction(ValueStack &value_stack,
+                        ImmediateArguments... immediate_arguments) {
+  Inst::execute(value_stack, immediate_arguments...);
+}
+
+template <internal::ValidInstruction<true, false, true> Inst,
+          typename... ImmediateArguments>
+void ExecuteInstruction(ValueStack &value_stack,
+                        typename Inst::JasminFunctionState &fn_state,
+                        ImmediateArguments... immediate_arguments) {
+  Inst::execute(value_stack, fn_state, immediate_arguments...);
+}
+
+template <internal::ValidInstruction<true, true, false> Inst,
+          typename... ImmediateArguments>
+void ExecuteInstruction(ValueStack &value_stack,
+                        typename Inst::JasminExecutionState &exec_state,
+                        ImmediateArguments... immediate_arguments) {
+  Inst::execute(value_stack, exec_state, immediate_arguments...);
+}
+
+template <internal::ValidInstruction<true, true, true> Inst,
+          typename... ImmediateArguments>
+void ExecuteInstruction(ValueStack &value_stack,
+                        typename Inst::JasminExecutionState &exec_state,
+                        typename Inst::JasminFunctionState &fn_state,
+                        ImmediateArguments... immediate_arguments) {
+  Inst::execute(value_stack, exec_state, fn_state, immediate_arguments...);
 }
 
 }  // namespace jasmin

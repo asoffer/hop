@@ -22,16 +22,16 @@ void Execute(Function<Set> const &f, ValueStack &value_stack) {
   CallStack call_stack;
   InstructionPointer ip = f.entry();
   call_stack.push(&f, ip);
-  using function_state_stack = FunctionStateStack<Set>;
-  using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &,
-                                function_state_stack *);
-  if constexpr (std::is_void_v<function_state_stack>) {
-    return ip->as<exec_fn_type>()(value_stack, ip, call_stack, nullptr);
-  } else {
-    function_state_stack state_stack;
-    state_stack.emplace();
-    return ip->as<exec_fn_type>()(value_stack, ip, call_stack, &state_stack);
+  using state_type = internal::State<Set>;
+  state_type state;
+
+  if constexpr (state_type::has_function_state) {
+    state.function_state_stack.emplace();
   }
+
+  using exec_fn_type =
+      void (*)(ValueStack &, InstructionPointer &, CallStack &, state_type *);
+  return ip->as<exec_fn_type>()(value_stack, ip, call_stack, &state);
 }
 
 // Interprets the given function `f` with arguments provided in the

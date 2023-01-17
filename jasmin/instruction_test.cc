@@ -21,6 +21,23 @@ struct Count : StackMachineInstruction<Count> {
   }
 };
 
+struct CountAcrossFunctions : StackMachineInstruction<CountAcrossFunctions> {
+  using JasminExecutionState = int;
+  static void execute(ValueStack& v, JasminExecutionState& state) {
+    v.push(state++);
+  }
+};
+
+struct CountBoth : StackMachineInstruction<CountBoth> {
+  using JasminExecutionState = int;
+  using JasminFunctionState = int;
+  static void execute(ValueStack& v, JasminExecutionState& exec_state,
+                      JasminFunctionState& fn_state) {
+    v.push(exec_state++);
+    v.push(fn_state++);
+  }
+};
+
 using Set = MakeInstructionSet<NoOp, Duplicate>;
 
 template <Instruction I>
@@ -55,6 +72,8 @@ TEST(ImmediateValueCount, Value) {
   EXPECT_EQ(internal::ImmediateValueCount<Jump>(), 1);
   EXPECT_EQ(internal::ImmediateValueCount<JumpIf>(), 1);
   EXPECT_EQ(internal::ImmediateValueCount<Count>(), 0);
+  EXPECT_EQ(internal::ImmediateValueCount<CountAcrossFunctions>(), 0);
+  EXPECT_EQ(internal::ImmediateValueCount<CountBoth>(), 0);
 
   struct NoImmediates : StackMachineInstruction<NoImmediates> {
     static int execute(int, int) { return 0; }
@@ -72,22 +91,40 @@ TEST(ImmediateValueCount, Value) {
   EXPECT_EQ(internal::ImmediateValueCount<SomeImmediates>(), 2);
 }
 
-TEST(InstructionSet, FunctionStateStack) {
-  struct Stateless : StackMachineInstruction<Stateless> {
-    static int execute(int, int) { return 0; }
+TEST(InstructionSet, State) {
+  struct None : StackMachineInstruction<None> {
+    static int execute(int) { return 0; }
   };
-  struct Stateful : StackMachineInstruction<Stateful> {
+  struct F : StackMachineInstruction<F> {
     using JasminFunctionState = int;
-    static int execute(int, int) { return 0; }
+    static int execute(JasminFunctionState&, int) { return 0; }
   };
-  using Set = MakeInstructionSet<Stateless, Stateful>;
+  struct E : StackMachineInstruction<E> {
+    using JasminExecutionState = char;
+    static int execute(JasminExecutionState&, int) { return 0; }
+  };
+  struct EF : StackMachineInstruction<EF> {
+    using JasminExecutionState = char;
+    using JasminFunctionState  = int;
+    static int execute(JasminExecutionState&, JasminFunctionState&, int) {
+      return 0;
+    }
+  };
+
+  using Set = MakeInstructionSet<None, E, F, EF>;
   EXPECT_TRUE((std::is_same_v<internal::FunctionStateList<Set>,
                               internal::type_list<int>>));
+  EXPECT_TRUE((std::is_same_v<internal::ExecutionStateList<Set>,
+                              internal::type_list<char>>));
   EXPECT_TRUE(
       (std::is_same_v<FunctionStateStack<Set>, std::stack<std::tuple<int>>>));
   EXPECT_TRUE(
-      (std::is_same_v<FunctionStateStack<MakeInstructionSet<Stateless>>, void>));
-  EXPECT_TRUE((std::is_same_v<FunctionStateStack<MakeInstructionSet<Stateful>>,
+      (std::is_same_v<FunctionStateStack<MakeInstructionSet<None>>, void>));
+  EXPECT_TRUE(
+      (std::is_same_v<FunctionStateStack<MakeInstructionSet<E>>, void>));
+  EXPECT_TRUE((std::is_same_v<FunctionStateStack<MakeInstructionSet<F>>,
+                              std::stack<std::tuple<int>>>));
+  EXPECT_TRUE((std::is_same_v<FunctionStateStack<MakeInstructionSet<EF>>,
                               std::stack<std::tuple<int>>>));
 }
 

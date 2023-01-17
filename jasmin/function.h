@@ -26,44 +26,54 @@ struct Function final : internal::FunctionBase {
 
   // Appends an op-code for the given `Instruction I` template parameter.
   template <internal::ContainedIn<typename Set::jasmin_instructions*> I>
-  constexpr OpCodeRange append() requires(
-      std::is_same_v<I, Return> or std::is_same_v<I, Call> or
-      internal::InstructionWithoutImediateValues<I>) {
-    return internal::FunctionBase::append(
-        {Value(&I::template ExecuteImpl<Set>)});
-  }
+  constexpr OpCodeRange append(auto... vs) {
+    if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call>) {
+      return internal::FunctionBase::append(
+          {Value(&I::template ExecuteImpl<Set>)});
+    } else {
+      using signature = internal::ExtractSignature<decltype(&I::execute)>;
+      if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call> or
+                    not internal::HasValueStack<signature>) {
+        return internal::FunctionBase::append(
+            {Value(&I::template ExecuteImpl<Set>)});
+      } else {
+        constexpr size_t DropCount = internal::HasValueStack<signature> +
+                                     HasExecutionState<I> + HasFunctionState<I>;
 
-  // Appends an op-code for the given `Instruction I` template parameter,
-  // followed by `Value`s for each of the passed arguments.
-  template <internal::ContainedIn<typename Set::jasmin_instructions*> I,
-            typename... Vs>
-  constexpr OpCodeRange append(Vs... vs) requires(
-      internal::StatefulWithImmediateValues<
-          internal::ExtractSignature<decltype(&I::execute)>, I>) {
-    return internal::ExtractSignature<decltype(&I::execute)>::
-        invoke_with_argument_types(
-            [&]<typename DropFirstArgument, typename DropSecondArgument,
-                typename... Arguments>() {
-              return internal::FunctionBase::append(
-                  {Value(&I::template ExecuteImpl<Set>),
-                   Value(static_cast<Arguments>(vs))...});
-            });
-  }
-
-  // Appends an op-code for the given `Instruction I` template parameter,
-  // followed by `Value`s for each of the passed arguments.
-  template <internal::ContainedIn<typename Set::jasmin_instructions*> I,
-            typename... Vs>
-  constexpr OpCodeRange append(Vs... vs) requires(
-      internal::StatelessWithImmediateValues<
-          internal::ExtractSignature<decltype(&I::execute)>>) {
-    return internal::ExtractSignature<decltype(&I::execute)>::
-        invoke_with_argument_types(
-            [&]<typename DropFirstArgument, typename... Arguments>() {
-              return internal::FunctionBase::append(
-                  {Value(&I::template ExecuteImpl<Set>),
-                   Value(static_cast<Arguments>(vs))...});
-            });
+        if constexpr (DropCount == 0) {
+          return internal::ExtractSignature<decltype(&I::execute)>::
+              invoke_with_argument_types([&]<typename... Arguments>() {
+                return internal::FunctionBase::append(
+                    {Value(&I::template ExecuteImpl<Set>),
+                     Value(static_cast<Arguments>(vs))...});
+              });
+        } else if constexpr (DropCount == 1) {
+          return internal::ExtractSignature<decltype(&I::execute)>::
+              invoke_with_argument_types(
+                  [&]<typename, typename... Arguments>() {
+                    return internal::FunctionBase::append(
+                        {Value(&I::template ExecuteImpl<Set>),
+                         Value(static_cast<Arguments>(vs))...});
+                  });
+        } else if constexpr (DropCount == 2) {
+          return internal::ExtractSignature<decltype(&I::execute)>::
+              invoke_with_argument_types(
+                  [&]<typename, typename, typename... Arguments>() {
+                    return internal::FunctionBase::append(
+                        {Value(&I::template ExecuteImpl<Set>),
+                         Value(static_cast<Arguments>(vs))...});
+                  });
+        } else if constexpr (DropCount == 3) {
+          return internal::ExtractSignature<decltype(&I::execute)>::
+              invoke_with_argument_types(
+                  [&]<typename, typename, typename, typename... Arguments>() {
+                    return internal::FunctionBase::append(
+                        {Value(&I::template ExecuteImpl<Set>),
+                         Value(static_cast<Arguments>(vs))...});
+                  });
+        }
+      }
+    }
   }
 
   // Appends an intsruction followed by space for `placeholder_count` values
