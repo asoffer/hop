@@ -18,7 +18,7 @@ namespace jasmin {
 // Executes the given function `f` with an initial stack of values given by the
 // object referenced by `value_stack`. `value_stack` is modified in place.
 template <InstructionSet Set>
-void Execute(Function<Set> const &f, ExecutionState<Set> &exec_state,
+void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
              ValueStack &value_stack) {
   CallStack call_stack;
   InstructionPointer ip = f.entry();
@@ -52,7 +52,7 @@ requires(std::is_same_v<internal::ExecutionStateList<Set>,
 // `JASMIN_DEBUG` is defined then the behavior is defined to report an error
 // message to `stderr` and abort program execution.
 template <InstructionSet Set>
-void Execute(Function<Set> const &f, ExecutionState<Set> &exec_state,
+void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
              std::initializer_list<Value> arguments,
              SmallTrivialValue auto &...return_values) {
   JASMIN_INTERNAL_DEBUG_ASSERT(arguments.size() == f.parameter_count(),
