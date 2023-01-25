@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "nth/meta/concepts.h"
+
 namespace jasmin::internal {
 
 // `ExtractSignature` is a struct template which, is only defined when
@@ -38,23 +40,6 @@ struct ExtractSignature<R (*)(Arguments...)> {
     return std::forward<F>(f).template operator()<Arguments...>();
   }
 };
-
-// A concept indicating that `T` is one of the types mentioned in `Ts...`.
-template <typename T, typename... Ts>
-concept AnyOf = (std::is_same_v<T, Ts> or ...);
-
-namespace internal_type_traits {
-
-template <typename T, typename...>
-struct First {
-  using type = T;
-};
-
-}  // namespace internal_type_traits
-
-// Evaluates to the first type amongst the given type arguments.
-template <typename... Ts>
-using first_of = typename internal_type_traits::First<Ts...>::type;
 
 }  // namespace jasmin::internal
 

@@ -141,19 +141,23 @@ struct Deserializer {
 template <Instruction I>
 using SerializationStateFor =
     typename internal::SerializationStateImpl<I>::type;
-template <Instruction I>
 
 // Boolean value indicating whether the instruction has a custom serializer
 // defined.
+template <Instruction I>
 inline constexpr bool HasCustomSerializer =
     internal::SerializationStateImpl<I>::present;
 
 namespace internal {
 
 template <typename Set>
-using SerializationStateList =
-    Filter<NotVoid, Unique<Transform<SerializationStateFor,
-                                     typename Set::jasmin_instructions*>>>;
+using SerializationStateList = FromNth<
+    ToNth(std::type_identity_t<typename Set::jasmin_instructions*>{})
+        .template transform<[](auto t) {
+          return nth::type<SerializationStateFor<nth::type_t<t>>>;
+        }>()
+        .unique()
+        .template filter<[](auto t) { return t != nth::type<void>; }>()>;
 
 template <InstructionSet Set>
 using SerializationState =

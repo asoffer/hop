@@ -15,6 +15,9 @@
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
+#include "nth/meta/concepts.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace jasmin {
 
@@ -142,25 +145,21 @@ concept HasValidSignature =
       ValidSignatureWithoutImmediatesImpl<Signature, I, HasExecState,
                                           HasFuncState>()));
 
-template <typename T>
-struct GetFunctionStateImpl {
-  using type = void;
-};
-
-template <HasFunctionState T>
-struct GetFunctionStateImpl<T> {
-  using type = typename T::JasminFunctionState;
-};
-
-template <typename T>
-using GetFunctionState = typename GetFunctionStateImpl<T>::type;
-
 // A list of all types required to represent the state of all functions in
 // the instruction set `Set`.
 template <typename Set>
-using FunctionStateList = Filter<
-    NotVoid,
-    Unique<Transform<GetFunctionState, typename Set::jasmin_instructions *>>>;
+using FunctionStateList = FromNth<
+    ToNth(std::type_identity_t<typename Set::jasmin_instructions *>{})
+        .template transform<[](auto t) {
+          using T = nth::type_t<t>;
+          if constexpr (HasFunctionState<T>) {
+            return nth::type<typename T::JasminFunctionState>;
+          } else {
+            return nth::type<void>;
+          }
+        }>()
+        .unique()
+        .template filter<[](auto t) { return t != nth::type<void>; }>()>;
 
 }  // namespace internal
 
@@ -173,10 +172,15 @@ concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
 // to hold all state required by all instructions in `Set`, or `void` if all
 // instructions in `Set` are stateless.
 template <InstructionSet Set>
-using FunctionStateStack = std::conditional_t<
-    std::is_same_v<internal::FunctionStateList<Set>, internal::type_list<>>,
-    void,
-    std::stack<internal::Apply<std::tuple, internal::FunctionStateList<Set>>>>;
+using FunctionStateStack = nth::type_t<[](auto state_list) {
+  if constexpr (state_list.empty()) {
+    return nth::type<void>;
+  } else {
+    return state_list.reduce([](auto... ts) {
+      return nth::type<std::stack<std::tuple<nth::type_t<ts>...>>>;
+    });
+  }
+}(internal::ToNth(internal::FunctionStateList<Set>{}))>;
 
 namespace internal {
 
@@ -482,7 +486,7 @@ struct Return : StackMachineInstruction<Return> {};
 //       following instruction.
 //
 template <typename I>
-concept Instruction = (internal::AnyOf<I, Call, Jump, JumpIf, Return> or
+concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Return> or
                        (std::derived_from<I, StackMachineInstruction<I>> and
                         internal::HasValidSignature<I>));
 
@@ -501,7 +505,7 @@ struct MakeInstructionSet final : InstructionSetBase {
 
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
-  template <AnyOf<Is...> I>
+  template <nth::any_of<Is...> I>
   static constexpr uint64_t OpCodeFor() {
     constexpr size_t value = OpCodeForImpl<I>();
     return value;
@@ -517,7 +521,7 @@ struct MakeInstructionSet final : InstructionSetBase {
   static constexpr exec_fn_type table[sizeof...(Is)] = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
 
-  template <AnyOf<Is...> I>
+  template <nth::any_of<Is...> I>
   static constexpr uint64_t OpCodeForImpl() {
     // Because the fold-expression below unconditionally adds one to `i` on its
     // first evaluation, we start `i` at its maximum value and allow it to wrap
@@ -531,46 +535,50 @@ struct MakeInstructionSet final : InstructionSetBase {
 // Given a list of `Instruction`s or `InstructionSet`s, `FlattenInstructionList`
 // computes the list of all instructions in the list, in an InstructionSet in
 // the list transitively.
-template <Instruction... Processed>
-constexpr auto FlattenInstructionList(type_list<Processed...>, type_list<>) {
-  return type_list<Processed...>{};
-}
-
-template <Instruction... Processed, InstructionOrInstructionSet I,
-          InstructionOrInstructionSet... Is>
-constexpr auto FlattenInstructionList(type_list<Processed...>,
-                                      type_list<I, Is...>) {
-  if constexpr (AnyOf<I, Processed...>) {
-    return FlattenInstructionList(type_list<Processed...>{},
-                                  type_list<Is...>{});
-  } else if constexpr (Instruction<I>) {
-    return FlattenInstructionList(type_list<Processed..., I>{},
-                                  type_list<Is...>{});
+constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
+                                      nth::Sequence auto processed) {
+  if constexpr (unprocessed.empty()) {
+    return processed;
   } else {
-    return FlattenInstructionList(
-        type_list<Processed...>{},
-        Concatenate<type_list<Is...>, typename I::jasmin_instructions *>{});
+    constexpr auto head = unprocessed.head();
+    constexpr auto tail = unprocessed.tail();
+    if constexpr (processed.reduce(
+                      [&](auto... vs) { return ((vs == head) or ...); })) {
+      return FlattenInstructionList(processed, tail);
+    } else if constexpr (Instruction<nth::type_t<head>>) {
+      // TODO: Is this a bug in Clang? `tail` does not work but
+      // `decltype(tail){}` does.
+      return FlattenInstructionList(decltype(tail){},
+                                    processed + nth::sequence<head>);
+    } else {
+      return FlattenInstructionList(
+          processed,
+          tail + ToNth<typename nth::type_t<head>::jasmin_instructions *>);
+    }
   }
 }
 
-using BuiltinInstructionList = type_list<Call, Jump, JumpIf, Return>;
+constexpr auto BuiltinInstructionList =
+    nth::type_sequence<Call, Jump, JumpIf, Return>;
 
 }  // namespace internal
 
 template <internal::InstructionOrInstructionSet... Is>
-using MakeInstructionSet =
-    internal::Apply<internal::MakeInstructionSet,
-                    decltype(internal::FlattenInstructionList(
-                        /*processed=*/internal::BuiltinInstructionList{},
-                        /*unprocessed=*/internal::type_list<Is...>{}))>;
+using MakeInstructionSet = nth::type_t<
+    internal::FlattenInstructionList(
+        /*unprocessed=*/nth::type_sequence<Is...>,
+        /*processed=*/internal::BuiltinInstructionList)
+        .reduce([](auto... vs) {
+          return nth::type<internal::MakeInstructionSet<nth::type_t<vs>...>>;
+        })>;
 
 namespace internal {
 
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
-  if constexpr (AnyOf<I, Call, Return>) {
+  if constexpr (nth::any_of<I, Call, Return>) {
     return 0;
-  } else if constexpr (AnyOf<I, Jump, JumpIf>) {
+  } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
     return 1;
   } else {
     using signature = ExtractSignature<decltype(&I::execute)>;

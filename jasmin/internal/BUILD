@@ -47,6 +47,8 @@ cc_library(
     visibility = ["//jasmin:__subpackages__"],
     deps = [
         ":type_traits",
+        "@asoffer_nth//nth/meta:sequence",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 
@@ -63,7 +65,9 @@ cc_library(
     name = "type_traits",
     hdrs = ["type_traits.h"],
     visibility = ["//jasmin:__subpackages__"],
-    deps = [],
+    deps = [
+        "@asoffer_nth//nth/meta:concepts",
+    ],
 )
 
 cc_test(

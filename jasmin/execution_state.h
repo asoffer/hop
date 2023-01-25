@@ -22,23 +22,19 @@ struct NotVoid {
   static constexpr bool value = not std::is_void_v<T>;
 };
 
-template <typename T>
-struct GetExecutionStateImpl {
-  using type = void;
-};
-
-template <HasExecutionState T>
-struct GetExecutionStateImpl<T> {
-  using type = typename T::JasminExecutionState;
-};
-
-template <typename T>
-using GetExecutionState = typename GetExecutionStateImpl<T>::type;
-
 template <typename Set>
-using ExecutionStateList = Filter<
-    NotVoid,
-    Unique<Transform<GetExecutionState, typename Set::jasmin_instructions *>>>;
+using ExecutionStateList = FromNth<
+    ToNth(std::type_identity_t<typename Set::jasmin_instructions *>{})
+        .template transform<[](auto t) {
+          using T = nth::type_t<t>;
+          if constexpr (HasExecutionState<T>) {
+            return nth::type<typename T::JasminExecutionState>;
+          } else {
+            return nth::type<void>;
+          }
+        }>()
+        .unique()
+        .template filter<[](auto t) { return t != nth::type<void>; }>()>;
 
 template <typename>
 struct ExecutionStateImpl;
