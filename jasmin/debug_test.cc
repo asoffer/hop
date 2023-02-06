@@ -25,7 +25,7 @@ TEST(ShowValue, ShowValue) {
   void* ptr = reinterpret_cast<void*>(0x12345678);
   EXPECT_EQ(ShowValue(Value(ptr)),
 #if defined(JASMIN_DEBUG)
-            "addr(0x7856341200000000)"
+            "addr(0x0000000012345678)"
 #else
             "78 56 34 12 00 00 00 00"
 #endif

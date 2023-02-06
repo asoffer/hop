@@ -27,7 +27,8 @@ void AppendValue(std::string& out, Value v) {
     out.append("addr(0x");
     uint8_t data[ValueSize];
     Value::Store(v, data, ValueSize);
-    for (uint8_t c : data) {
+    for (uint8_t const* ptr = data + ValueSize; ptr != data; --ptr) {
+      uint8_t c = *(ptr - 1);
       out.push_back(HexLookup[c >> 4]);
       out.push_back(HexLookup[c & 0x0f]);
     }
