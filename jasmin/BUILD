@@ -20,6 +20,29 @@ cc_test(
 )
 
 cc_library(
+    name = "debug",
+    hdrs = ["debug.h"],
+    srcs = ["debug.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":instruction",
+        ":value",
+        "//jasmin/internal:debug",
+    ],
+)
+
+cc_test(
+    name = "debug_test",
+    srcs = ["debug_test.cc"],
+    deps = [
+        ":debug",
+        ":testing",
+        "//jasmin/instructions:core",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "execute",
     hdrs = ["execute.h"],
     visibility = ["//visibility:public"],

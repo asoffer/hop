@@ -1,5 +1,5 @@
-#ifndef JASMIN_DEBUG_H
-#define JASMIN_DEBUG_H
+#ifndef JASMIN_INTERNAL_DEBUG_H
+#define JASMIN_INTERNAL_DEBUG_H
 #if defined(JASMIN_DEBUG)
 
 #include <concepts>
@@ -59,4 +59,4 @@ inline TypeId type_id{
 #define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)
 
 #endif  // defined(JASMIN_DEBUG)
-#endif  // JASMIN_DEBUG_H
+#endif  // JASMIN_INTERNAL_DEBUG_H

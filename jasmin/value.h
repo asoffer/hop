@@ -98,6 +98,12 @@ struct Value {
   void const* address() const { return value_; }
 
  private:
+#if defined(JASMIN_DEBUG)
+  // Defined in "jasmin/debug.cc", only to to provide access to the debug type
+  // id when available to provide better debugging facilities.
+  friend internal::TypeId DebugTypeId(Value);
+#endif  // defined(JASMIN_DEBUG)
+
   struct uninitialized_t {};
   struct unknown_t {};
 
