@@ -42,26 +42,6 @@ cc_test(
 )
 
 cc_library(
-    name = "type_list",
-    hdrs = ["type_list.h"],
-    visibility = ["//jasmin:__subpackages__"],
-    deps = [
-        ":type_traits",
-        "@asoffer_nth//nth/meta:sequence",
-        "@asoffer_nth//nth/meta:type",
-    ],
-)
-
-cc_test(
-  name = "type_list_test",
-  srcs = ["type_list_test.cc"],
-  deps = [
-      ":type_list",
-      "@com_google_googletest//:gtest_main",
-  ]
-)
-
-cc_library(
     name = "type_traits",
     hdrs = ["type_traits.h"],
     visibility = ["//jasmin:__subpackages__"],

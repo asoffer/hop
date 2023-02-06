@@ -4,8 +4,9 @@
 #include <tuple>
 #include <type_traits>
 
-#include "jasmin/internal/type_list.h"
 #include "jasmin/internal/type_traits.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace jasmin {
 
@@ -17,14 +18,9 @@ concept HasExecutionState = requires {
 
 namespace internal {
 
-template <typename T>
-struct NotVoid {
-  static constexpr bool value = not std::is_void_v<T>;
-};
-
 template <typename Set>
-using ExecutionStateList = FromNth<
-    ToNth(std::type_identity_t<typename Set::jasmin_instructions *>{})
+constexpr auto ExecutionStateList =
+    Set::instructions
         .template transform<[](auto t) {
           using T = nth::type_t<t>;
           if constexpr (HasExecutionState<T>) {
@@ -34,25 +30,32 @@ using ExecutionStateList = FromNth<
           }
         }>()
         .unique()
-        .template filter<[](auto t) { return t != nth::type<void>; }>()>;
+        .template filter<[](auto t) { return t != nth::type<void>; }>();
 
-template <typename>
-struct ExecutionStateImpl;
+template <typename Set>
+using ExecutionState = nth::type_t<[](auto state_list) {
+  if constexpr (state_list.empty()) {
+    return nth::type<void>;
+  } else {
+    return state_list.reduce(
+        [](auto... ts) { return nth::type<std::tuple<nth::type_t<ts> *...>>; });
+  }
+}(ExecutionStateList<Set>)>;
+
+template <typename T>
+struct ExecutionStateImpl {
+  T execution_state_;
+};
 
 template <>
-struct ExecutionStateImpl<void (*)()> {};
-
-template <typename... States>
-struct ExecutionStateImpl<void (*)(States *...)> {
-  std::tuple<States*...> execution_state_;
-};
+struct ExecutionStateImpl<void> {};
 
 }  // namespace internal
 
 // A struct holding all execution state for the given instruction set.
 template <typename Set>
 struct ExecutionState
-    : private internal::ExecutionStateImpl<internal::ExecutionStateList<Set>> {
+    : private internal::ExecutionStateImpl<internal::ExecutionState<Set>> {
   // Requires that every state type used by the instruction set is initialized
   // with exactly one argument. Behavior is otherwise undefined.
   //

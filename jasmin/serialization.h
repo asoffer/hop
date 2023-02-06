@@ -10,7 +10,8 @@
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/internal/debug.h"
-#include "jasmin/internal/type_list.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 // This file contains a mechanism by which Jasmin functions can be serialized
 // and deserialized. Instructions with immediate arguments will have their
@@ -150,19 +151,6 @@ inline constexpr bool HasCustomSerializer =
 
 namespace internal {
 
-template <typename Set>
-using SerializationStateList = FromNth<
-    ToNth(std::type_identity_t<typename Set::jasmin_instructions*>{})
-        .template transform<[](auto t) {
-          return nth::type<SerializationStateFor<nth::type_t<t>>>;
-        }>()
-        .unique()
-        .template filter<[](auto t) { return t != nth::type<void>; }>()>;
-
-template <InstructionSet Set>
-using SerializationState =
-    internal::Apply<std::tuple, internal::SerializationStateList<Set>>;
-
 // Function responsible for serializing `I` either via `std::memcpy` or via a
 // custom serialization mechanism defined on the type `I`.
 template <Instruction I, typename SerializationState>
@@ -222,19 +210,21 @@ struct InstructionMapEntry {
 template <InstructionSet Set, typename StateType>
 auto InstructionMapImpl() {
   constexpr size_t InstructionCount =
-      internal::Invoke<[]<typename... Is>() { return sizeof...(Is); },
-                       typename Set::jasmin_instructions*>;
+      Set::instructions.reduce([](auto... ts) { return sizeof...(ts); });
   std::array<InstructionMapEntry, InstructionCount> result;
-  internal::ForEach<typename Set::jasmin_instructions*>([&]<typename I>() {
-    result[Set::template OpCodeFor<I>()] = {
-        .function = reinterpret_cast<uintptr_t>(
-            Set::InstructionFunction(Set::template OpCodeFor<I>())),
-        .op_code               = Set::template OpCodeFor<I>(),
-        .immediate_value_count = ImmediateValueCount<I>(),
-        .serializer            = ImmediateValuesSerializer<I, StateType>(),
-        .deserializer          = ImmediateValuesDeserializer<I, StateType>(),
-    };
-  });
+  Set::instructions.each(
+      [&](auto t) {
+        using I = nth::type_t<t>;
+
+        result[Set::template OpCodeFor<I>()] = {
+            .function = reinterpret_cast<uintptr_t>(
+                Set::InstructionFunction(Set::template OpCodeFor<I>())),
+            .op_code               = Set::template OpCodeFor<I>(),
+            .immediate_value_count = ImmediateValueCount<I>(),
+            .serializer            = ImmediateValuesSerializer<I, StateType>(),
+            .deserializer = ImmediateValuesDeserializer<I, StateType>(),
+        };
+      });
 
   std::sort(result.begin(), result.end(),
             [](InstructionMapEntry const& lhs, InstructionMapEntry const& rhs) {

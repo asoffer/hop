@@ -11,7 +11,6 @@
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/attributes.h"
 #include "jasmin/internal/function_base.h"
-#include "jasmin/internal/type_list.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
@@ -148,8 +147,8 @@ concept HasValidSignature =
 // A list of all types required to represent the state of all functions in
 // the instruction set `Set`.
 template <typename Set>
-using FunctionStateList = FromNth<
-    ToNth(std::type_identity_t<typename Set::jasmin_instructions *>{})
+constexpr auto FunctionStateList =
+    Set::instructions
         .template transform<[](auto t) {
           using T = nth::type_t<t>;
           if constexpr (HasFunctionState<T>) {
@@ -159,7 +158,7 @@ using FunctionStateList = FromNth<
           }
         }>()
         .unique()
-        .template filter<[](auto t) { return t != nth::type<void>; }>()>;
+        .template filter<[](auto t) { return t != nth::type<void>; }>();
 
 }  // namespace internal
 
@@ -180,7 +179,7 @@ using FunctionStateStack = nth::type_t<[](auto state_list) {
       return nth::type<std::stack<std::tuple<nth::type_t<ts>...>>>;
     });
   }
-}(internal::ToNth(internal::FunctionStateList<Set>{}))>;
+}(internal::FunctionStateList<Set>)>;
 
 namespace internal {
 
@@ -200,7 +199,7 @@ struct StateImpl : FuncStateImpl<FuncState> {
 };
 
 template <InstructionSet Set>
-using State = StateImpl<ExecutionState<Set>, FunctionStateStack<Set>>;
+using State = StateImpl<::jasmin::ExecutionState<Set>, FunctionStateStack<Set>>;
 
 }  // namespace internal
 
@@ -499,6 +498,7 @@ concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
 template <Instruction... Is>
 struct MakeInstructionSet final : InstructionSetBase {
   using jasmin_instructions = void(Is *...);
+  static constexpr auto instructions = nth::type_sequence<Is...>;
 
   // Returns the number of instructions in the instruction set.
   static constexpr size_t size() { return sizeof...(Is); }
@@ -551,9 +551,8 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
       return FlattenInstructionList(decltype(tail){},
                                     processed + nth::sequence<head>);
     } else {
-      return FlattenInstructionList(
-          processed,
-          tail + ToNth<typename nth::type_t<head>::jasmin_instructions *>);
+      return FlattenInstructionList(processed,
+                                    tail + nth::type_t<head>::instructions);
     }
   }
 }

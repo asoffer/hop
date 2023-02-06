@@ -1,6 +1,8 @@
 #include "jasmin/instruction.h"
 
 #include "gtest/gtest.h"
+#include "nth/meta/sequence.h"
+#include "nth/meta/type.h"
 
 namespace jasmin {
 namespace {
@@ -112,10 +114,8 @@ TEST(InstructionSet, State) {
   };
 
   using Set = MakeInstructionSet<None, E, F, EF>;
-  EXPECT_TRUE((std::is_same_v<internal::FunctionStateList<Set>,
-                              internal::type_list<int>>));
-  EXPECT_TRUE((std::is_same_v<internal::ExecutionStateList<Set>,
-                              internal::type_list<char>>));
+  EXPECT_EQ(internal::FunctionStateList<Set>, nth::type_sequence<int>);
+  EXPECT_EQ(internal::ExecutionStateList<Set>, nth::type_sequence<char>);
   EXPECT_TRUE(
       (std::is_same_v<FunctionStateStack<Set>, std::stack<std::tuple<int>>>));
   EXPECT_TRUE(

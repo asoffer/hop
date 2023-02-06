@@ -9,7 +9,7 @@
 #include "jasmin/instruction.h"
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/debug.h"
-#include "jasmin/internal/type_list.h"
+#include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 
@@ -36,9 +36,8 @@ void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
 }
 
 template <InstructionSet Set>
-requires(std::is_same_v<internal::ExecutionStateList<Set>,
-                        void (*)()>) void Execute(Function<Set> const &f,
-                                                  ValueStack &value_stack) {
+requires(internal::ExecutionStateList<Set>.empty()) void Execute(
+    Function<Set> const &f, ValueStack &value_stack) {
   ExecutionState<Set> state;
   Execute(f, state, value_stack);
 }
@@ -71,11 +70,9 @@ void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
 }
 
 template <InstructionSet Set>
-requires(std::is_same_v<
-         internal::ExecutionStateList<Set>,
-         void (*)()>) void Execute(Function<Set> const &f,
-                                   std::initializer_list<Value> arguments,
-                                   SmallTrivialValue auto &...return_values) {
+requires(internal::ExecutionStateList<Set>.empty()) void Execute(
+    Function<Set> const &f, std::initializer_list<Value> arguments,
+    SmallTrivialValue auto &...return_values) {
   ExecutionState<Set> state;
   Execute(f, state, arguments, return_values...);
 }
