@@ -496,7 +496,7 @@ concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
 // Constructs an InstructionSet type from a list of instructions. Does no
 // checking to validate that `Is` do not contain repeats.
 template <Instruction... Is>
-struct MakeInstructionSet final : InstructionSetBase {
+struct MakeInstructionSet : InstructionSetBase {
   using jasmin_instructions = void(Is *...);
   static constexpr auto instructions = nth::type_sequence<Is...>;
 

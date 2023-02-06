@@ -17,7 +17,7 @@ namespace jasmin {
 // A representation of a function that ties op-codes to instructions (via an
 // InstructionSet template parameter).
 template <InstructionSet Set>
-struct Function final : internal::FunctionBase {
+struct Function : internal::FunctionBase {
  public:
   // Constructs an empty `Function` given a `parameter_count` representing
   // the number of parameters to the function, and a `return_count`
