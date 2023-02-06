@@ -544,15 +544,15 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
     constexpr auto tail = unprocessed.tail();
     if constexpr (processed.reduce(
                       [&](auto... vs) { return ((vs == head) or ...); })) {
-      return FlattenInstructionList(processed, tail);
+      return FlattenInstructionList(tail, processed);
     } else if constexpr (Instruction<nth::type_t<head>>) {
       // TODO: Is this a bug in Clang? `tail` does not work but
       // `decltype(tail){}` does.
       return FlattenInstructionList(decltype(tail){},
                                     processed + nth::sequence<head>);
     } else {
-      return FlattenInstructionList(processed,
-                                    tail + nth::type_t<head>::instructions);
+      return FlattenInstructionList(tail + nth::type_t<head>::instructions,
+                                    processed);
     }
   }
 }
