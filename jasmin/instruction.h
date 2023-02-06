@@ -497,7 +497,8 @@ concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
 // checking to validate that `Is` do not contain repeats.
 template <Instruction... Is>
 struct MakeInstructionSet : InstructionSetBase {
-  using jasmin_instructions = void(Is *...);
+  using self_type                    = MakeInstructionSet;
+  using jasmin_instructions          = void(Is *...);
   static constexpr auto instructions = nth::type_sequence<Is...>;
 
   // Returns the number of instructions in the instruction set.

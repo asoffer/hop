@@ -46,7 +46,8 @@ template <Instruction I>
 size_t CountInstructionMatch() {
   size_t count = 0;
   for (size_t i = 0; i < Set::size(); ++i) {
-    if (Set::InstructionFunction(i) == &I::template ExecuteImpl<Set>) {
+    if (Set::InstructionFunction(i) ==
+        &I::template ExecuteImpl<typename Set::self_type>) {
       ++count;
     }
   }

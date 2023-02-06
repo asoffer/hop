@@ -32,13 +32,13 @@ struct Function : internal::FunctionBase {
       append(auto... vs) {
     if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call>) {
       return internal::FunctionBase::append(
-          {Value(&I::template ExecuteImpl<Set>)});
+          {Value(&I::template ExecuteImpl<typename Set::self_type>)});
     } else {
       using signature = internal::ExtractSignature<decltype(&I::execute)>;
       if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call> or
                     not internal::HasValueStack<signature>) {
         return internal::FunctionBase::append(
-            {Value(&I::template ExecuteImpl<Set>)});
+            {Value(&I::template ExecuteImpl<typename Set::self_type>)});
       } else {
         constexpr size_t DropCount = internal::HasValueStack<signature> +
                                      HasExecutionState<I> + HasFunctionState<I>;
@@ -47,7 +47,7 @@ struct Function : internal::FunctionBase {
           return internal::ExtractSignature<decltype(&I::execute)>::
               invoke_with_argument_types([&]<typename... Arguments>() {
                 return internal::FunctionBase::append(
-                    {Value(&I::template ExecuteImpl<Set>),
+                    {Value(&I::template ExecuteImpl<typename Set::self_type>),
                      Value(static_cast<Arguments>(vs))...});
               });
         } else if constexpr (DropCount == 1) {
@@ -55,7 +55,8 @@ struct Function : internal::FunctionBase {
               invoke_with_argument_types(
                   [&]<typename, typename... Arguments>() {
                     return internal::FunctionBase::append(
-                        {Value(&I::template ExecuteImpl<Set>),
+                        {Value(
+                             &I::template ExecuteImpl<typename Set::self_type>),
                          Value(static_cast<Arguments>(vs))...});
                   });
         } else if constexpr (DropCount == 2) {
@@ -63,7 +64,8 @@ struct Function : internal::FunctionBase {
               invoke_with_argument_types(
                   [&]<typename, typename, typename... Arguments>() {
                     return internal::FunctionBase::append(
-                        {Value(&I::template ExecuteImpl<Set>),
+                        {Value(
+                             &I::template ExecuteImpl<typename Set::self_type>),
                          Value(static_cast<Arguments>(vs))...});
                   });
         } else if constexpr (DropCount == 3) {
@@ -71,7 +73,8 @@ struct Function : internal::FunctionBase {
               invoke_with_argument_types(
                   [&]<typename, typename, typename, typename... Arguments>() {
                     return internal::FunctionBase::append(
-                        {Value(&I::template ExecuteImpl<Set>),
+                        {Value(
+                             &I::template ExecuteImpl<typename Set::self_type>),
                          Value(static_cast<Arguments>(vs))...});
                   });
         }
@@ -83,10 +86,12 @@ struct Function : internal::FunctionBase {
   // which are left uninitialized. They may be initialized later via calls to
   // `Function<...>::set_value`. Returns the corresponding OpCodeRange.
   template <typename I>
-  requires(Set::instructions.template contains<nth::type<I>>()) constexpr OpCodeRange
+  requires(
+      Set::instructions.template contains<nth::type<I>>()) constexpr OpCodeRange
       append_with_placeholders() {
-    return internal::FunctionBase::append(Value(&I::template ExecuteImpl<Set>),
-                                          internal::ImmediateValueCount<I>());
+    return internal::FunctionBase::append(
+        Value(&I::template ExecuteImpl<typename Set::self_type>),
+        internal::ImmediateValueCount<I>());
   }
 };
 

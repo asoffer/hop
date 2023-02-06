@@ -243,7 +243,8 @@ auto const& InstructionMap() {
 // function pointer.
 template <InstructionSet Set, typename StateType>
 InstructionMapEntry const& FindInstructionMetadata(Value exec) {
-  using instruction_type   = decltype(&Call::template ExecuteImpl<Set>);
+  using instruction_type =
+      decltype(&Call::template ExecuteImpl<typename Set::self_type>);
   auto const& Instructions = internal::InstructionMap<Set, StateType>();
 
   auto instruction_ptr = exec.as<instruction_type>();
