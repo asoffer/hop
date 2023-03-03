@@ -13,7 +13,7 @@ namespace jasmin {
 // Concept matching instruction types that have execution state.
 template <typename T>
 concept HasExecutionState = requires {
-  typename T::JasminExecutionState;
+  typename T::execution_state;
 };
 
 namespace internal {
@@ -24,7 +24,7 @@ constexpr auto ExecutionStateList =
         .template transform<[](auto t) {
           using T = nth::type_t<t>;
           if constexpr (HasExecutionState<T>) {
-            return nth::type<typename T::JasminExecutionState>;
+            return nth::type<typename T::execution_state>;
           } else {
             return nth::type<void>;
           }

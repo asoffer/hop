@@ -22,7 +22,7 @@ namespace jasmin {
 
 template <typename T>
 concept HasFunctionState = requires {
-  typename T::JasminFunctionState;
+  typename T::function_state;
 };
 
 namespace internal {
@@ -55,15 +55,15 @@ constexpr bool ValidSignatureWithImmediatesImpl() {
     if constexpr (HasFuncState) {
       return Signature::invoke_with_argument_types(
           []<typename VS, typename ES, typename FS, typename... Ts>() {
-            return std::is_same_v<FS, typename I::JasminExecutionState &> and
-                   std::is_same_v<FS, typename I::JasminFunctionState &> and
+            return std::is_same_v<FS, typename I::execution_state &> and
+                   std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
           });
     } else {
       return Signature::invoke_with_argument_types(
           []<typename VS, typename ES, typename... Ts>() {
-            return std::is_same_v<ES, typename I::JasminExecutionState &> and
+            return std::is_same_v<ES, typename I::execution_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
           });
@@ -72,7 +72,7 @@ constexpr bool ValidSignatureWithImmediatesImpl() {
     if constexpr (HasFuncState) {
       return Signature::invoke_with_argument_types(
           []<typename VS, typename FS, typename... Ts>() {
-            return std::is_same_v<FS, typename I::JasminFunctionState &> and
+            return std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
           });
@@ -99,15 +99,15 @@ constexpr bool ValidSignatureWithoutImmediatesImpl() {
     if constexpr (HasFuncState) {
       return Signature::invoke_with_argument_types(
           []<typename ES, typename FS, typename... Ts>() {
-            return std::is_same_v<ES, typename I::JasminExecutionState &> and
-                   std::is_same_v<FS, typename I::JasminFunctionState &> and
+            return std::is_same_v<ES, typename I::execution_state &> and
+                   std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
           });
     } else {
       return Signature::invoke_with_argument_types(
           []<typename ES, typename... Ts>() {
-            return std::is_same_v<ES, typename I::JasminExecutionState &> and
+            return std::is_same_v<ES, typename I::execution_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
           });
@@ -116,7 +116,7 @@ constexpr bool ValidSignatureWithoutImmediatesImpl() {
     if constexpr (HasFuncState) {
       return Signature::invoke_with_argument_types(
           []<typename FS, typename... Ts>() {
-            return std::is_same_v<FS, typename I::JasminFunctionState &> and
+            return std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
           });
@@ -152,7 +152,7 @@ constexpr auto FunctionStateList =
         .template transform<[](auto t) {
           using T = nth::type_t<t>;
           if constexpr (HasFunctionState<T>) {
-            return nth::type<typename T::JasminFunctionState>;
+            return nth::type<typename T::function_state>;
           } else {
             return nth::type<void>;
           }
@@ -219,30 +219,28 @@ struct Return;
 // adhere to one of the following:
 //
 //   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
-//       reference to `typename I::JasminExecutionState` (if and only if that
+//       reference to `typename I::execution_state` (if and only if that
 //       type syntactically valid), then a mutable reference to
-//       `typename I::JasminFunctionState` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible to
-//       `Value`. If present the `typename I::JasminExecutionState&` parameter
-//       is a reference to state shared throughout the entire execution. If
-//       present the `typename I::JasminFunctionState&` parameter is a reference
-//       to state shared during a function's execution. The arguments are
-//       intperpreted as the immediate values for the instruction. The void
-//       return type indicates that execution should fall through to the
-//       following instruction.
+//       `typename I::function_state` (if and only if that type syntactically
+//       valid), and then some number of arguments convertible to `Value`. If
+//       present the `typename I::execution_state&` parameter is a reference to
+//       state shared throughout the entire execution. If present the `typename
+//       I::function_state&` parameter is a reference to state shared during a
+//       function's execution. The arguments are intperpreted as the immediate
+//       values for the instruction. The void return type indicates that
+//       execution should fall through to the following instruction.
 //
-//   (b) Accepts a mutable reference to `typename I::JasminExecutionState` (if
+//   (b) Accepts a mutable reference to `typename I::execution_state` (if
 //       and only if that type syntactically valid), then a mutable reference to
-//       `typename I::JasminFunctionState` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible to
-//       `Value`. The function may return `void` or another type convertible to
-//       `Value`. If present the `typename I::JasminExecutionState&` parameter
-//       is a reference to state shared throughout the entire execution. If
-//       present the `typename I::JasminFunctionState&` parameter is a reference
-//       to state shared during a function's execution. The arguments are to be
-//       popped from the value stack, and the returned value, if any, will be
-//       pushed onto the value stack. Execution will fall through to the
-//       following instruction.
+//       `typename I::function_state` (if and only if that type syntactically
+//       valid), and then some number of arguments convertible to `Value`. The
+//       function may return `void` or another type convertible to `Value`. If
+//       present the `typename I::execution_state&` parameter is a reference to
+//       state shared throughout the entire execution. If present the `typename
+//       I::function_state&` parameter is a reference to state shared during a
+//       function's execution. The arguments are to be popped from the value
+//       stack, and the returned value, if any, will be pushed onto the value
+//       stack. Execution will fall through to the following instruction.
 //
 template <typename Inst>
 struct StackMachineInstruction {
@@ -302,53 +300,52 @@ struct StackMachineInstruction {
       if constexpr (VS and ES and FS) {
         signature::invoke_with_argument_types(
             [&]<std::same_as<ValueStack &>,
-                std::same_as<typename Inst::JasminExecutionState &>,
-                std::same_as<typename Inst::JasminFunctionState &>,
+                std::same_as<typename Inst::execution_state &>,
+                std::same_as<typename Inst::function_state &>,
                 std::convertible_to<Value>... Ts>() {
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
               std::apply(
                   Inst::execute,
-                  std::tuple<ValueStack &,
-                             typename Inst::JasminExecutionState &, Ts...>{
+                  std::tuple<ValueStack &, typename Inst::execution_state &,
+                             Ts...>{
                       value_stack,
                       state->exec_state
-                          ->template get<typename Inst::JasminExecutionState>(),
-                      std::get<typename Inst::JasminFunctionState>(
+                          ->template get<typename Inst::execution_state>(),
+                      std::get<typename Inst::function_state>(
                           state->function_state_stack.top()),
                       (++ip)->as<Ts>()...});
             });
       } else if constexpr (VS and ES and not FS) {
         signature::invoke_with_argument_types(
             [&]<std::same_as<ValueStack &>,
-                std::same_as<typename Inst::JasminExecutionState &>,
+                std::same_as<typename Inst::execution_state &>,
                 std::convertible_to<Value>... Ts>() {
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
               std::apply(
                   Inst::execute,
-                  std::tuple<ValueStack &,
-                             typename Inst::JasminExecutionState &, Ts...>{
+                  std::tuple<ValueStack &, typename Inst::execution_state &,
+                             Ts...>{
                       value_stack,
                       state->exec_state
-                          ->template get<typename Inst::JasminExecutionState>(),
+                          ->template get<typename Inst::execution_state>(),
                       (++ip)->as<Ts>()...});
             });
       } else if constexpr (VS and not ES and FS) {
         signature::invoke_with_argument_types(
             [&]<std::same_as<ValueStack &>,
-                std::same_as<typename Inst::JasminFunctionState &>,
+                std::same_as<typename Inst::function_state &>,
                 std::convertible_to<Value>... Ts>() {
               // Brace-initialization forces the order of evaluation to be in
               // the order the elements appear in the list.
               std::apply(
                   Inst::execute,
-                  std::tuple<ValueStack &, typename Inst::JasminFunctionState &,
-                             Ts...>{
-                      value_stack,
-                      std::get<typename Inst::JasminFunctionState>(
-                          state->function_state_stack.top()),
-                      (++ip)->as<Ts>()...});
+                  std::tuple<ValueStack &, typename Inst::function_state &,
+                             Ts...>{value_stack,
+                                    std::get<typename Inst::function_state>(
+                                        state->function_state_stack.top()),
+                                    (++ip)->as<Ts>()...});
             });
       } else if constexpr (VS and not ES and not FS) {
         signature::
@@ -361,38 +358,40 @@ struct StackMachineInstruction {
             });
       } else if constexpr (RV and not VS and ES and FS) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::JasminExecutionState &>,
-                std::same_as<typename Inst::JasminFunctionState &>,
+            [&]<std::same_as<typename Inst::execution_state &>,
+                std::same_as<typename Inst::function_state &>,
                 std::convertible_to<Value>... Ts>() {
               std::apply(
                   [&](auto... values) {
-                    Inst::execute(state->exec_state->template get<
-                                      typename Inst::JasminExecutionState>(),
-                                  std::get<typename Inst::JasminFunctionState>(
-                                      state->function_state_stack.top()),
-                                  values...);
+                    Inst::execute(
+                        state->exec_state
+                            ->template get<typename Inst::execution_state>(),
+                        std::get<typename Inst::function_state>(
+                            state->function_state_stack.top()),
+                        values...);
                   },
                   value_stack.pop_suffix<Ts...>());
             });
       } else if constexpr (RV and not VS and ES and not FS) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::JasminExecutionState &>,
+            [&]<std::same_as<typename Inst::execution_state &>,
                 std::convertible_to<Value>... Ts>() {
               std::apply(
                   [&](auto... values) {
-                    Inst::execute(state->exec_state->template get<
-                                      typename Inst::JasminExecutionState>(),
-                                  values...);
+                    Inst::execute(
+                        state->exec_state
+                            ->template get<typename Inst::execution_state>(),
+                        values...);
                   },
                   value_stack.pop_suffix<Ts...>());
             });
       } else if constexpr (RV and not VS and not ES and FS) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::JasminFunctionState &>,
+            [&]<std::same_as<typename Inst::function_state &>,
                 std::convertible_to<Value>... Ts>() {
               std::apply(
                   [&](auto... values) {
-                    Inst::execute(std::get<typename Inst::JasminFunctionState>(
+                    Inst::execute(std::get<typename Inst::function_state>(
                                       state->function_state_stack.top()),
                                   values...);
                   },
@@ -405,29 +404,29 @@ struct StackMachineInstruction {
             });
       } else if constexpr (not RV and not VS and ES and FS) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::JasminExecutionState &>,
-                std::same_as<typename Inst::JasminFunctionState &>,
+            [&]<std::same_as<typename Inst::execution_state &>,
+                std::same_as<typename Inst::function_state &>,
                 std::convertible_to<Value>... Ts>() {
               value_stack.call_on_suffix<&Inst::execute, Ts...>(
                   state->exec_state
-                      ->template get<typename Inst::JasminExecutionState>(),
-                  std::get<typename Inst::JasminFunctionState>(
+                      ->template get<typename Inst::execution_state>(),
+                  std::get<typename Inst::function_state>(
                       state->function_state_stack.top()));
             });
       } else if constexpr (not RV and not VS and ES and not FS) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::JasminExecutionState &>,
+            [&]<std::same_as<typename Inst::execution_state &>,
                 std::convertible_to<Value>... Ts>() {
               value_stack.call_on_suffix<&Inst::execute, Ts...>(
                   state->exec_state
-                      ->template get<typename Inst::JasminExecutionState>());
+                      ->template get<typename Inst::execution_state>());
             });
       } else if constexpr (not RV and not VS and not ES and FS) {
         signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::JasminFunctionState &>,
+            [&]<std::same_as<typename Inst::function_state &>,
                 std::convertible_to<Value>... Ts>() {
               value_stack.call_on_suffix<&Inst::execute, Ts...>(
-                  std::get<typename Inst::JasminFunctionState>(
+                  std::get<typename Inst::function_state>(
                       state->function_state_stack.top()));
             });
       } else if constexpr (not RV and not VS and not ES and not FS) {
@@ -459,30 +458,30 @@ struct Return : StackMachineInstruction<Return> {};
 // well-formed) and this function adhere to one of the following:
 //
 //   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
-//       reference to `typename I::JasminExecutionState` (if and only if that
+//       reference to `typename I::execution_state` (if and only if that
 //       type syntactically valid), then a mutable reference to
-//       `typename I::JasminFunctionState` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible to
-//       `Value`. If present the `typename I::JasminExecutionState&` parameter
-//       is a reference to state shared throughout the entire execution. If
-//       present the `typename I::JasminFunctionState&` parameter is a reference
-//       to state shared during a function's execution. The arguments are
-//       intperpreted as the immediate values for the instruction. The void
-//       return type indicates that execution should fall through to the
-//       following instruction.
+//       `typename I::function_state` (if and only if that type syntactically
+//       valid), and then some number of arguments convertible to `Value`. If
+//       present the `typename I::execution_state&` parameter is a
+//       reference to state shared throughout the entire execution. If present
+//       the `typename I::function_state&` parameter is a reference to state
+//       shared during a function's execution. The arguments are intperpreted as
+//       the immediate values for the instruction. The void return type
+//       indicates that execution should fall through to the following
+//       instruction.
 //
-//   (b) Accepts a mutable reference to `typename I::JasminExecutionState` (if
+//   (b) Accepts a mutable reference to `typename I::execution_state` (if
 //       and only if that type syntactically valid), then a mutable reference to
-//       `typename I::JasminFunctionState` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible to
-//       `Value`. The function may return `void` or another type convertible to
-//       `Value`. If present the `typename I::JasminExecutionState&` parameter
-//       is a reference to state shared throughout the entire execution. If
-//       present the `typename I::JasminFunctionState&` parameter is a reference
-//       to state shared during a function's execution. The arguments are to be
-//       popped from the value stack, and the returned value, if any, will be
-//       pushed onto the value stack. Execution will fall through to the
-//       following instruction.
+//       `typename I::function_state` (if and only if that type syntactically
+//       valid), and then some number of arguments convertible to `Value`. The
+//       function may return `void` or another type convertible to `Value`. If
+//       present the `typename I::execution_state&` parameter is a
+//       reference to state shared throughout the entire execution. If present
+//       the `typename I::function_state&` parameter is a reference to state
+//       shared during a function's execution. The arguments are to be popped
+//       from the value stack, and the returned value, if any, will be pushed
+//       onto the value stack. Execution will fall through to the following
+//       instruction.
 //
 template <typename I>
 concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Return> or

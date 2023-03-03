@@ -32,8 +32,8 @@ struct StackFrame {
 // other stack-related instructions on the current `jasmin::Function`. Must not
 // be called more than once on any `jasmin::Function`.
 struct StackAllocate : StackMachineInstruction<StackAllocate> {
-  using JasminFunctionState = internal::StackFrame;
-  static constexpr void execute(ValueStack &, JasminFunctionState &frame,
+  using function_state = internal::StackFrame;
+  static constexpr void execute(ValueStack &, function_state &frame,
                                 size_t size_in_bytes) {
     frame.allocate_once(size_in_bytes);
   }
@@ -42,9 +42,9 @@ struct StackAllocate : StackMachineInstruction<StackAllocate> {
 // Returns a pointer into the stack frame associated with the current function,
 // offset by the amount `offset`.
 struct StackOffset : StackMachineInstruction<StackOffset> {
-  using JasminFunctionState = internal::StackFrame;
-  static constexpr void execute(ValueStack &value_stack,
-                                JasminFunctionState &frame, size_t offset) {
+  using function_state = internal::StackFrame;
+  static constexpr void execute(ValueStack &value_stack, function_state &frame,
+                                size_t offset) {
     value_stack.push(frame.data() + offset);
   }
 };

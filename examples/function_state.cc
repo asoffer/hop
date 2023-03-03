@@ -15,29 +15,29 @@ struct PrintCString : jasmin::StackMachineInstruction<PrintCString> {
 };
 
 // Below we define the `PushQueue` and `PopQueue` instructions. These two
-// instructions specify state via the `JasminFunctionState` type alias. Any
+// instructions specify state via the `function_state` type alias. Any
 // instructions that name the same state type will share access to the same
 // state, so it is considered best practice to choose specific state types so as
 // not to create accidental conflicts.
 //
 // For this reason, even though
-// `using JasminFunctionState = std::queue<char const *>` would suffice for our
+// `using function_state = std::queue<char const *>` would suffice for our
 // needs with `PushQueue` and `PopQueue`, we choose to create a wrapper type.
 struct Queue {
   std::queue<char const *> queue;
 };
 
 struct PushQueue : jasmin::StackMachineInstruction<PushQueue> {
-  using JasminFunctionState = Queue;
-  static void execute(jasmin::ValueStack &, JasminFunctionState &state,
+  using function_state = Queue;
+  static void execute(jasmin::ValueStack &, function_state &state,
                       char const *cstr) {
     state.queue.push(cstr);
   }
 };
 
 struct PopQueue : jasmin::StackMachineInstruction<PopQueue> {
-  using JasminFunctionState = Queue;
-  static char const *execute(JasminFunctionState &state) {
+  using function_state = Queue;
+  static char const *execute(function_state &state) {
     char const *result = state.queue.front();
     state.queue.pop();
     return result;
@@ -45,8 +45,8 @@ struct PopQueue : jasmin::StackMachineInstruction<PopQueue> {
 };
 
 struct RotateQueue : jasmin::StackMachineInstruction<RotateQueue> {
-  using JasminFunctionState = Queue;
-  static void execute(JasminFunctionState &state) {
+  using function_state = Queue;
+  static void execute(function_state &state) {
     char const *top = state.queue.front();
     state.queue.pop();
     state.queue.push(top);

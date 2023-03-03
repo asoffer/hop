@@ -33,10 +33,10 @@ void ExecuteInstruction(ValueStack &value_stack) {
 
 template <internal::ValidInstruction<false, false, true> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminFunctionState &fn_state) {
+                        typename Inst::function_state &fn_state) {
   using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
   Signature::invoke_with_argument_types(
-      [&]<std::same_as<typename Inst::JasminFunctionState &>,
+      [&]<std::same_as<typename Inst::function_state &>,
           std::convertible_to<Value>... Ts>() {
         std::apply([&](auto... values) { Inst::execute(fn_state, values...); },
                    value_stack.pop_suffix<Ts...>());
@@ -45,10 +45,10 @@ void ExecuteInstruction(ValueStack &value_stack,
 
 template <internal::ValidInstruction<false, true, false> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminExecutionState &exec_state) {
+                        typename Inst::execution_state &exec_state) {
   using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
   Signature::invoke_with_argument_types(
-      [&]<std::same_as<typename Inst::JasminExecutionState &>,
+      [&]<std::same_as<typename Inst::execution_state &>,
           std::convertible_to<Value>... Ts>() {
         std::apply(
             [&](auto... values) { Inst::execute(exec_state, values...); },
@@ -58,12 +58,12 @@ void ExecuteInstruction(ValueStack &value_stack,
 
 template <internal::ValidInstruction<false, true, true> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminExecutionState &exec_state,
-                        typename Inst::JasminFunctionState &fn_state) {
+                        typename Inst::execution_state &exec_state,
+                        typename Inst::function_state &fn_state) {
   using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
   Signature::invoke_with_argument_types(
-      [&]<std::same_as<typename Inst::JasminExecutionState &>,
-          std::same_as<typename Inst::JasminFunctionState &>,
+      [&]<std::same_as<typename Inst::execution_state &>,
+          std::same_as<typename Inst::function_state &>,
           std::convertible_to<Value>... Ts>() {
         std::apply(
             [&](auto... values) {
@@ -83,7 +83,7 @@ void ExecuteInstruction(ValueStack &value_stack,
 template <internal::ValidInstruction<true, false, true> Inst,
           typename... ImmediateArguments>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminFunctionState &fn_state,
+                        typename Inst::function_state &fn_state,
                         ImmediateArguments... immediate_arguments) {
   Inst::execute(value_stack, fn_state, immediate_arguments...);
 }
@@ -91,7 +91,7 @@ void ExecuteInstruction(ValueStack &value_stack,
 template <internal::ValidInstruction<true, true, false> Inst,
           typename... ImmediateArguments>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminExecutionState &exec_state,
+                        typename Inst::execution_state &exec_state,
                         ImmediateArguments... immediate_arguments) {
   Inst::execute(value_stack, exec_state, immediate_arguments...);
 }
@@ -99,8 +99,8 @@ void ExecuteInstruction(ValueStack &value_stack,
 template <internal::ValidInstruction<true, true, true> Inst,
           typename... ImmediateArguments>
 void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::JasminExecutionState &exec_state,
-                        typename Inst::JasminFunctionState &fn_state,
+                        typename Inst::execution_state &exec_state,
+                        typename Inst::function_state &fn_state,
                         ImmediateArguments... immediate_arguments) {
   Inst::execute(value_stack, exec_state, fn_state, immediate_arguments...);
 }

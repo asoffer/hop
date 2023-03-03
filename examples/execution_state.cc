@@ -11,13 +11,13 @@
 // "hello_world.cc" and "fibonacci.cc" examples before this one.
 
 struct IncrementCount : jasmin::StackMachineInstruction<IncrementCount> {
-  using JasminExecutionState = int;
-  static void execute(JasminExecutionState &state) { state++; }
+  using execution_state = int;
+  static void execute(execution_state &state) { state++; }
 };
 
 struct PushCount : jasmin::StackMachineInstruction<PushCount> {
-  using JasminExecutionState = int;
-  static int execute(JasminExecutionState &state) { return state; }
+  using execution_state = int;
+  static int execute(execution_state &state) { return state; }
 };
 
 struct PrintInt : jasmin::StackMachineInstruction<PrintInt> {

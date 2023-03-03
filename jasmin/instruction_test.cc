@@ -17,24 +17,22 @@ struct PushOne : StackMachineInstruction<PushOne> {
   static void execute(ValueStack& v) { v.push(1); }
 };
 struct Count : StackMachineInstruction<Count> {
-  using JasminFunctionState = int;
-  static void execute(ValueStack& v, JasminFunctionState& state) {
-    v.push(state++);
-  }
+  using function_state = int;
+  static void execute(ValueStack& v, function_state& state) { v.push(state++); }
 };
 
 struct CountAcrossFunctions : StackMachineInstruction<CountAcrossFunctions> {
-  using JasminExecutionState = int;
-  static void execute(ValueStack& v, JasminExecutionState& state) {
+  using execution_state = int;
+  static void execute(ValueStack& v, execution_state& state) {
     v.push(state++);
   }
 };
 
 struct CountBoth : StackMachineInstruction<CountBoth> {
-  using JasminExecutionState = int;
-  using JasminFunctionState = int;
-  static void execute(ValueStack& v, JasminExecutionState& exec_state,
-                      JasminFunctionState& fn_state) {
+  using execution_state = int;
+  using function_state  = int;
+  static void execute(ValueStack& v, execution_state& exec_state,
+                      function_state& fn_state) {
     v.push(exec_state++);
     v.push(fn_state++);
   }
@@ -99,19 +97,17 @@ TEST(InstructionSet, State) {
     static int execute(int) { return 0; }
   };
   struct F : StackMachineInstruction<F> {
-    using JasminFunctionState = int;
-    static int execute(JasminFunctionState&, int) { return 0; }
+    using function_state = int;
+    static int execute(function_state&, int) { return 0; }
   };
   struct E : StackMachineInstruction<E> {
-    using JasminExecutionState = char;
-    static int execute(JasminExecutionState&, int) { return 0; }
+    using execution_state = char;
+    static int execute(execution_state&, int) { return 0; }
   };
   struct EF : StackMachineInstruction<EF> {
-    using JasminExecutionState = char;
-    using JasminFunctionState  = int;
-    static int execute(JasminExecutionState&, JasminFunctionState&, int) {
-      return 0;
-    }
+    using execution_state = char;
+    using function_state  = int;
+    static int execute(execution_state&, function_state&, int) { return 0; }
   };
 
   using Set = MakeInstructionSet<None, E, F, EF>;
