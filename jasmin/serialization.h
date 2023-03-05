@@ -161,7 +161,10 @@ ImmediateValuesSerializer() {
              void* state) {
     if constexpr (std::is_void_v<state_type>) {
       if constexpr (HasCustomSerializer<I>) {
-        I::serialize(serializer, values);
+        I::serialize(
+            serializer,
+            std::span<Value const,
+                      ::jasmin::internal::ImmediateValueCount<I>()>(values));
       } else {
         for (auto const& value : values) { serializer(value); }
       }
@@ -183,7 +186,10 @@ ImmediateValuesDeserializer() {
   return +[](Deserializer& deserializer, std::span<Value> values, void* state) {
     if constexpr (std::is_void_v<state_type>) {
       if constexpr (HasCustomSerializer<I>) {
-        return I::deserialize(deserializer, values);
+        return I::deserialize(
+            deserializer,
+            std::span<Value, ::jasmin::internal::ImmediateValueCount<I>()>(
+                values));
       } else {
         for (auto& value : values) {
           if (not deserializer(value)) { return false; }

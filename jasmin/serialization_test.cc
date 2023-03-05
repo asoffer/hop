@@ -47,12 +47,13 @@ struct StatelessSerialization
    : StackMachineInstruction<StatelessSerialization> {
   using serialization_state = void;
 
-  static void serialize(Serializer& serializer, std::span<Value const> values) {
+  static void serialize(Serializer& serializer,
+                        std::span<Value const, 1> values) {
     serializer(static_cast<int32_t>(values[0].as<int32_t>() * 2));
     ++state.stateless_count;
   }
 
-  static bool deserialize(Deserializer& deserializer, std::span<Value> values) {
+  static bool deserialize(Deserializer& deserializer, std::span<Value, 1> values) {
     int32_t value;
     if (not deserializer(value)) { return false; }
     values[0] = value / 2;
