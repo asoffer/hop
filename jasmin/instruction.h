@@ -11,6 +11,7 @@
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/attributes.h"
 #include "jasmin/internal/function_base.h"
+#include "jasmin/internal/function_state.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
@@ -19,12 +20,6 @@
 #include "nth/meta/type.h"
 
 namespace jasmin {
-
-template <typename T>
-concept HasFunctionState = requires {
-  typename T::function_state;
-};
-
 namespace internal {
 
 using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &,
@@ -144,45 +139,6 @@ concept HasValidSignature =
       ValidSignatureWithoutImmediatesImpl<Signature, I, HasExecState,
                                           HasFuncState>()));
 
-// A list of all types required to represent the state of all functions in
-// the instruction set `Set`.
-template <typename Set>
-constexpr auto FunctionStateList =
-    Set::instructions
-        .template transform<[](auto t) {
-          using T = nth::type_t<t>;
-          if constexpr (HasFunctionState<T>) {
-            return nth::type<typename T::function_state>;
-          } else {
-            return nth::type<void>;
-          }
-        }>()
-        .unique()
-        .template filter<[](auto t) { return t != nth::type<void>; }>();
-
-}  // namespace internal
-
-// A concept indicating which types constitute instruction sets understandable
-// by Jasmin's interpreter.
-template <typename T>
-concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
-
-// A type-function accepting an instruction set and returning a type sufficient
-// to hold all state required by all instructions in `Set`, or `void` if all
-// instructions in `Set` are stateless.
-template <InstructionSet Set>
-using FunctionStateStack = nth::type_t<[](auto state_list) {
-  if constexpr (state_list.empty()) {
-    return nth::type<void>;
-  } else {
-    return state_list.reduce([](auto... ts) {
-      return nth::type<std::stack<std::tuple<nth::type_t<ts>...>>>;
-    });
-  }
-}(internal::FunctionStateList<Set>)>;
-
-namespace internal {
-
 template <typename FuncStateStack>
 struct FuncStateImpl {
   FuncStateStack function_state_stack;
@@ -198,10 +154,17 @@ struct StateImpl : FuncStateImpl<FuncState> {
   ExecutionState *exec_state;
 };
 
-template <InstructionSet Set>
-using State = StateImpl<::jasmin::ExecutionState<Set>, FunctionStateStack<Set>>;
+template <typename Set>
+using State = StateImpl<::jasmin::ExecutionState<Set>,
+                        ::jasmin::internal::FunctionStateStack<Set>>;
 
 }  // namespace internal
+
+// A concept indicating which types constitute instruction sets understandable
+// by Jasmin's interpreter.
+template <typename T>
+concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
+
 
 // Forward declarations for instructions that need special treatement in
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
@@ -292,7 +255,7 @@ struct StackMachineInstruction {
       using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
 
       constexpr bool ES = HasExecutionState<Inst>;
-      constexpr bool FS = HasFunctionState<Inst>;
+      constexpr bool FS = internal::HasFunctionState<Inst>;
       constexpr bool VS = internal::HasValueStack<signature>;
       constexpr bool RV = std::is_void_v<typename signature::return_type>;
       static_assert(RV or not VS);
@@ -585,7 +548,7 @@ constexpr size_t ImmediateValueCount() {
         []<typename... Ts>() { return sizeof...(Ts); });
 
     constexpr bool ES = HasExecutionState<I>;
-    constexpr bool FS = HasFunctionState<I>;
+    constexpr bool FS = internal::HasFunctionState<I>;
     constexpr bool VS = internal::HasValueStack<signature>;
 
     if (not VS) { return 0; }

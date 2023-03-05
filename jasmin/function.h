@@ -41,7 +41,8 @@ struct Function : internal::FunctionBase {
             {Value(&I::template ExecuteImpl<typename Set::self_type>)});
       } else {
         constexpr size_t DropCount = internal::HasValueStack<signature> +
-                                     HasExecutionState<I> + HasFunctionState<I>;
+                                     HasExecutionState<I> +
+                                     internal::HasFunctionState<I>;
 
         if constexpr (DropCount == 0) {
           return internal::ExtractSignature<decltype(&I::execute)>::

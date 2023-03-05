@@ -113,16 +113,16 @@ TEST(InstructionSet, State) {
   using Set = MakeInstructionSet<None, E, F, EF>;
   EXPECT_EQ(internal::FunctionStateList<Set>, nth::type_sequence<int>);
   EXPECT_EQ(internal::ExecutionStateList<Set>, nth::type_sequence<char>);
-  EXPECT_TRUE(
-      (std::is_same_v<FunctionStateStack<Set>, std::stack<std::tuple<int>>>));
-  EXPECT_TRUE(
-      (std::is_same_v<FunctionStateStack<MakeInstructionSet<None>>, void>));
-  EXPECT_TRUE(
-      (std::is_same_v<FunctionStateStack<MakeInstructionSet<E>>, void>));
-  EXPECT_TRUE((std::is_same_v<FunctionStateStack<MakeInstructionSet<F>>,
-                              std::stack<std::tuple<int>>>));
-  EXPECT_TRUE((std::is_same_v<FunctionStateStack<MakeInstructionSet<EF>>,
-                              std::stack<std::tuple<int>>>));
+  EXPECT_EQ(nth::type<internal::FunctionStateStack<Set>>,
+            nth::type<std::stack<std::tuple<int>>>);
+  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<None>>>,
+            nth::type<void>);
+  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<E>>>,
+            nth::type<void>);
+  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<F>>>,
+            nth::type<std::stack<std::tuple<int>>>);
+  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<EF>>>,
+            nth::type<std::stack<std::tuple<int>>>);
 }
 
 }  // namespace

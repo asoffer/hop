@@ -102,6 +102,7 @@ cc_library(
         ":value_stack",
         "//jasmin/internal:attributes",
         "//jasmin/internal:function_base",
+        "//jasmin/internal:function_state",
         "//jasmin/internal:type_traits",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",

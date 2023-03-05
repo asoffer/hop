@@ -10,7 +10,7 @@ http_archive(
 
 http_archive(
   name = "asoffer_nth",
-  urls = ["https://github.com/asoffer/nth/archive/6da4c41b7619b77d0a14213e91ba6966a32653b4.zip"],
-  strip_prefix = "nth-6da4c41b7619b77d0a14213e91ba6966a32653b4",
-  sha256 = "8ef52f1b8634491509117cdfe56e87f8b193e0991b3cc85ea2242a398d493a29",
+  urls = ["https://github.com/asoffer/nth/archive/a1ae9a33d71c55f7a47de9693958f97046735ca4.zip"],
+  strip_prefix = "nth-a1ae9a33d71c55f7a47de9693958f97046735ca4",
+  sha256 = "a08ee6deaf85db3154bb3ed522590fda7b0dc6239e87850db0eafb153e23d676",
 )
