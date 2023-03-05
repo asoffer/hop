@@ -16,27 +16,6 @@ struct Duplicate : StackMachineInstruction<Duplicate> {
 struct PushOne : StackMachineInstruction<PushOne> {
   static void execute(ValueStack& v) { v.push(1); }
 };
-struct Count : StackMachineInstruction<Count> {
-  using function_state = int;
-  static void execute(ValueStack& v, function_state& state) { v.push(state++); }
-};
-
-struct CountAcrossFunctions : StackMachineInstruction<CountAcrossFunctions> {
-  using execution_state = int;
-  static void execute(ValueStack& v, execution_state& state) {
-    v.push(state++);
-  }
-};
-
-struct CountBoth : StackMachineInstruction<CountBoth> {
-  using execution_state = int;
-  using function_state  = int;
-  static void execute(ValueStack& v, execution_state& exec_state,
-                      function_state& fn_state) {
-    v.push(exec_state++);
-    v.push(fn_state++);
-  }
-};
 
 using Set = MakeInstructionSet<NoOp, Duplicate>;
 
@@ -65,31 +44,6 @@ TEST(Instruction, Construction) {
   EXPECT_DEATH({ Set::InstructionFunction(Set::size()); },
                "Out-of-bounds op-code");
 #endif  // defined(JASMIN_DEBUG)
-}
-
-TEST(ImmediateValueCount, Value) {
-  EXPECT_EQ(internal::ImmediateValueCount<Return>(), 0);
-  EXPECT_EQ(internal::ImmediateValueCount<Call>(), 0);
-  EXPECT_EQ(internal::ImmediateValueCount<Jump>(), 1);
-  EXPECT_EQ(internal::ImmediateValueCount<JumpIf>(), 1);
-  EXPECT_EQ(internal::ImmediateValueCount<Count>(), 0);
-  EXPECT_EQ(internal::ImmediateValueCount<CountAcrossFunctions>(), 0);
-  EXPECT_EQ(internal::ImmediateValueCount<CountBoth>(), 0);
-
-  struct NoImmediates : StackMachineInstruction<NoImmediates> {
-    static int execute(int, int) { return 0; }
-  };
-  EXPECT_EQ(internal::ImmediateValueCount<NoImmediates>(), 0);
-
-  struct EmptyImmediates : StackMachineInstruction<EmptyImmediates> {
-    static void execute(ValueStack&) {}
-  };
-  EXPECT_EQ(internal::ImmediateValueCount<EmptyImmediates>(), 0);
-
-  struct SomeImmediates : StackMachineInstruction<SomeImmediates> {
-    static void execute(ValueStack&, int, bool) {}
-  };
-  EXPECT_EQ(internal::ImmediateValueCount<SomeImmediates>(), 2);
 }
 
 TEST(InstructionSet, State) {

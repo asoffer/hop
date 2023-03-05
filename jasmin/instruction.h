@@ -165,7 +165,6 @@ using State = StateImpl<::jasmin::ExecutionState<Set>,
 template <typename T>
 concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
 
-
 // Forward declarations for instructions that need special treatement in
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
 // appear below.
@@ -533,33 +532,6 @@ using MakeInstructionSet = nth::type_t<
           return nth::type<internal::MakeInstructionSet<nth::type_t<vs>...>>;
         })>;
 
-namespace internal {
-
-template <Instruction I>
-constexpr size_t ImmediateValueCount() {
-  if constexpr (nth::any_of<I, Call, Return>) {
-    return 0;
-  } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
-    return 1;
-  } else {
-    using signature = ExtractSignature<decltype(&I::execute)>;
-
-    size_t immediate_value_count = signature::invoke_with_argument_types(
-        []<typename... Ts>() { return sizeof...(Ts); });
-
-    constexpr bool ES = HasExecutionState<I>;
-    constexpr bool FS = internal::HasFunctionState<I>;
-    constexpr bool VS = internal::HasValueStack<signature>;
-
-    if (not VS) { return 0; }
-    --immediate_value_count;  // Ignore the `ValueStack&` parameter.
-    if (ES) { --immediate_value_count; }
-    if (FS) { --immediate_value_count; }
-    return immediate_value_count;
-  }
-}
-
-}  // namespace internal
 }  // namespace jasmin
 
 #endif  // JASMIN_INSTRUCTION_H

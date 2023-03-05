@@ -19,7 +19,7 @@ concept Subtractable = not std::same_as<bool, T> and requires(T t) {
 
 template <typename T>
 concept Multiplicable = not std::same_as<bool, T> and requires(T t) {
-  { t *t } -> std::convertible_to<T>;
+  { (t * t) } -> std::convertible_to<T>;
 };
 
 template <typename T>

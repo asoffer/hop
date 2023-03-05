@@ -45,6 +45,25 @@ cc_library(
 )
 
 cc_library(
+    name = "instruction_traits",
+    hdrs = ["instruction_traits.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//jasmin:instruction",
+        "@asoffer_nth//nth/meta:type",
+    ],
+)
+
+cc_test(
+    name = "instruction_traits_test",
+    srcs = ["instruction_traits_test.cc"],
+    deps = [
+        ":instruction_traits",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "type_traits",
     hdrs = ["type_traits.h"],
     deps = [

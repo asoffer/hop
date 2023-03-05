@@ -77,6 +77,7 @@ cc_library(
         ":instruction",
         "//jasmin/internal:debug",
         "//jasmin/internal:function_base",
+        "//jasmin/internal:instruction_traits",
     ],
 )
 
