@@ -406,10 +406,39 @@ struct StackMachineInstruction {
 };
 
 // Built-in instructions to every instruction-set.
-struct Call : StackMachineInstruction<Call> {};
-struct Jump : StackMachineInstruction<Jump> {};
-struct JumpIf : StackMachineInstruction<JumpIf> {};
-struct Return : StackMachineInstruction<Return> {};
+struct Call : StackMachineInstruction<Call> {
+  static constexpr std::string_view debug(std::span<Value const, 0>) {
+    return "call";
+  }
+};
+
+struct Jump : StackMachineInstruction<Jump> {
+  static std::string debug(std::span<Value const, 1> immediate_values) {
+    ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
+    if (n < 0) {
+      return "jump -" + std::to_string(-n);
+    } else {
+      return "jump +" + std::to_string(n);
+    }
+  }
+};
+
+struct JumpIf : StackMachineInstruction<JumpIf> {
+  static std::string debug(std::span<Value const, 1> immediate_values) {
+    ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
+    if (n < 0) {
+      return "jump-if -" + std::to_string(-n);
+    } else {
+      return "jump-if +" + std::to_string(n);
+    }
+  }
+};
+
+struct Return : StackMachineInstruction<Return> {
+  static constexpr std::string_view debug(std::span<Value const, 0>) {
+    return "return";
+  }
+};
 
 // The `Instruction` concept indicates that a type `I` represents an instruction
 // which Jasmin is capable of executing. Instructions must either be one of the

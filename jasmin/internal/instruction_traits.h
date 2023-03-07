@@ -1,5 +1,5 @@
-#ifndef JASMIN_INSTRUCTION_TRAITS_H
-#define JASMIN_INSTRUCTION_TRAITS_H
+#ifndef JASMIN_INTERNAL_INSTRUCTION_TRAITS_H
+#define JASMIN_INTERNAL_INSTRUCTION_TRAITS_H
 
 #include "jasmin/instruction.h"
 #include "nth/meta/concepts.h"
@@ -69,4 +69,4 @@ constexpr size_t ReturnCount() {
 
 }  // namespace jasmin::internal
 
-#endif  // JASMIN_INSTRUCTION_TRAITS_H
+#endif  // JASMIN_INTERNAL_INSTRUCTION_TRAITS_H

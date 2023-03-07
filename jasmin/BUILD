@@ -26,8 +26,11 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":instruction",
+        ":function",
         ":value",
+        ":value_stack",
         "//jasmin/internal:debug",
+        "//jasmin/internal:instruction_traits",
     ],
 )
 

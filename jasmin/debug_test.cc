@@ -86,4 +86,52 @@ TEST(DumpValueStack, DumpValueStack) {
   );
 }
 
+struct AddNoImmediates : StackMachineInstruction<AddNoImmediates> {
+  static std::string_view debug(std::span<Value const, 0>) { return "add"; }
+  static int execute(int x, int y, int z) { return x + y + z; }
+};
+
+struct AddImmediates : StackMachineInstruction<AddImmediates> {
+  static std::string debug(std::span<Value const, 3> immediate_values) {
+    std::string result = "add";
+    for (Value v : immediate_values) {
+      result += " ";
+      result += std::to_string(v.as<int>());
+    }
+    return result;
+  }
+  static void execute(ValueStack&, int, int, int) {}
+};
+
+
+TEST(DumpInstruction, DumpInstruction) {
+  Value vs[1] = {ptrdiff_t{5}};
+  EXPECT_EQ(DumpInstruction<Call>({}), "call");
+  EXPECT_EQ(DumpInstruction<Return>({}), "return");
+  EXPECT_EQ(DumpInstruction<Jump>(vs), "jump +5");
+  EXPECT_EQ(DumpInstruction<JumpIf>(vs), "jump-if +5");
+
+  Value operands[3] = {1, 4, 9};
+  EXPECT_EQ(DumpInstruction<AddNoImmediates>({}), "add");
+  EXPECT_EQ(DumpInstruction<AddImmediates>(operands), "add 1 4 9");
+}
+
+
+TEST(DumpFunction, DumpFunction) {
+  using Set = MakeInstructionSet<AddNoImmediates, AddImmediates>;
+  using Fn = Function<Set>;
+
+  Fn f(0, 0);
+  f.append<Call>();
+  f.append<AddImmediates>(34, 55, 89);
+  f.append<AddNoImmediates>();
+  f.append<Return>();
+
+  EXPECT_EQ(DumpFunction(f),
+            "call\n"
+            "add 34 55 89\n"
+            "add\n"
+            "return\n");
+}
+
 }  // namespace jasmin
