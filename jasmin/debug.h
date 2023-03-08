@@ -1,6 +1,7 @@
 #ifndef JASMIN_DEBUG_H
 #define JASMIN_DEBUG_H
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 
