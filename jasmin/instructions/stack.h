@@ -37,6 +37,10 @@ struct StackAllocate : StackMachineInstruction<StackAllocate> {
                                 size_t size_in_bytes) {
     frame.allocate_once(size_in_bytes);
   }
+  static std::string debug(std::span<Value const, 1> immediates) {
+    return "stack-allocate" + std::to_string(immediates[0].as<size_t>()) +
+           " byte(s)";
+  }
 };
 
 // Returns a pointer into the stack frame associated with the current function,
@@ -46,6 +50,10 @@ struct StackOffset : StackMachineInstruction<StackOffset> {
   static constexpr void execute(ValueStack &value_stack, function_state &frame,
                                 size_t offset) {
     value_stack.push(frame.data() + offset);
+  }
+  static std::string debug(std::span<Value const, 2> immediates) {
+    return "stack-offset" + std::to_string(immediates[0].as<size_t>()) +
+           " byte(s)";
   }
 };
 

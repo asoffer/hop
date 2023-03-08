@@ -32,11 +32,6 @@ TEST(ShowValue, ShowValue) {
   );
 }
 
-TEST(InstructionName, InstructionName) {
-  EXPECT_EQ(InstructionName<Store>(), "store");
-  EXPECT_EQ(InstructionName<Drop>(), "drop");
-}
-
 TEST(ShowValueStack, ShowValueStack) {
   EXPECT_EQ(ShowValueStack({}), "");
   EXPECT_EQ(ShowValueStack({int16_t{1}}),

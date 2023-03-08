@@ -18,17 +18,6 @@ std::string ShowValue(Value v);
 
 std::string ShowValueStack(ValueStack const& v);
 
-template <Instruction I>
-std::string_view InstructionName() {
-  if constexpr (requires {
-                  { I::name() } -> std::convertible_to<std::string_view>;
-                }) {
-    return I::name();
-  } else {
-    return typeid(I).name();
-  }
-}
-
 struct DumpValueStack : StackMachineInstruction<DumpValueStack> {
   static std::string_view name() { return "dump-value-stack"; }
 
@@ -52,10 +41,14 @@ std::string DumpInstruction(
     std::span<Value const, internal::ImmediateValueCount<I>()> immediates) {
   if constexpr (internal::HasDebug<I>) {
     if constexpr (requires {
-                    {
-                      I::debug(immediates)
-                      } -> std::convertible_to<std::string_view>;
+                    { I::debug() } -> std::convertible_to<std::string_view>;
                   }) {
+      return I::debug();
+    } else if constexpr (requires {
+                           {
+                             I::debug(immediates)
+                             } -> std::convertible_to<std::string_view>;
+                         }) {
       if constexpr (std::convertible_to<decltype(I::debug(immediates)),
                                         std::string>) {
         return I::debug(immediates);
@@ -68,7 +61,7 @@ std::string DumpInstruction(
                     "member function with the appropriate argument.");
     }
   } else {
-    std::string result(InstructionName<I>());
+    std::string result(typeid(I).name());
 
     for (Value v : immediates) {
       result.append(" ");

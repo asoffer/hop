@@ -19,6 +19,9 @@ struct Drop : StackMachineInstruction<Drop> {
   static constexpr void execute(ValueStack &value_stack, size_t count) {
     value_stack.erase(value_stack.size() - count, value_stack.size());
   }
+  static std::string debug(std::span<Value const, 1> immediates) {
+    return "drop " + std::to_string(immediates[0].as<size_t>());
+  }
 };
 
 struct Duplicate : StackMachineInstruction<Duplicate> {
@@ -27,6 +30,7 @@ struct Duplicate : StackMachineInstruction<Duplicate> {
   static constexpr void execute(ValueStack &value_stack) {
     value_stack.push(value_stack.peek_value());
   }
+  static constexpr std::string_view debug() { return "duplicate"; }
 };
 
 struct DuplicateAt : StackMachineInstruction<DuplicateAt> {
@@ -35,41 +39,40 @@ struct DuplicateAt : StackMachineInstruction<DuplicateAt> {
   static constexpr void execute(ValueStack &value_stack, size_t index) {
     value_stack.push(value_stack.peek_value(index));
   }
-};
-
-struct Swap : StackMachineInstruction<Swap> {
-  static std::string_view name() { return "swap"; }
-
-  static constexpr void execute(ValueStack &value_stack) {
-    value_stack.swap_with(1);
+  static std::string debug(std::span<Value const, 1> immediates) {
+    return "duplicate @" + std::to_string(immediates[0].as<size_t>());
   }
 };
 
-struct Load : StackMachineInstruction<Load> {
-  static std::string_view name() { return "load"; }
+struct Swap : StackMachineInstruction<Swap> {
+  static constexpr void execute(ValueStack &value_stack) {
+    value_stack.swap_with(1);
+  }
+  static constexpr std::string_view debug() { return "swap"; }
+};
 
+struct Load : StackMachineInstruction<Load> {
   static void execute(ValueStack &value_stack, uint8_t size) {
     std::byte const *p = value_stack.pop<std::byte const *>();
     value_stack.push(Value::Load(p, size));
   }
+  static constexpr std::string_view debug() { return "load"; }
 };
 
 struct Store : StackMachineInstruction<Store> {
-  static std::string_view name() { return "store"; }
-
   static void execute(ValueStack &value_stack, uint8_t size) {
     Value value    = value_stack.pop_value();
     void *location = value_stack.pop<void *>();
     Value::Store(value, location, size);
   }
+  static constexpr std::string_view debug() { return "store"; }
 };
 
 struct StoreConstant : StackMachineInstruction<StoreConstant> {
-  static std::string_view name() { return "store-constant"; }
-
   static void execute(ValueStack &value_stack, void *location, uint8_t size) {
     Value::Store(value_stack.pop_value(), location, size);
   }
+  static constexpr std::string_view debug() { return "store-constant"; }
 };
 
 }  // namespace jasmin
