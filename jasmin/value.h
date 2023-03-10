@@ -2,6 +2,7 @@
 #define JASMIN_VALUE_H
 
 #include <concepts>
+#include <cstdint>
 #include <cstring>
 #include <type_traits>
 
@@ -60,6 +61,22 @@ struct Value {
     JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_store <= ValueSize,
                                  "Bytes to load must not exceed 8.");
     std::memcpy(ptr, &value.value_, bytes_to_store);
+  }
+
+  // Returns a representation of the `Value` which can be stored and
+  // reconstituted into a `Value` via `set_raw_value` to produce a value
+  // equivalent to this one.
+  uint64_t raw_value() const {
+    uint64_t result;
+    std::memcpy(&result, value_, sizeof(uint64_t));
+    return result;
+  }
+
+  void set_raw_value(uint64_t n) {
+    std::memcpy(&value_, &n, sizeof(uint64_t));
+#if defined(JASMIN_DEBUG)
+    debug_type_id_ = internal::type_id<unknown_t>;
+#endif  // defined(JASMIN_DEBUG)
   }
 
   // Constructs a `Value` holding the value `v`.

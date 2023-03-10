@@ -72,5 +72,12 @@ TEST(Value, Store) {
   EXPECT_EQ(n, 17);
 }
 
+TEST(Value, Raw) {
+  Value v1 = 3.14159;
+  Value v2 = 0;
+  v2.set_raw_value(v1.raw_value());
+  EXPECT_EQ(v1.as<double>(), v2.as<double>());
+}
+
 }  // namespace
 }  // namespace jasmin
