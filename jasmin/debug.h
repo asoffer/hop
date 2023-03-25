@@ -44,7 +44,7 @@ std::string DumpInstruction(
     if constexpr (requires {
                     { I::debug() } -> std::convertible_to<std::string_view>;
                   }) {
-      return I::debug();
+      return std::string(I::debug());
     } else if constexpr (requires {
                            {
                              I::debug(immediates)
