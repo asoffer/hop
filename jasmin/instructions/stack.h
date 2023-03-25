@@ -51,7 +51,7 @@ struct StackOffset : StackMachineInstruction<StackOffset> {
                                 size_t offset) {
     value_stack.push(frame.data() + offset);
   }
-  static std::string debug(std::span<Value const, 2> immediates) {
+  static std::string debug(std::span<Value const, 1> immediates) {
     return "stack-offset" + std::to_string(immediates[0].as<size_t>()) +
            " byte(s)";
   }
