@@ -2,6 +2,7 @@
 #define JASMIN_DEBUG_H
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <string_view>
 
@@ -22,9 +23,8 @@ std::string ShowValueStack(ValueStack const& v);
 struct DumpValueStack : StackMachineInstruction<DumpValueStack> {
   static std::string_view name() { return "dump-value-stack"; }
 
-  static constexpr void execute(ValueStack& value_stack,
-                                void (*fn)(std::string_view)) {
-    fn(ShowValueStack(value_stack));
+  static void execute(ValueStack& value_stack) {
+    std::cerr << ShowValueStack(value_stack);
   }
 };
 

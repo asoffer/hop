@@ -56,31 +56,6 @@ TEST(ShowValueStack, ShowValueStack) {
   );
 }
 
-TEST(DumpValueStack, DumpValueStack) {
-  static std::string output;
-  ValueStack value_stack;
-  ExecuteInstruction<DumpValueStack>(
-      value_stack, [](std::string_view s) { output = std::string(s); });
-  EXPECT_EQ(output, "");
-
-  value_stack = {int64_t{10}, true, uint32_t{257}, float{1.1}};
-  ExecuteInstruction<DumpValueStack>(
-      value_stack, [](std::string_view s) { output = std::string(s); });
-  EXPECT_EQ(output,
-#if defined(JASMIN_DEBUG)
-            "[10 (int64_t)]\n"
-            "[true]\n"
-            "[257 (uint32_t)]\n"
-            "[1.100000 (float)]\n"
-#else
-            "[0a 00 00 00 00 00 00 00]\n"
-            "[01 00 00 00 00 00 00 00]\n"
-            "[01 01 00 00 00 00 00 00]\n"
-            "[cd cc 8c 3f 00 00 00 00]\n"
-#endif
-  );
-}
-
 struct AddNoImmediates : StackMachineInstruction<AddNoImmediates> {
   static std::string_view debug(std::span<Value const, 0>) { return "add"; }
   static int execute(int x, int y, int z) { return x + y + z; }
