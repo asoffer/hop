@@ -13,6 +13,7 @@
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
 #include "jasmin/internal/type_traits.h"
+#include "jasmin/op_code.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 #include "nth/meta/concepts.h"
@@ -493,12 +494,24 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns the number of instructions in the instruction set.
   static constexpr size_t size() { return sizeof...(Is); }
 
+  static constexpr struct OpCodeMetadata OpCodeMetadata(Value v) {
+    return Metadata[v.as<uint64_t>()];
+  }
+
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
   template <nth::any_of<Is...> I>
   static constexpr uint64_t OpCodeFor() {
     constexpr size_t value = OpCodeForImpl<I>();
     return value;
+  }
+
+  // Returns a `uint64_t` indicating the op-code for the given template
+  // parameter instruction `I`.
+  template <nth::any_of<Is...> I>
+  static constexpr struct OpCodeMetadata OpCodeMetadataFor() {
+    return {.op_code_value         = OpCodeFor<I>(),
+            .immediate_value_count = 0};
   }
 
   static auto InstructionFunction(uint64_t op_code) {
@@ -510,6 +523,9 @@ struct MakeInstructionSet : InstructionSetBase {
  private:
   static constexpr exec_fn_type table[sizeof...(Is)] = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
+
+  static constexpr struct OpCodeMetadata Metadata[sizeof...(Is)] = {
+      OpCodeMetadataFor<Is>()...};
 
   template <nth::any_of<Is...> I>
   static constexpr uint64_t OpCodeForImpl() {

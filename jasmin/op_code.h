@@ -36,6 +36,12 @@ struct OpCodeRange {
   size_t length_;
 };
 
+// Represents information describing an op-code.
+struct OpCodeMetadata {
+  size_t op_code_value;
+  size_t immediate_value_count;
+};
+
 }  // namespace jasmin
 
 #endif  // JASMIN_OP_CODE_H
