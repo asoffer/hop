@@ -6,6 +6,7 @@
 
 #include "jasmin/instruction_pointer.h"
 #include "jasmin/op_code.h"
+#include "nth/debug/debug.h"
 
 namespace jasmin::internal {
 
@@ -45,8 +46,8 @@ struct FunctionBase {
   // `append_with_placeholders` to defer setting a value, but may be used to
   // overwrite any such `Value`.
   void set_value(OpCodeRange range, size_t index, Value value) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(index + 1 < range.size(),
-                                 "Index larger than range");
+    NTH_REQUIRE((v.always), index + 1 < range.size())
+        .Log<"Index larger than range">();
     instructions_[range.offset() + index + 1] = value;
   }
 

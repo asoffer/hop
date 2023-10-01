@@ -16,6 +16,7 @@
 #include "jasmin/op_code.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
+#include "nth/debug/debug.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
@@ -510,13 +511,11 @@ struct MakeInstructionSet : InstructionSetBase {
   // parameter instruction `I`.
   template <nth::any_of<Is...> I>
   static constexpr struct OpCodeMetadata OpCodeMetadataFor() {
-    return {.op_code_value         = OpCodeFor<I>(),
-            .immediate_value_count = 0};
+    return {.op_code_value = OpCodeFor<I>(), .immediate_value_count = 0};
   }
 
   static auto InstructionFunction(uint64_t op_code) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(op_code < sizeof...(Is),
-                                 "Out-of-bounds op-code");
+    NTH_REQUIRE(op_code < sizeof...(Is)).Log<"Out-of-bounds op-code.">();
     return table[op_code];
   }
 

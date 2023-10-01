@@ -5,9 +5,9 @@
 #include <memory>
 #include <tuple>
 
-#include "jasmin/internal/debug.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
+#include "nth/debug/debug.h"
 
 namespace jasmin {
 
@@ -37,26 +37,24 @@ struct ValueStack {
 
   // Pushes the given value `v` onto the stack.
   void push(Value const &v) {
-    if (head_ == values_.get() + cap_) [[unlikely]] {
-        reallocate();
-      }
-    JASMIN_INTERNAL_DEBUG_ASSERT(head_ != values_.get() + cap_,
-                                 "Something went wrong with reallocate()");
+    if (head_ == values_.get() + cap_) [[unlikely]] { reallocate(); }
+    NTH_REQUIRE((v.always), head_ != values_.get() + cap_)
+        .Log<"Something went wrong with reallocate()">();
     *head_ = v;
     ++head_;
   }
   void push(SmallTrivialValue auto v) { push(Value(v)); }
 
-  using const_iterator  = Value const *;
+  using const_iterator = Value const *;
 
-  // Returns an iterator referrencing one passed the end. of the `ValueStack`.
+  // Returns an iterator referrencing one passed the end of the `ValueStack`.
   const_iterator begin() const { return values_.get(); }
   const_iterator end() const { return head_; }
 
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
   // the stack is empty.
   Value pop_value() {
-    JASMIN_INTERNAL_DEBUG_ASSERT(not empty(), "Unexpectedly empty ValueStack");
+    NTH_REQUIRE((v.always), not empty()).Log<"Unexpectedly empty ValueStack">();
     return *--head_;
   }
 
@@ -70,9 +68,9 @@ struct ValueStack {
   // Returns a copy of the `Value` that is `count_back` entries from the top of
   // the stack. Behavior is undefined if the stack does not contain at least
   // `count_back + 1` values.
-  constexpr Value peek_value(size_t count_back = 0) const {
-    JASMIN_INTERNAL_DEBUG_ASSERT(size() > count_back,
-                                 "Unexpectedly short ValueStack");
+  Value peek_value(size_t count_back = 0) const {
+    NTH_REQUIRE((v.always), size() > count_back)
+        .Log<"Unexpectedly short ValueStack">();
     return *(head_ - (count_back + 1));
   }
 
@@ -88,10 +86,10 @@ struct ValueStack {
   // stack. Behavior is undefined if `n` is zero, or if `n` is larger than the
   // number of elements in the stack.
   void swap_with(size_t n) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(
-        n != 0, "Unexpectedly attempting to swap an element with itself");
-    JASMIN_INTERNAL_DEBUG_ASSERT(size() > n,
-                                 "Unexpectedly too few elements in ValueStack");
+    NTH_REQUIRE((v.always), n != size_t{0})
+        .Log<"Unexpectedly attempting to swap an element with itself">();
+    NTH_REQUIRE((v.always), size() > n)
+        .Log<"Unexpectedly too few elements in ValueStack">();
     auto *p = head_ - 1;
     std::swap(*p, *(p - n));
   }
@@ -105,8 +103,8 @@ struct ValueStack {
   // `Ts...`.
   template <SmallTrivialValue... Ts>
   std::tuple<Ts...> pop_suffix() {
-    JASMIN_INTERNAL_DEBUG_ASSERT(size() >= sizeof...(Ts),
-                                 "Unexpectedly too few elements in ValueStack");
+    NTH_REQUIRE((v.always), size() >= sizeof...(Ts))
+        .Log<"Unexpectedly too few elements in ValueStack">();
     head_ -= sizeof...(Ts);
     auto *p = head_;
     return std::tuple<Ts...>{(p++)->template as<Ts>()...};
@@ -126,7 +124,7 @@ struct ValueStack {
             return F(std::forward<Args>(args)..., suffix...);
           },
           pop_suffix<Ts...>());
-      *head_      = result;
+      *head_ = result;
       ++head_;
     }
   }
@@ -137,10 +135,10 @@ struct ValueStack {
   // stack. Behavior is undefined if `start > end`, or if `end` is greater than
   // the size of the stack.
   void erase(size_t start, size_t end) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(start <= end,
-                                 "Unexpectedly invalid range to erase");
-    JASMIN_INTERNAL_DEBUG_ASSERT(end <= size(),
-                                 "Unexpectedly too few elements in ValueStack");
+    NTH_REQUIRE((v.always), start <= end)
+        .Log<"Unexpectedly invalid range to erase">();
+    NTH_REQUIRE((v.always), end <= size())
+        .Log<"Unexpectedly too few elements in ValueStack">();
 
     std::memcpy(values_.get() + start, values_.get() + end,
                 sizeof(Value) * (head_ - values_.get() - end));

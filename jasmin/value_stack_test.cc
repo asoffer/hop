@@ -3,9 +3,16 @@
 #include <tuple>
 
 #include "gtest/gtest.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 
 namespace jasmin {
 namespace {
+
+bool init = [] {
+  nth::RegisterLogSink(nth::stderr_log_sink);
+  return false;
+}();
 
 TEST(ValueStack, DefaultConstruction) {
   ValueStack value_stack;
@@ -179,8 +186,8 @@ TEST(ValueStack, Begin) {
   EXPECT_EQ((value_stack.begin() + 1)->as<bool>(), true);
   EXPECT_EQ((value_stack.begin())->as<int>(), 1);
   value_stack.pop_value();
-  EXPECT_EQ((value_stack.begin() + 2)->as<bool>(), true);
-  EXPECT_EQ((value_stack.begin() + 1)->as<int>(), 1);
+  EXPECT_EQ((value_stack.begin() + 1)->as<bool>(), true);
+  EXPECT_EQ((value_stack.begin())->as<int>(), 1);
 }
 
 TEST(ValueStack, End) {

@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "jasmin/internal/debug.h"
+#include "nth/debug/debug.h"
 
 namespace jasmin {
 
@@ -45,8 +46,8 @@ struct Value {
   // `bytes_to_load`. Requires that the value stored at `ptr` be trivially
   // copyable and have size precisely `bytes_to_load`.
   static Value Load(void const* ptr, size_t bytes_to_load) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_load <= ValueSize,
-                                 "Bytes to load must not exceed 8.");
+    NTH_REQUIRE((v.always), bytes_to_load <= ValueSize)
+        .Log<"Bytes to load must not exceed 8.">();
     Value v;
     std::memcpy(&v.value_, ptr, bytes_to_load);
 #if defined(JASMIN_DEBUG)
@@ -58,8 +59,8 @@ struct Value {
   // Stores `value` into the location `ptr`. Requires that `value` represent a
   // value the size of whose type is `bytes_to_store`.
   static void Store(Value value, void* ptr, size_t bytes_to_store) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(bytes_to_store <= ValueSize,
-                                 "Bytes to load must not exceed 8.");
+    NTH_REQUIRE((v.always), bytes_to_store <= ValueSize)
+        .Log<"Bytes to load must not exceed 8.">();
     std::memcpy(ptr, &value.value_, bytes_to_store);
   }
 
@@ -99,11 +100,13 @@ struct Value {
     if constexpr (std::is_same_v<T, Value>) {
       return *this;
     } else {
-      JASMIN_INTERNAL_DEBUG_ASSERT(
-          (debug_type_id_ == internal::type_id<T> or
-           debug_type_id_ == internal::type_id<unknown_t>),
-          "Value type mismatch:\n  ", debug_type_id_.name,
-          " != ", internal::type_id<T>.name, "\n");
+#if defined(JASMIN_DEBUG)
+      NTH_REQUIRE((v.always),
+                  debug_type_id_ == internal::type_id<T> or
+                      debug_type_id_ == internal::type_id<unknown_t>)
+          .Log<"Value type mismatch: {} != {}">(debug_type_id_.name,
+                                                internal::type_id<T>.name);
+#endif  // defined(JASMIN_DEBUG)
 
       T result;
       std::memcpy(&result, value_, sizeof(T));

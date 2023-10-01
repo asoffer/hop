@@ -1,9 +1,16 @@
 #include "jasmin/call_stack.h"
 
 #include "gtest/gtest.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 
 namespace jasmin {
 namespace {
+
+bool init = [] {
+  nth::RegisterLogSink(nth::stderr_log_sink);
+  return false;
+}();
 
 TEST(CallStack, Construction) {
   CallStack call_stack;

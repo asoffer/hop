@@ -100,17 +100,19 @@ def _impl(ctx):
             "-fbracket-depth=1024",
             "-fdiagnostics-color=always",
             "-fno-exceptions",
+            "-D_LIBCPP_ENABLE_CXX20_REMOVED_TYPE_TRAITS",
         ]),
         linking_flags([
             "-ldl",
             "-lm",
             "-lstdc++",
-        ]),
+        ] + {
+            "macosx": ["-framework", "CoreFoundation"],
+        }.get(ctx.attr.os, [])),
         mode_dependent_flags({
             "dbg": ["-g", "-O0"],
             "opt": ["-O2"],
         }),
-
     ]
 
     return cc_common.create_cc_toolchain_config_info(
@@ -127,8 +129,10 @@ def _impl(ctx):
         abi_libc_version = "unknown",
         cxx_builtin_include_directories = {
             "macosx": [
-                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/",
-                "/Library/Developer/CommandLineTools/usr/lib/clang/13.1.6/include/"
+                "/opt/homebrew/Cellar/llvm/16.0.4/lib/clang/16/include/",
+                "/opt/homebrew/Cellar/llvm/16.0.4/lib/clang/16/share/",
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk/usr/include/",
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk/System/Library/Frameworks/CoreFoundation.framework/Headers"
             ],
         }.get(ctx.attr.os, [
             "/usr/lib",

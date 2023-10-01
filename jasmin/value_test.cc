@@ -3,9 +3,16 @@
 #include <concepts>
 
 #include "gtest/gtest.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 
 namespace jasmin {
 namespace {
+
+bool init = [] {
+  nth::RegisterLogSink(nth::stderr_log_sink);
+  return false;
+}();
 
 TEST(Value, Construction) {
   EXPECT_TRUE((std::constructible_from<Value, char>));

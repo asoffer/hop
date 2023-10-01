@@ -23,6 +23,8 @@ struct TypeId {
   friend bool operator!=(TypeId const &lhs, TypeId const &rhs) {
     return not(lhs == rhs);
   }
+
+  friend void NthPrint(auto &p, auto &, TypeId const &t) { p.write(t.name); }
 };
 
 template <typename T>
@@ -31,32 +33,7 @@ inline TypeId type_id{
     .name  = typeid(T).name(),
 };
 
-// Writes the strings to stderr and aborts execution.
-[[noreturn]] void DebugAbort(std::same_as<char const *> auto... args) {
-  (std::fputs(args, stderr), ...);
-  std::abort();
-}
-
 }  // namespace jasmin::internal
-
-#define JASMIN_INTERNAL_DEBUG_ASSERT_IMPL_(expr, file, line, ...)              \
-  do {                                                                         \
-    if (not(expr)) {                                                           \
-      ::jasmin::internal::DebugAbort("Failed assertion on at " file "(" #line  \
-                                     "): " #expr "\n",                         \
-                                     __VA_ARGS__);                             \
-    }                                                                          \
-  } while (false)
-
-#define JASMIN_INTERNAL_DEBUG_ASSERT_IMPL(expr, file, line, ...)               \
-  JASMIN_INTERNAL_DEBUG_ASSERT_IMPL_(expr, file, line, __VA_ARGS__)
-
-#define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)                                \
-  JASMIN_INTERNAL_DEBUG_ASSERT_IMPL(expr, __FILE__, __LINE__, __VA_ARGS__)
-
-#else
-
-#define JASMIN_INTERNAL_DEBUG_ASSERT(expr, ...)
 
 #endif  // defined(JASMIN_DEBUG)
 #endif  // JASMIN_INTERNAL_DEBUG_H

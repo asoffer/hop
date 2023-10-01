@@ -26,6 +26,7 @@ cc_library(
     hdrs = ["function_base.h"],
     deps = [
         "//jasmin:instruction_pointer",
+        "@asoffer_nth//nth/debug",
     ],
 )
 

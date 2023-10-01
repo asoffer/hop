@@ -5,8 +5,8 @@ cc_library(
     hdrs = ["call_stack.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//jasmin/internal:debug",
         "//jasmin/internal:function_base",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -16,6 +16,8 @@ cc_test(
     deps = [
         ":call_stack",
         "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/debug/log",
+        "@asoffer_nth//nth/debug/log:stderr_log_sink",
     ],
 )
 
@@ -31,6 +33,7 @@ cc_library(
         ":value_stack",
         "//jasmin/internal:debug",
         "//jasmin/internal:instruction_traits",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -56,6 +59,7 @@ cc_library(
         ":instruction_pointer",
         ":value",
         ":value_stack",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -78,7 +82,6 @@ cc_library(
         ":call_stack",
         ":instruction_pointer",
         ":instruction",
-        "//jasmin/internal:debug",
         "//jasmin/internal:function_base",
         "//jasmin/internal:instruction_traits",
     ],
@@ -108,6 +111,7 @@ cc_library(
         "//jasmin/internal:function_base",
         "//jasmin/internal:function_state",
         "//jasmin/internal:type_traits",
+        "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
     ],
@@ -118,6 +122,8 @@ cc_test(
     srcs = ["instruction_test.cc"],
     deps = [
         ":instruction",
+        "@asoffer_nth//nth/debug/log",
+        "@asoffer_nth//nth/debug/log:stderr_log_sink",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -129,7 +135,6 @@ cc_library(
     deps = [
         ":op_code",
         ":value",
-        "//jasmin/internal:debug",
     ],
 )
 
@@ -148,7 +153,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":value",
-        "//jasmin/internal:debug",
     ],
 )
 
@@ -162,37 +166,13 @@ cc_test(
 )
 
 cc_library(
-    name = "serialization",
-    hdrs = ["serialization.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":function",
-        ":instruction",
-        "//jasmin/internal:debug",
-        "@asoffer_nth//nth/meta:sequence",
-        "@asoffer_nth//nth/meta:type",
-    ],
-)
-
-cc_test(
-    name = "serialization_test",
-    srcs = ["serialization_test.cc"],
-    deps = [
-        ":serialization",
-        "//jasmin/instructions:core",
-        "//jasmin/instructions:stack",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "value_stack",
     hdrs = ["value_stack.h"],
     visibility = ["//visibility:public"],
     deps = [
         ":value",
-        "//jasmin/internal:debug",
         "//jasmin/internal:type_traits",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -201,6 +181,8 @@ cc_test(
     srcs = ["value_stack_test.cc"],
     deps = [
         ":value_stack",
+        "@asoffer_nth//nth/debug/log",
+        "@asoffer_nth//nth/debug/log:stderr_log_sink",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -211,6 +193,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//jasmin/internal:debug",
+        "@asoffer_nth//nth/debug",
     ],
 )
 
@@ -220,6 +203,8 @@ cc_test(
     deps = [
         ":value",
         "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/debug/log",
+        "@asoffer_nth//nth/debug/log:stderr_log_sink",
     ],
 )
 

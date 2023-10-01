@@ -9,6 +9,7 @@
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/internal/instruction_traits.h"
+#include "nth/debug/debug.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 
@@ -121,9 +122,9 @@ std::string DumpFunction(Function<Set> const&f) {
           return reinterpret_cast<uintptr_t>(pair.first) <
                  reinterpret_cast<uintptr_t>(i);
         });
-    JASMIN_INTERNAL_DEBUG_ASSERT(
-        debug_iter != internal::DebugInstructionTable<Set>.end(),
-        "Failed to find instruction.");
+    NTH_REQUIRE((v.always),
+                debug_iter != internal::DebugInstructionTable<Set>.end())
+        .Log<"Failed to find instruction.">();
     result.append(debug_iter->second(value_iter));
     result.append("\n");
   }

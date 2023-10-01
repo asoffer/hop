@@ -6,7 +6,6 @@
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instruction_pointer.h"
-#include "jasmin/internal/debug.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/instruction_traits.h"
 #include "jasmin/internal/type_traits.h"

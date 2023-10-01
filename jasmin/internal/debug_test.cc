@@ -9,10 +9,6 @@ namespace {
 
 #if defined(JASMIN_DEBUG)
 
-TEST(DebugAbort, Aborts) {
-  EXPECT_DEATH({ DebugAbort("failure", "message"); }, "failure.*message");
-}
-
 TEST(TypeId, Equality) {
   EXPECT_EQ(type_id<int>, type_id<int>);
   EXPECT_EQ(type_id<int>, type_id<signed int>);
@@ -25,14 +21,6 @@ TEST(TypeId, Equality) {
 }
 
 #endif  // defined(JASMIN_DEBUG)
-
-TEST(AssertMacro, AbortsOnlyOnFailure) {
-  JASMIN_INTERNAL_DEBUG_ASSERT(true, "message");
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ JASMIN_INTERNAL_DEBUG_ASSERT(false, "message"); },
-               "false.*message");
-#endif  // defined(JASMIN_DEBUG)
-}
 
 }  // namespace
 }  // namespace jasmin::internal

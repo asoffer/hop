@@ -78,6 +78,7 @@ cc_library(
     deps = [
         "//jasmin:instruction",
         "//jasmin:value_stack",
+        "@asoffer_nth//nth/debug",
     ],
 )
 

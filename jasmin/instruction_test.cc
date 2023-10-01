@@ -1,11 +1,18 @@
 #include "jasmin/instruction.h"
 
 #include "gtest/gtest.h"
+#include "nth/debug/log/log.h"
+#include "nth/debug/log/stderr_log_sink.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
 
 namespace jasmin {
 namespace {
+
+bool init = [] {
+  nth::RegisterLogSink(nth::stderr_log_sink);
+  return false;
+}();
 
 struct NoOp : StackMachineInstruction<NoOp> {
   static void execute() {}

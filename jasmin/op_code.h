@@ -3,7 +3,6 @@
 
 #include <cstddef>
 
-#include "jasmin/internal/debug.h"
 #include "jasmin/value.h"
 
 namespace jasmin {

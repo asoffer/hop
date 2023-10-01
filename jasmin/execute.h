@@ -8,10 +8,10 @@
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instruction_pointer.h"
-#include "jasmin/internal/debug.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
+#include "nth/debug/debug.h"
 
 namespace jasmin {
 
@@ -54,10 +54,10 @@ template <InstructionSet Set>
 void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
              std::initializer_list<Value> arguments,
              SmallTrivialValue auto &...return_values) {
-  JASMIN_INTERNAL_DEBUG_ASSERT(arguments.size() == f.parameter_count(),
-                               "Argument/parameter count mismatch");
-  JASMIN_INTERNAL_DEBUG_ASSERT(sizeof...(return_values) == f.return_count(),
-                               "Return value count mismatch");
+  NTH_REQUIRE((v.always), arguments.size() == f.parameter_count())
+      .Log<"Argument/parameter count mismatch.">();
+  NTH_REQUIRE((v.always), sizeof...(return_values) == f.return_count())
+      .Log<"Return value count mismatch.">();
   ValueStack value_stack(arguments);
   int dummy;
 

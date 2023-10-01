@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "jasmin/internal/debug.h"
 #include "jasmin/value.h"
 
 namespace jasmin {

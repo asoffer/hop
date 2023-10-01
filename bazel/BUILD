@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"])
 load(":cc_toolchain_config.bzl", "cc_toolchain_config")
 
 cc_toolchain_suite(
-    name = "clang",
+    name = "cc",
     toolchains = {
         "darwin_arm64": ":macosx_toolchain",
         "k8": ":k8_toolchain",
@@ -27,12 +27,14 @@ cc_toolchain(
 cc_toolchain_config(
     name = "macosx_toolchain_config",
     os = "macosx",
-    compiler_path = "/usr/bin/clang-14",
+    compiler_path = "/usr/local/bin/clang-16",
     warnings = [
         "-Wall",
         "-Werror",
         "-Wextra",
+        "-Wpedantic",
         "-Wuninitialized",
+        "-Wno-gcc-compat",
     ]
 )
 
@@ -52,11 +54,13 @@ cc_toolchain(
 cc_toolchain_config(
     name = "k8_toolchain_config",
     os = "k8",
-    compiler_path = "/usr/bin/clang-14",
+    compiler_path = "/usr/bin/clang++-16",
     warnings = [
         "-Wall",
         "-Werror",
         "-Wextra",
+        "-Wpedantic",
         "-Wuninitialized",
+        "-Wno-gcc-compat",
     ]
 )

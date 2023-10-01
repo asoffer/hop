@@ -6,15 +6,15 @@
 
 #include "jasmin/instruction.h"
 #include "jasmin/value_stack.h"
+#include "nth/debug/debug.h"
 
 namespace jasmin {
 namespace internal {
 
 struct StackFrame {
   std::byte *allocate_once(size_t size_in_bytes) {
-    JASMIN_INTERNAL_DEBUG_ASSERT(
-        data() == nullptr,
-        "`allocate_once` must only be called once per stack frame.");
+    NTH_REQUIRE(data() == nullptr)
+        .Log<"`allocate_once` must only be called once per stack frame.">();
     data_.reset(new std::byte[size_in_bytes]);
     return data_.get();
   }
