@@ -31,9 +31,9 @@ cc_library(
         ":function",
         ":value",
         ":value_stack",
-        "//jasmin/internal:debug",
         "//jasmin/internal:instruction_traits",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 
@@ -56,7 +56,6 @@ cc_library(
         ":call_stack",
         ":function",
         ":instruction",
-        ":instruction_pointer",
         ":value",
         ":value_stack",
         "@asoffer_nth//nth/debug",
@@ -80,8 +79,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":call_stack",
-        ":instruction_pointer",
         ":instruction",
+        ":value",
         "//jasmin/internal:function_base",
         "//jasmin/internal:instruction_traits",
     ],
@@ -104,13 +103,12 @@ cc_library(
     deps = [
         ":call_stack",
         ":execution_state",
-        ":instruction_pointer",
         ":value",
         ":value_stack",
-        "//jasmin/internal:attributes",
         "//jasmin/internal:function_base",
         "//jasmin/internal:function_state",
         "//jasmin/internal:type_traits",
+        "@asoffer_nth//nth/base:attributes",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
@@ -129,31 +127,10 @@ cc_test(
 )
 
 cc_library(
-    name = "instruction_pointer",
-    hdrs = ["instruction_pointer.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":op_code",
-        ":value",
-    ],
-)
-
-cc_test(
-    name = "instruction_pointer_test",
-    srcs = ["instruction_pointer_test.cc"],
-    deps = [
-        ":instruction_pointer",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "op_code",
     hdrs = ["op_code.h"],
     visibility = ["//visibility:public"],
-    deps = [
-        ":value",
-    ],
+    deps = [],
 )
 
 cc_test(
@@ -192,8 +169,9 @@ cc_library(
     hdrs = ["value.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//jasmin/internal:debug",
+        "//jasmin/configuration:impl",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/meta:type",
     ],
 )
 

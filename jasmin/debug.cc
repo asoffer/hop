@@ -6,12 +6,12 @@
 #include <string_view>
 #include <utility>
 
-#include "jasmin/internal/debug.h"
+#include "nth/meta/type.h"
 
 namespace jasmin {
 
 #if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
-internal::TypeId DebugTypeId(Value v) { return v.debug_type_id_; }
+nth::TypeId DebugTypeId(Value v) { return v.debug_type_id_; }
 #endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
 namespace {

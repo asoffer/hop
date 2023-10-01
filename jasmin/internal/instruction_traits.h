@@ -20,7 +20,7 @@ constexpr size_t ImmediateValueCount() {
 
     constexpr bool ES = HasExecutionState<I>;
     constexpr bool FS = internal::HasFunctionState<I>;
-    constexpr bool VS = internal::HasValueStack<signature>;
+    constexpr bool VS = internal::HasValueStack<I>;
 
     if (not VS) { return 0; }
     --immediate_value_count;  // Ignore the `ValueStack&` parameter.
@@ -39,7 +39,7 @@ constexpr size_t ParameterCount() {
   } else {
     using signature = ExtractSignature<decltype(&I::execute)>;
 
-    if constexpr (internal::HasValueStack<signature>) {
+    if constexpr (internal::HasValueStack<I>) {
       return I::parameter_count;
     } else {
       size_t parameters = signature::invoke_with_argument_types(
@@ -59,7 +59,7 @@ constexpr size_t ReturnCount() {
   } else {
     using signature = ExtractSignature<decltype(&I::execute)>;
 
-    if constexpr (internal::HasValueStack<signature>) {
+    if constexpr (internal::HasValueStack<I>) {
       return I::return_count;
     } else {
       return nth::type<typename signature::return_type> != nth::type<void>;

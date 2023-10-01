@@ -7,7 +7,6 @@
 #include "jasmin/call_stack.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
-#include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
@@ -21,7 +20,7 @@ template <InstructionSet Set>
 void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
              ValueStack &value_stack) {
   CallStack call_stack;
-  InstructionPointer ip = f.entry();
+  Value const *ip = f.entry();
   call_stack.push(&f, ip);
   using state_type = internal::State<Set>;
   state_type state{.exec_state = &exec_state};
@@ -31,7 +30,7 @@ void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
   }
 
   using exec_fn_type =
-      void (*)(ValueStack &, InstructionPointer &, CallStack &, state_type *);
+      void (*)(ValueStack &, Value const *&, CallStack &, state_type *);
   return ip->as<exec_fn_type>()(value_stack, ip, call_stack, &state);
 }
 

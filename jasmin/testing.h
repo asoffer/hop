@@ -7,11 +7,9 @@ namespace jasmin {
 namespace internal {
 
 template <typename Inst, bool Imm, bool E, bool F>
-concept ValidInstruction =
-    Instruction<Inst> and
-    (HasValueStack<internal::ExtractSignature<decltype(&Inst::execute)>> ==
-     Imm) and
-    (HasExecutionState<Inst> == E) and (HasFunctionState<Inst> == F);
+concept ValidInstruction = Instruction<Inst> and(HasValueStack<Inst> == Imm) and
+                           (HasExecutionState<Inst> == E) and
+                           (HasFunctionState<Inst> == F);
 
 }  // namespace internal
 

@@ -3,8 +3,6 @@
 
 #include <cstddef>
 
-#include "jasmin/value.h"
-
 namespace jasmin {
 
 // A type describing the extents of an op-code, complete with all its subsequent

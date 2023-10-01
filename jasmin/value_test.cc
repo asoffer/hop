@@ -86,5 +86,20 @@ TEST(Value, Raw) {
   EXPECT_EQ(v1.as<double>(), v2.as<double>());
 }
 
+#if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
+
+TEST(TypeId, Equality) {
+  EXPECT_EQ(internal::type_id<int>, internal::type_id<int>);
+  EXPECT_EQ(internal::type_id<int>, internal::type_id<signed int>);
+  EXPECT_NE(internal::type_id<int>, internal::type_id<bool>);
+  EXPECT_NE(internal::type_id<char>, internal::type_id<signed char>);
+  EXPECT_NE(internal::type_id<char>, internal::type_id<unsigned char>);
+
+  EXPECT_EQ(internal::type_id<char *>, internal::type_id<bool *>);
+  EXPECT_EQ(internal::type_id<char *>, internal::type_id<char *>);
+}
+
+#endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
+
 }  // namespace
 }  // namespace jasmin

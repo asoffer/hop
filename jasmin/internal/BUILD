@@ -1,33 +1,11 @@
 package(default_visibility = ["//jasmin:__subpackages__"])
 
 cc_library(
-    name = "attributes",
-    hdrs = ["attributes.h"],
-    deps = [],
-)
-
-cc_library(
-    name = "debug",
-    hdrs = ["debug.h"],
-    deps = [
-        "//jasmin/configuration:impl",
-    ],
-)
-
-cc_test(
-    name = "debug_test",
-    srcs = ["debug_test.cc"],
-    deps = [
-        ":debug",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     deps = [
-        "//jasmin:instruction_pointer",
+        "//jasmin:op_code",
+        "//jasmin:value",
         "@asoffer_nth//nth/debug",
     ],
 )

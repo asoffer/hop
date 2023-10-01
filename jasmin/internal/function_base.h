@@ -4,8 +4,8 @@
 #include <span>
 #include <vector>
 
-#include "jasmin/instruction_pointer.h"
 #include "jasmin/op_code.h"
+#include "jasmin/value.h"
 #include "nth/debug/debug.h"
 
 namespace jasmin::internal {
@@ -28,11 +28,8 @@ struct FunctionBase {
   // Returns the number of values this function returns.
   constexpr uint8_t return_count() const { return return_count_; }
 
-  // Returns an `InstructionPointer` pointing to the first intsruction in this
-  // function.
-  constexpr InstructionPointer entry() const {
-    return InstructionPointer(instructions_.data());
-  }
+  // Returns a pointer to the first instruction in this function.
+  constexpr Value const *entry() const { return instructions_.data(); }
 
   // Returns a span over all values representing instructions in the function.
   // Values in the span are not distinguished separately as `OpCode`s or

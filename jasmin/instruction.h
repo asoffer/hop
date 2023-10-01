@@ -8,14 +8,13 @@
 
 #include "jasmin/call_stack.h"
 #include "jasmin/execution_state.h"
-#include "jasmin/instruction_pointer.h"
-#include "jasmin/internal/attributes.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
 #include "jasmin/internal/type_traits.h"
 #include "jasmin/op_code.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
+#include "nth/base/attributes.h"
 #include "nth/debug/debug.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/sequence.h"
@@ -24,16 +23,13 @@
 namespace jasmin {
 namespace internal {
 
-using exec_fn_type = void (*)(ValueStack &, InstructionPointer &, CallStack &,
+using exec_fn_type = void (*)(ValueStack &, Value const *&, CallStack &,
                               void *);
 
-template <typename Signature>
+template <typename Inst>
 concept HasValueStack =
-    std::is_same_v<void (*)(ValueStack &),
-                   decltype(Signature::invoke_with_argument_types(
-                       []<typename T, typename...>() -> void (*)(T) {
-                         return nullptr;
-                       }))>;
+    (nth::type<decltype(Inst::execute)>.parameters().head() ==
+     nth::type<ValueStack &>);
 
 // Base class used solely to indicate that any struct inherting from it is an
 // instruction set.
@@ -41,18 +37,18 @@ struct InstructionSetBase {};
 
 template <typename Signature, typename I, bool HasExecState, bool HasFuncState>
 constexpr bool ValidSignatureWithImmediatesImpl() {
-  if (not std::is_void_v<typename Signature::return_type>) { return false; }
-  if (not Signature::invoke_with_argument_types([]<typename T, typename...> {
-        return std::is_same_v<T, ValueStack &>;
-      })) {
+  constexpr auto signature  = nth::type<decltype(I::execute)>;
+  if (signature.return_type() != nth::type<void>) {
     return false;
   }
+  if (not HasValueStack<I>) { return false; }
 
   if constexpr (HasExecState) {
     if constexpr (HasFuncState) {
       return Signature::invoke_with_argument_types(
           []<typename VS, typename ES, typename FS, typename... Ts>() {
-            return std::is_same_v<FS, typename I::execution_state &> and
+            return 
+            std::is_same_v<FS, typename I::execution_state &> and
                    std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
@@ -134,10 +130,10 @@ template <typename I,
           bool HasExecState  = HasExecutionState<I>,
           bool HasFuncState  = HasFunctionState<I>>
 concept HasValidSignature =
-    ((HasValueStack<Signature> and
+    ((HasValueStack<I> and
       ValidSignatureWithImmediatesImpl<Signature, I, HasExecState,
                                        HasFuncState>()) or
-     (not HasValueStack<Signature> and
+     (not HasValueStack<I> and
       ValidSignatureWithoutImmediatesImpl<Signature, I, HasExecState,
                                           HasFuncState>()));
 
@@ -210,7 +206,7 @@ template <typename Inst>
 struct StackMachineInstruction {
  private:
   template <InstructionSet Set>
-  static void ExecuteImpl(ValueStack &value_stack, InstructionPointer &ip,
+  static void ExecuteImpl(ValueStack &value_stack, Value const *&ip,
                           CallStack &call_stack, void *state_void_ptr) {
     auto *state = static_cast<internal::State<Set> *>(state_void_ptr);
     if constexpr (std::is_same_v<Inst, Call>) {
@@ -220,14 +216,16 @@ struct StackMachineInstruction {
       if constexpr (internal::State<Set>::has_function_state) {
         state->function_state_stack.emplace();
       }
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
-          value_stack, ip, call_stack, state);
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
+                                              state);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       ip += (ip + 1)->as<ptrdiff_t>();
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
-          value_stack, ip, call_stack, state);
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
+                                              state);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       if (value_stack.pop<bool>()) {
@@ -236,8 +234,9 @@ struct StackMachineInstruction {
         ip += 2;
       }
 
-      JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
-          value_stack, ip, call_stack, state);
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
+                                              state);
 
     } else if constexpr (std::is_same_v<Inst, Return>) {
       ip = call_stack.pop();
@@ -249,15 +248,16 @@ struct StackMachineInstruction {
       if (call_stack.empty()) [[unlikely]] {
         return;
       } else {
-        JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
-            value_stack, ip, call_stack, state);
+        NTH_ATTRIBUTE(tailcall)
+        return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
+                                                state);
       }
     } else {
       using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
 
       constexpr bool ES = HasExecutionState<Inst>;
       constexpr bool FS = internal::HasFunctionState<Inst>;
-      constexpr bool VS = internal::HasValueStack<signature>;
+      constexpr bool VS = internal::HasValueStack<Inst>;
       constexpr bool RV = std::is_void_v<typename signature::return_type>;
       static_assert(RV or not VS);
 
@@ -402,8 +402,8 @@ struct StackMachineInstruction {
       ++ip;
     }
 
-    JASMIN_INTERNAL_TAIL_CALL return ip->as<internal::exec_fn_type>()(
-        value_stack, ip, call_stack, state);
+    NTH_ATTRIBUTE(tailcall)
+    return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack, state);
   }
 };
 

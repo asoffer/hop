@@ -5,7 +5,6 @@
 
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction.h"
-#include "jasmin/instruction_pointer.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/instruction_traits.h"
 #include "jasmin/internal/type_traits.h"
@@ -34,13 +33,12 @@ struct Function : internal::FunctionBase {
       return internal::FunctionBase::append(
           {Value(&I::template ExecuteImpl<typename Set::self_type>)});
     } else {
-      using signature = internal::ExtractSignature<decltype(&I::execute)>;
       if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call> or
-                    not internal::HasValueStack<signature>) {
+                    not internal::HasValueStack<I>) {
         return internal::FunctionBase::append(
             {Value(&I::template ExecuteImpl<typename Set::self_type>)});
       } else {
-        constexpr size_t DropCount = internal::HasValueStack<signature> +
+        constexpr size_t DropCount = internal::HasValueStack<I> +
                                      HasExecutionState<I> +
                                      internal::HasFunctionState<I>;
 

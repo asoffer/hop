@@ -14,7 +14,7 @@ namespace jasmin {
 struct CallStack {
   // Push the function `f` onto the call stack, tracking the existing stack size
   // as well as the location of the instruction pointer.
-  void push(internal::FunctionBase const *f, InstructionPointer ip) {
+  void push(internal::FunctionBase const *f, Value const *ip) {
     stack_.push_back({.function                     = f,
                       .previous_instruction_pointer = ip});
   }
@@ -33,10 +33,10 @@ struct CallStack {
   // Removes the top function from the call stack and returns the location of
   // the previous instruction pointer which was necessarily pointing to a
   // function call instruction.
-  InstructionPointer pop() {
+  Value const *pop() {
     NTH_REQUIRE((v.when(internal::harden)), stack_.size() > size_t{0})
         .Log<"Unexpectedly empty call stack {}">(3);
-    InstructionPointer ip = stack_.back().previous_instruction_pointer;
+    Value const *ip = stack_.back().previous_instruction_pointer;
     stack_.pop_back();
     return ip;
   }
@@ -44,7 +44,7 @@ struct CallStack {
  private:
   struct Frame {
     internal::FunctionBase const *function;
-    InstructionPointer previous_instruction_pointer;
+    Value const *previous_instruction_pointer;
   };
   std::vector<Frame> stack_;
 };

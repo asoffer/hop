@@ -6,10 +6,23 @@
 #include <cstring>
 #include <type_traits>
 
-#include "jasmin/internal/debug.h"
+#include "jasmin/configuration/configuration.h"
 #include "nth/debug/debug.h"
+#include "nth/meta/type.h"
 
 namespace jasmin {
+namespace internal {
+
+template <typename T>
+inline nth::TypeId type_id = [] {
+  if constexpr (std::is_pointer_v<T>) {
+    return nth::type<void *>;
+  } else {
+    return nth::type<T>;
+  }
+}();
+
+}  // namespace internal
 
 // The size and alignment requirements for any data to be stored in a
 // `jasmin::Value` object. Objects may have smaller size or less strict
@@ -76,7 +89,7 @@ struct Value {
   void set_raw_value(uint64_t n) {
     std::memcpy(&value_, &n, sizeof(uint64_t));
 #if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
-      debug_type_id_ = internal::type_id<unknown_t>;
+    debug_type_id_ = internal::type_id<unknown_t>;
 #endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
   }
 
@@ -104,8 +117,8 @@ struct Value {
       NTH_REQUIRE((v.always),
                   debug_type_id_ == internal::type_id<T> or
                       debug_type_id_ == internal::type_id<unknown_t>)
-          .Log<"Value type mismatch: {} != {}">(debug_type_id_.name,
-                                                internal::type_id<T>.name);
+          .Log<"Value type mismatch: {} != {}">(debug_type_id_,
+                                                internal::type_id<T>);
 #endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
       T result;
@@ -121,7 +134,7 @@ struct Value {
 #if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
   // Defined in "jasmin/debug.cc", only to to provide access to the debug type
   // id when available to provide better debugging facilities.
-  friend internal::TypeId DebugTypeId(Value);
+  friend nth::TypeId DebugTypeId(Value);
 #endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
   struct uninitialized_t {};
@@ -137,7 +150,7 @@ struct Value {
   alignas(ValueAlignment) char value_[ValueSize];
 
 #if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
-  internal::TypeId debug_type_id_;
+  nth::TypeId debug_type_id_;
 #endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 };
 
