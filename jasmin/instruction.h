@@ -532,7 +532,7 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
   template <nth::any_of<Is...> I>
-  static struct OpCodeMetadata OpCodeMetadataFor() {
+  static constexpr struct OpCodeMetadata OpCodeMetadataFor() {
     return {.op_code_value         = OpCodeFor<I>(),
             .immediate_value_count = internal::ImmediateValueCount<I>()};
   }
