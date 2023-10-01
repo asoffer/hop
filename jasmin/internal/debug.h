@@ -1,5 +1,7 @@
 #ifndef JASMIN_INTERNAL_DEBUG_H
 #define JASMIN_INTERNAL_DEBUG_H
+
+#include "jasmin/configuration/configuration.h"
 #if defined(JASMIN_DEBUG)
 
 #include <concepts>

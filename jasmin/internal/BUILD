@@ -9,7 +9,9 @@ cc_library(
 cc_library(
     name = "debug",
     hdrs = ["debug.h"],
-    deps = [],
+    deps = [
+        "//jasmin/configuration:impl",
+    ],
 )
 
 cc_test(
