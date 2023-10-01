@@ -47,10 +47,10 @@ TEST(Instruction, Construction) {
   EXPECT_EQ(CountInstructionMatch<Return>(), 1);
   EXPECT_EQ(CountInstructionMatch<PushOne>(), 0);
 
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ Set::InstructionFunction(Set::size()); },
-               "Out-of-bounds op-code");
-#endif  // defined(JASMIN_DEBUG)
+  if constexpr (internal::harden) {
+    EXPECT_DEATH({ Set::InstructionFunction(Set::size()); },
+                 "Out-of-bounds op-code");
+  }
 }
 
 TEST(InstructionSet, State) {

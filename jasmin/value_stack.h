@@ -38,7 +38,7 @@ struct ValueStack {
   // Pushes the given value `v` onto the stack.
   void push(Value const &v) {
     if (head_ == values_.get() + cap_) [[unlikely]] { reallocate(); }
-    NTH_REQUIRE((v.always), head_ != values_.get() + cap_)
+    NTH_REQUIRE((v.when(internal::harden)), head_ != values_.get() + cap_)
         .Log<"Something went wrong with reallocate()">();
     *head_ = v;
     ++head_;
@@ -54,7 +54,8 @@ struct ValueStack {
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
   // the stack is empty.
   Value pop_value() {
-    NTH_REQUIRE((v.always), not empty()).Log<"Unexpectedly empty ValueStack">();
+    NTH_REQUIRE((v.when(internal::harden)), not empty())
+        .Log<"Unexpectedly empty ValueStack">();
     return *--head_;
   }
 
@@ -69,7 +70,7 @@ struct ValueStack {
   // the stack. Behavior is undefined if the stack does not contain at least
   // `count_back + 1` values.
   Value peek_value(size_t count_back = 0) const {
-    NTH_REQUIRE((v.always), size() > count_back)
+    NTH_REQUIRE((v.when(internal::harden)), size() > count_back)
         .Log<"Unexpectedly short ValueStack">();
     return *(head_ - (count_back + 1));
   }
@@ -86,9 +87,9 @@ struct ValueStack {
   // stack. Behavior is undefined if `n` is zero, or if `n` is larger than the
   // number of elements in the stack.
   void swap_with(size_t n) {
-    NTH_REQUIRE((v.always), n != size_t{0})
+    NTH_REQUIRE((v.when(internal::harden)), n != size_t{0})
         .Log<"Unexpectedly attempting to swap an element with itself">();
-    NTH_REQUIRE((v.always), size() > n)
+    NTH_REQUIRE((v.when(internal::harden)), size() > n)
         .Log<"Unexpectedly too few elements in ValueStack">();
     auto *p = head_ - 1;
     std::swap(*p, *(p - n));
@@ -103,7 +104,7 @@ struct ValueStack {
   // `Ts...`.
   template <SmallTrivialValue... Ts>
   std::tuple<Ts...> pop_suffix() {
-    NTH_REQUIRE((v.always), size() >= sizeof...(Ts))
+    NTH_REQUIRE((v.when(internal::harden)), size() >= sizeof...(Ts))
         .Log<"Unexpectedly too few elements in ValueStack">();
     head_ -= sizeof...(Ts);
     auto *p = head_;
@@ -135,9 +136,9 @@ struct ValueStack {
   // stack. Behavior is undefined if `start > end`, or if `end` is greater than
   // the size of the stack.
   void erase(size_t start, size_t end) {
-    NTH_REQUIRE((v.always), start <= end)
+    NTH_REQUIRE((v.when(internal::harden)), start <= end)
         .Log<"Unexpectedly invalid range to erase">();
-    NTH_REQUIRE((v.always), end <= size())
+    NTH_REQUIRE((v.when(internal::harden)), end <= size())
         .Log<"Unexpectedly too few elements in ValueStack">();
 
     std::memcpy(values_.get() + start, values_.get() + end,

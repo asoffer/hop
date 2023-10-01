@@ -46,7 +46,7 @@ struct FunctionBase {
   // `append_with_placeholders` to defer setting a value, but may be used to
   // overwrite any such `Value`.
   void set_value(OpCodeRange range, size_t index, Value value) {
-    NTH_REQUIRE((v.always), index + 1 < range.size())
+    NTH_REQUIRE((v.when(internal::harden)), index + 1 < range.size())
         .Log<"Index larger than range">();
     instructions_[range.offset() + index + 1] = value;
   }

@@ -7,7 +7,7 @@
 namespace jasmin::internal {
 namespace {
 
-#if defined(JASMIN_DEBUG)
+#if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
 TEST(TypeId, Equality) {
   EXPECT_EQ(type_id<int>, type_id<int>);
@@ -20,7 +20,7 @@ TEST(TypeId, Equality) {
   EXPECT_EQ(type_id<char*>, type_id<char*>);
 }
 
-#endif  // defined(JASMIN_DEBUG)
+#endif // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
 }  // namespace
 }  // namespace jasmin::internal

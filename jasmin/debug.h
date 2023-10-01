@@ -122,7 +122,7 @@ std::string DumpFunction(Function<Set> const&f) {
           return reinterpret_cast<uintptr_t>(pair.first) <
                  reinterpret_cast<uintptr_t>(i);
         });
-    NTH_REQUIRE((v.always),
+    NTH_REQUIRE((v.when(internal::harden)),
                 debug_iter != internal::DebugInstructionTable<Set>.end())
         .Log<"Failed to find instruction.">();
     result.append(debug_iter->second(value_iter));

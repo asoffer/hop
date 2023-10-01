@@ -4,11 +4,11 @@
 #include "jasmin/instructions/core.h"
 #include "jasmin/testing.h"
 
-#if defined(JASMIN_DEBUG)
+#if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 #define JASMIN_DEBUG_CHOOSE(a, b) a
-#else
+#else  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 #define JASMIN_DEBUG_CHOOSE(a, b) b
-#endif
+#endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
 namespace jasmin {
 

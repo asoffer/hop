@@ -10,16 +10,16 @@
 
 namespace jasmin {
 
-#if defined(JASMIN_DEBUG)
+#if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 internal::TypeId DebugTypeId(Value v) { return v.debug_type_id_; }
-#endif  // defined(JASMIN_DEBUG)
+#endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
 namespace {
 
 void AppendValue(std::string& out, Value v) {
   static constexpr char HexLookup[17] = "0123456789abcdef";
 
-#if defined(JASMIN_DEBUG)
+#if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
   auto id = DebugTypeId(v);
   if (id == internal::type_id<bool>) {
     out.append(v.as<bool>() ? "true" : "false");
@@ -74,8 +74,7 @@ void AppendValue(std::string& out, Value v) {
       out.push_back(HexLookup[c & 0x0f]);
     }
   }
-
-#else
+#else   // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
   uint8_t data[ValueSize];
   Value::Store(v, data, ValueSize);
 
@@ -85,7 +84,7 @@ void AppendValue(std::string& out, Value v) {
     out.push_back(HexLookup[c >> 4]);
     out.push_back(HexLookup[c & 0x0f]);
   }
-#endif  // defined(JASMIN_DEBUG)
+#endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 }
 
 }  // namespace

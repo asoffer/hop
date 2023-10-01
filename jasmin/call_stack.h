@@ -25,7 +25,7 @@ struct CallStack {
   // Returns a pointer to the function currently at the top of the stack. During
   // execution, this is the function currently being executed.
   internal::FunctionBase const *current() const {
-    NTH_REQUIRE((v.always), stack_.size() > size_t{0})
+    NTH_REQUIRE((v.when(internal::harden)), stack_.size() > size_t{0})
         .Log<"Unexpectedly empty call stack">();
     return stack_.back().function;
   }
@@ -34,7 +34,7 @@ struct CallStack {
   // the previous instruction pointer which was necessarily pointing to a
   // function call instruction.
   InstructionPointer pop() {
-    NTH_REQUIRE((v.always), stack_.size() > size_t{0})
+    NTH_REQUIRE((v.when(internal::harden)), stack_.size() > size_t{0})
         .Log<"Unexpectedly empty call stack {}">(3);
     InstructionPointer ip = stack_.back().previous_instruction_pointer;
     stack_.pop_back();

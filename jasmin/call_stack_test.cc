@@ -15,10 +15,10 @@ bool init = [] {
 TEST(CallStack, Construction) {
   CallStack call_stack;
   EXPECT_TRUE(call_stack.empty());
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ call_stack.current(); }, "empty call stack");
-  EXPECT_DEATH({ call_stack.pop(); }, "empty call stack");
-#endif  // defined(JASMIN_DEBUG)
+  if constexpr (internal::harden) {
+    EXPECT_DEATH({ call_stack.current(); }, "empty call stack");
+    EXPECT_DEATH({ call_stack.pop(); }, "empty call stack");
+  }
 }
 
 TEST(CallStack, PushPop) {

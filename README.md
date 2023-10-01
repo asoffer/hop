@@ -62,10 +62,12 @@ http_archive(
 where `<<hash>>` and `<sha>>` are replaced with the appropriate Git hash and
 checksum as desired.
 
-Any compilation action my also optionally be passed the argument
-`--copt=-DJASMIN_DEBUG` (regardless of whether the build is `opt`, `fastbuild`,
-or `dbg`. At a performance cost, this will enable debugging facilities that catch
-common mistakes relying on behavior that is not defined by Jasmin's APIs.
+Compilation may also be configured via the `//jasmin/configuration` flag, which
+may be specified as "debug", "harden", or "optimize". These flags are can be
+specified orthogonally to Bazel's `-c opt`, `-c fastbuild`, or `-c dbg`. Hardened
+builds will insert relatively cheap debuggung assertions. Debug builds will insert
+even more expensive checks, possibly modifying data structures to track more
+debugging information.
 
 ## Continuous Integration
 

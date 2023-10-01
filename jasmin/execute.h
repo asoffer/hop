@@ -47,16 +47,18 @@ requires(internal::ExecutionStateList<Set>.empty()) void Execute(
 // references `return_values...`. In general, behavior is undefined if the
 // number of return values of `f` is not `sizeof...(return_values)`, or if the
 // values returned to not match the types
-// `std::decay_t<decltype(return_values)...>`. However, if the macro
-// `JASMIN_DEBUG` is defined then the behavior is defined to report an error
-// message to `stderr` and abort program execution.
+// `std::decay_t<decltype(return_values)...>`. However, in debug and hardened
+// builds (see `//jasmin/configuration` for details) the behavior is defined to
+// report an error message to `stderr` and abort program execution.
 template <InstructionSet Set>
 void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
              std::initializer_list<Value> arguments,
              SmallTrivialValue auto &...return_values) {
-  NTH_REQUIRE((v.always), arguments.size() == f.parameter_count())
+  NTH_REQUIRE((v.when(internal::harden)),
+              arguments.size() == f.parameter_count())
       .Log<"Argument/parameter count mismatch.">();
-  NTH_REQUIRE((v.always), sizeof...(return_values) == f.return_count())
+  NTH_REQUIRE((v.when(internal::harden)),
+              sizeof...(return_values) == f.return_count())
       .Log<"Return value count mismatch.">();
   ValueStack value_stack(arguments);
   int dummy;

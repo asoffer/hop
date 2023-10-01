@@ -62,43 +62,42 @@ TEST(ValueStack, PushPop) {
   EXPECT_TRUE(value_stack.empty());
   EXPECT_EQ(value_stack.size(), 0);
 
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ value_stack.pop_value(); }, "empty ValueStack");
-  EXPECT_DEATH({ value_stack.pop<bool>(); }, "empty ValueStack");
-  EXPECT_DEATH({ value_stack.pop<bool>(); }, "empty ValueStack");
-#endif  // defined(JASMIN_DEBUG)
-
+  if constexpr (internal::harden) {
+    EXPECT_DEATH({ value_stack.pop_value(); }, "empty ValueStack");
+    EXPECT_DEATH({ value_stack.pop<bool>(); }, "empty ValueStack");
+    EXPECT_DEATH({ value_stack.pop<bool>(); }, "empty ValueStack");
+  }
   value_stack.push(true);
   EXPECT_TRUE(value_stack.pop<bool>());
 
   value_stack.push(3);
   EXPECT_EQ(value_stack.pop<int>(), 3);
 
-#if defined(JASMIN_DEBUG)
-  value_stack.push(3);
-  EXPECT_DEATH({ value_stack.peek<bool>(); }, "Value type mismatch");
-  EXPECT_DEATH({ value_stack.pop<bool>(); }, "Value type mismatch");
-#endif  // defined(JASMIN_DEBUG)
-
+  if constexpr (internal::debug) {
+    value_stack.push(3);
+    EXPECT_DEATH({ value_stack.peek<bool>(); }, "Value type mismatch");
+    EXPECT_DEATH({ value_stack.pop<bool>(); }, "Value type mismatch");
+  }
   value_stack.push(Value(3));
   EXPECT_EQ(value_stack.pop<int>(), 3);
 
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ value_stack.peek<bool>(); }, "Value type mismatch");
-  EXPECT_DEATH({ value_stack.pop<bool>(); }, "Value type mismatch");
-#endif  // defined(JASMIN_DEBUG)
+  if constexpr (internal::debug) {
+    EXPECT_DEATH({ value_stack.peek<bool>(); }, "Value type mismatch");
+    EXPECT_DEATH({ value_stack.pop<bool>(); }, "Value type mismatch");
+  }
 }
 
 TEST(ValueStack, SwapWith) {
   ValueStack value_stack;
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ value_stack.swap_with(1); }, "too few elements");
-#endif  // defined(JASMIN_DEBUG)
+
+  if constexpr (internal::harden) {
+    EXPECT_DEATH({ value_stack.swap_with(1); }, "too few elements");
+  }
   value_stack.push(1);
-#if defined(JASMIN_DEBUG)
-  EXPECT_DEATH({ value_stack.swap_with(0); }, "with itself");
-  EXPECT_DEATH({ value_stack.swap_with(1); }, "too few elements");
-#endif  // defined(JASMIN_DEBUG)
+  if constexpr (internal::harden) {
+    EXPECT_DEATH({ value_stack.swap_with(0); }, "with itself");
+    EXPECT_DEATH({ value_stack.swap_with(1); }, "too few elements");
+  }
 
   value_stack.push(true);
   value_stack.swap_with(1);
@@ -124,19 +123,17 @@ TEST(ValueStack, PopSuffix) {
     ValueStack value_stack{1, true, 3.14};
     EXPECT_EQ((value_stack.pop_suffix<bool, double>()), std::tuple(true, 3.14));
   }
-#if defined(JASMIN_DEBUG)
-  {
+  if constexpr (internal::debug) {
     ValueStack value_stack{1, true, 3.14};
     EXPECT_DEATH({ (value_stack.pop_suffix<bool, int>()); },
                  "Value type mismatch");
   }
 
-  {
+  if constexpr (internal::harden) {
     ValueStack value_stack{1, true, 3.14};
     EXPECT_DEATH({ (value_stack.pop_suffix<int, int, bool, double>()); },
                  "too few elements");
   }
-#endif  // defined(JASMIN_DEBUG)
 }
 
 TEST(ValueStack, Erase) {
@@ -171,13 +168,11 @@ TEST(ValueStack, Erase) {
     EXPECT_TRUE(value_stack.empty());
   }
 
-#if defined(JASMIN_DEBUG)
-  {
+  if constexpr (internal::harden) {
     ValueStack value_stack{1, true, 3.14};
     EXPECT_DEATH({ value_stack.erase(2, 1); }, "invalid range");
     EXPECT_DEATH({ value_stack.erase(0, 5); }, "too few elements");
   }
-#endif  // defined(JASMIN_DEBUG)
 }
 
 TEST(ValueStack, Begin) {

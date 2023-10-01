@@ -2,7 +2,7 @@
 #define JASMIN_INTERNAL_DEBUG_H
 
 #include "jasmin/configuration/configuration.h"
-#if defined(JASMIN_DEBUG)
+#if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
 #include <concepts>
 #include <cstdio>
@@ -37,5 +37,5 @@ inline TypeId type_id{
 
 }  // namespace jasmin::internal
 
-#endif  // defined(JASMIN_DEBUG)
+#endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 #endif  // JASMIN_INTERNAL_DEBUG_H
