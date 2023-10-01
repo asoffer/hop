@@ -86,5 +86,34 @@ TEST(InstructionSet, State) {
             nth::type<std::stack<std::tuple<int>>>);
 }
 
+TEST(Instruction, OpCodeMetadata) {
+  struct None : StackMachineInstruction<None> {
+    static void execute(ValueStack&, int) {}
+  };
+  struct F : StackMachineInstruction<F> {
+    using function_state = int;
+    static void execute(ValueStack&, function_state&, int) {}
+  };
+  struct E : StackMachineInstruction<E> {
+    using execution_state = char;
+    static void execute(ValueStack&, execution_state&, int, bool, char) {}
+  };
+  struct EF : StackMachineInstruction<EF> {
+    using execution_state = char;
+    using function_state  = int;
+    static void execute(ValueStack&, execution_state&, function_state&, int) {}
+  };
+
+  using Set = MakeInstructionSet<None, E, F, EF>;
+  EXPECT_EQ(Set::OpCodeMetadataFor<None>().op_code_value, 4);
+  EXPECT_EQ(Set::OpCodeMetadataFor<None>().immediate_value_count, 1);
+  EXPECT_EQ(Set::OpCodeMetadataFor<E>().op_code_value, 5);
+  EXPECT_EQ(Set::OpCodeMetadataFor<E>().immediate_value_count, 3);
+  EXPECT_EQ(Set::OpCodeMetadataFor<F>().op_code_value, 6);
+  EXPECT_EQ(Set::OpCodeMetadataFor<F>().immediate_value_count, 1);
+  EXPECT_EQ(Set::OpCodeMetadataFor<EF>().op_code_value, 7);
+  EXPECT_EQ(Set::OpCodeMetadataFor<EF>().immediate_value_count, 1);
+}
+
 }  // namespace
 }  // namespace jasmin

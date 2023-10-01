@@ -48,7 +48,7 @@ constexpr bool ValidSignatureWithImmediatesImpl() {
       return Signature::invoke_with_argument_types(
           []<typename VS, typename ES, typename FS, typename... Ts>() {
             return 
-            std::is_same_v<FS, typename I::execution_state &> and
+            std::is_same_v<ES, typename I::execution_state &> and
                    std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
@@ -482,6 +482,28 @@ concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Return> or
                         internal::HasValidSignature<I>));
 
 namespace internal {
+
+template <Instruction I>
+constexpr size_t ImmediateValueCount() {
+  if constexpr (nth::any_of<I, Call, Return>) {
+    return 0;
+  } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
+    return 1;
+  } else {
+    size_t immediate_value_count =
+        nth::type<decltype(I::execute)>.parameters().size();
+    constexpr bool ES = HasExecutionState<I>;
+    constexpr bool FS = internal::HasFunctionState<I>;
+    constexpr bool VS = internal::HasValueStack<I>;
+
+    if (not VS) { return 0; }
+    --immediate_value_count;  // Ignore the `ValueStack&` parameter.
+    if (ES) { --immediate_value_count; }
+    if (FS) { --immediate_value_count; }
+    return immediate_value_count;
+  }
+}
+
 template <typename I>
 concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
 
@@ -510,8 +532,9 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
   template <nth::any_of<Is...> I>
-  static constexpr struct OpCodeMetadata OpCodeMetadataFor() {
-    return {.op_code_value = OpCodeFor<I>(), .immediate_value_count = 0};
+  static struct OpCodeMetadata OpCodeMetadataFor() {
+    return {.op_code_value         = OpCodeFor<I>(),
+            .immediate_value_count = internal::ImmediateValueCount<I>()};
   }
 
   static auto InstructionFunction(uint64_t op_code) {
