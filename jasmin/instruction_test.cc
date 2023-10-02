@@ -113,6 +113,15 @@ TEST(Instruction, OpCodeMetadata) {
   EXPECT_EQ(Set::OpCodeMetadataFor<F>().immediate_value_count, 1);
   EXPECT_EQ(Set::OpCodeMetadataFor<EF>().op_code_value, 7);
   EXPECT_EQ(Set::OpCodeMetadataFor<EF>().immediate_value_count, 1);
+
+  EXPECT_EQ(Set::OpCodeMetadata(None::ExecuteImpl<Set>),
+            Set::OpCodeMetadataFor<None>());
+  EXPECT_EQ(Set::OpCodeMetadata(E::ExecuteImpl<Set>),
+            Set::OpCodeMetadataFor<E>());
+  EXPECT_EQ(Set::OpCodeMetadata(F::ExecuteImpl<Set>),
+            Set::OpCodeMetadataFor<F>());
+  EXPECT_EQ(Set::OpCodeMetadata(EF::ExecuteImpl<Set>),
+            Set::OpCodeMetadataFor<EF>());
 }
 
 }  // namespace

@@ -112,6 +112,7 @@ cc_library(
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

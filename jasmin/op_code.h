@@ -35,6 +35,11 @@ struct OpCodeRange {
 
 // Represents information describing an op-code.
 struct OpCodeMetadata {
+  friend bool operator==(OpCodeMetadata const &,
+                         OpCodeMetadata const &) = default;
+  friend bool operator!=(OpCodeMetadata const &,
+                         OpCodeMetadata const &) = default;
+
   size_t op_code_value;
   size_t immediate_value_count;
 };

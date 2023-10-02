@@ -6,6 +6,7 @@
 #include <stack>
 #include <type_traits>
 
+#include "absl/container/flat_hash_map.h"
 #include "jasmin/call_stack.h"
 #include "jasmin/execution_state.h"
 #include "jasmin/internal/function_base.h"
@@ -272,7 +273,7 @@ struct StackMachineInstruction {
               std::apply(
                   Inst::execute,
                   std::tuple<ValueStack &, typename Inst::execution_state &,
-                             Ts...>{
+                             typename Inst::function_state &, Ts...>{
                       value_stack,
                       state->exec_state
                           ->template get<typename Inst::execution_state>(),
@@ -517,8 +518,12 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns the number of instructions in the instruction set.
   static constexpr size_t size() { return sizeof...(Is); }
 
-  static constexpr struct OpCodeMetadata OpCodeMetadata(Value v) {
-    return Metadata[v.as<uint64_t>()];
+  // Returns the `OpCodeMetadata` struct corresponding to the op-code as
+  // specified in the byte-code.
+  static struct OpCodeMetadata OpCodeMetadata(Value v) {
+    auto iter = Metadata.find(v.as<exec_fn_type>());
+    NTH_REQUIRE((v.when(internal::harden)), iter != Metadata.end());
+    return iter->second;
   }
 
   // Returns a `uint64_t` indicating the op-code for the given template
@@ -546,8 +551,8 @@ struct MakeInstructionSet : InstructionSetBase {
   static constexpr exec_fn_type table[sizeof...(Is)] = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
 
-  static constexpr struct OpCodeMetadata Metadata[sizeof...(Is)] = {
-      OpCodeMetadataFor<Is>()...};
+  static absl::flat_hash_map<exec_fn_type, struct OpCodeMetadata> const
+      Metadata;
 
   template <nth::any_of<Is...> I>
   static constexpr uint64_t OpCodeForImpl() {
@@ -588,6 +593,15 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
 constexpr auto BuiltinInstructionList =
     nth::type_sequence<Call, Jump, JumpIf, Return>;
 
+template <Instruction... Is>
+absl::flat_hash_map<exec_fn_type, OpCodeMetadata> const
+    MakeInstructionSet<Is...>::Metadata = [] {
+      absl::flat_hash_map<exec_fn_type, struct OpCodeMetadata> result;
+      (result.emplace(&Is::template ExecuteImpl<self_type>,
+                      OpCodeMetadataFor<Is>()),
+       ...);
+      return result;
+    }();
 }  // namespace internal
 
 template <internal::InstructionOrInstructionSet... Is>
