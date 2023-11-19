@@ -1,8 +1,6 @@
 #ifndef JASMIN_FUNCTION_H
 #define JASMIN_FUNCTION_H
 
-#include <type_traits>
-
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instruction_index.h"
@@ -14,11 +12,23 @@
 #include "nth/meta/type.h"
 
 namespace jasmin {
+namespace internal {
+
+template <typename I, typename Set>
+concept ContainedIn = Set::instructions.template contains<nth::type<I>>();
+
+}  // namespace internal
 
 // A representation of a function that ties op-codes to instructions (via an
 // InstructionSet template parameter).
 template <InstructionSet Set>
 struct Function : internal::FunctionBase {
+ private:
+  template <Instruction I>
+  static Value ExecPtr() {
+    return &I::template ExecuteImpl<typename Set::self_type>;
+  }
+
  public:
   // Constructs an empty `Function` given a `parameter_count` representing
   // the number of parameters to the function, and a `return_count`
@@ -27,57 +37,49 @@ struct Function : internal::FunctionBase {
       : FunctionBase(parameter_count, return_count) {}
 
   // Appends an op-code for the given `Instruction I` template parameter.
-  template <typename I>
-  requires(Set::instructions.template contains<nth::type<I>>()) constexpr nth::
-      interval<InstructionIndex> append(auto... vs) {
-    if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call>) {
-      return internal::FunctionBase::append(
-          {Value(&I::template ExecuteImpl<typename Set::self_type>)});
+  template <internal::ContainedIn<Set> I>
+  constexpr nth::interval<InstructionIndex> append(auto... vs) {
+    if constexpr (not internal::HasValueStack<I>) {
+      constexpr size_t NumberOfArgumentsProvidedToAppend = sizeof...(vs);
+      constexpr size_t NumberOfImmediateValuesRequiredByInstruction =
+          internal::ImmediateValueCount<I>();
+      static_assert(
+          // clang-format off
+          NumberOfArgumentsProvidedToAppend == NumberOfImmediateValuesRequiredByInstruction,
+          // clang-format on
+          "Incorrect number of immediate values provided to `append`.");
+      return internal::FunctionBase::append({ExecPtr<I>(), Value(vs)...});
     } else {
-      if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call> or
-                    not internal::HasValueStack<I>) {
-        return internal::FunctionBase::append(
-            {Value(&I::template ExecuteImpl<typename Set::self_type>)});
-      } else {
-        constexpr size_t DropCount = internal::HasValueStack<I> +
-                                     HasExecutionState<I> +
-                                     internal::HasFunctionState<I>;
+      constexpr size_t DropCount = internal::HasValueStack<I> +
+                                   HasExecutionState<I> +
+                                   internal::HasFunctionState<I>;
 
-        if constexpr (DropCount == 0) {
-          return internal::ExtractSignature<decltype(&I::execute)>::
-              invoke_with_argument_types([&]<typename... Arguments>() {
-                return internal::FunctionBase::append(
-                    {Value(&I::template ExecuteImpl<typename Set::self_type>),
-                     Value(static_cast<Arguments>(vs))...});
-              });
-        } else if constexpr (DropCount == 1) {
-          return internal::ExtractSignature<decltype(&I::execute)>::
-              invoke_with_argument_types(
-                  [&]<typename, typename... Arguments>() {
-                    return internal::FunctionBase::append(
-                        {Value(
-                             &I::template ExecuteImpl<typename Set::self_type>),
-                         Value(static_cast<Arguments>(vs))...});
-                  });
-        } else if constexpr (DropCount == 2) {
-          return internal::ExtractSignature<decltype(&I::execute)>::
-              invoke_with_argument_types(
-                  [&]<typename, typename, typename... Arguments>() {
-                    return internal::FunctionBase::append(
-                        {Value(
-                             &I::template ExecuteImpl<typename Set::self_type>),
-                         Value(static_cast<Arguments>(vs))...});
-                  });
-        } else if constexpr (DropCount == 3) {
-          return internal::ExtractSignature<decltype(&I::execute)>::
-              invoke_with_argument_types(
-                  [&]<typename, typename, typename, typename... Arguments>() {
-                    return internal::FunctionBase::append(
-                        {Value(
-                             &I::template ExecuteImpl<typename Set::self_type>),
-                         Value(static_cast<Arguments>(vs))...});
-                  });
-        }
+      if constexpr (DropCount == 0) {
+        return internal::ExtractSignature<decltype(&I::execute)>::
+            invoke_with_argument_types([&]<typename... Arguments>() {
+              return internal::FunctionBase::append(
+                  {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
+            });
+      } else if constexpr (DropCount == 1) {
+        return internal::ExtractSignature<decltype(&I::execute)>::
+            invoke_with_argument_types([&]<typename, typename... Arguments>() {
+              return internal::FunctionBase::append(
+                  {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
+            });
+      } else if constexpr (DropCount == 2) {
+        return internal::ExtractSignature<decltype(&I::execute)>::
+            invoke_with_argument_types(
+                [&]<typename, typename, typename... Arguments>() {
+                  return internal::FunctionBase::append(
+                      {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
+                });
+      } else if constexpr (DropCount == 3) {
+        return internal::ExtractSignature<decltype(&I::execute)>::
+            invoke_with_argument_types(
+                [&]<typename, typename, typename, typename... Arguments>() {
+                  return internal::FunctionBase::append(
+                      {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
+                });
       }
     }
   }
@@ -86,12 +88,10 @@ struct Function : internal::FunctionBase {
   // which are left uninitialized. They may be initialized later via calls to
   // `Function<...>::set_value`. Returns the corresponding
   // `nth::interval<InstructionIndex>`.
-  template <typename I>
-  requires(Set::instructions.template contains<nth::type<I>>()) constexpr nth::
-      interval<InstructionIndex> append_with_placeholders() {
-    return internal::FunctionBase::append(
-        Value(&I::template ExecuteImpl<typename Set::self_type>),
-        internal::ImmediateValueCount<I>());
+  template <internal::ContainedIn<Set> I>
+  constexpr nth::interval<InstructionIndex> append_with_placeholders() {
+    return internal::FunctionBase::append(ExecPtr<I>(),
+                                          internal::ImmediateValueCount<I>());
   }
 };
 

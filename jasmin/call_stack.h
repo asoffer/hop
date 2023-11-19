@@ -26,7 +26,7 @@ struct CallStack {
   // execution, this is the function currently being executed.
   internal::FunctionBase const *current() const {
     NTH_REQUIRE((v.when(internal::harden)), stack_.size() > size_t{0})
-        .Log<"Unexpectedly empty call stack">();
+        .Log<"Unexpectedly empty call stack.">();
     return stack_.back().function;
   }
 
@@ -35,7 +35,7 @@ struct CallStack {
   // function call instruction.
   Value const *pop() {
     NTH_REQUIRE((v.when(internal::harden)), stack_.size() > size_t{0})
-        .Log<"Unexpectedly empty call stack {}">(3);
+        .Log<"Unexpectedly empty call stack.">();
     Value const *ip = stack_.back().previous_instruction_pointer;
     stack_.pop_back();
     return ip;
