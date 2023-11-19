@@ -15,60 +15,46 @@ concept ValidInstruction = Instruction<Inst> and(HasValueStack<Inst> == Imm) and
 
 template <internal::ValidInstruction<false, false, false> Inst>
 void ExecuteInstruction(ValueStack &value_stack) {
-  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
-  if constexpr (std::is_void_v<typename Signature::return_type>) {
-    Signature::invoke_with_argument_types([&]<
-                                          std::convertible_to<Value>... Ts>() {
-      std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
-    });
-  } else {
-    Signature::invoke_with_argument_types([&]<
-                                          std::convertible_to<Value>... Ts>() {
-      value_stack.call_on_suffix<&Inst::execute, Ts...>();
-    });
-  }
+  constexpr auto signature = nth::type<decltype(Inst::execute)>;
+  signature.parameters().reduce([&](auto... ts) {
+    if constexpr (signature.return_type() == nth::type<void>) {
+      std::apply(Inst::execute, value_stack.pop_suffix<nth::type_t<ts>...>());
+    } else {
+      value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
+    }
+  });
 }
 
 template <internal::ValidInstruction<false, false, true> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
                         typename Inst::function_state &fn_state) {
-  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
-  Signature::invoke_with_argument_types(
-      [&]<std::same_as<typename Inst::function_state &>,
-          std::convertible_to<Value>... Ts>() {
-        std::apply([&](auto... values) { Inst::execute(fn_state, values...); },
-                   value_stack.pop_suffix<Ts...>());
-      });
+  constexpr auto signature = nth::type<decltype(Inst::execute)>;
+  signature.parameters().template drop<1>().reduce([&](auto... ts) {
+    std::apply([&](auto... values) { Inst::execute(fn_state, values...); },
+               value_stack.pop_suffix<nth::type_t<ts>...>());
+  });
 }
 
 template <internal::ValidInstruction<false, true, false> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
                         typename Inst::execution_state &exec_state) {
-  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
-  Signature::invoke_with_argument_types(
-      [&]<std::same_as<typename Inst::execution_state &>,
-          std::convertible_to<Value>... Ts>() {
-        std::apply(
-            [&](auto... values) { Inst::execute(exec_state, values...); },
-            value_stack.pop_suffix<Ts...>());
-      });
+  constexpr auto signature = nth::type<decltype(Inst::execute)>;
+  signature.parameters().template drop<1>().reduce([&](auto... ts) {
+    std::apply([&](auto... values) { Inst::execute(exec_state, values...); },
+               value_stack.pop_suffix<nth::type_t<ts>...>());
+  });
 }
 
 template <internal::ValidInstruction<false, true, true> Inst>
 void ExecuteInstruction(ValueStack &value_stack,
                         typename Inst::execution_state &exec_state,
                         typename Inst::function_state &fn_state) {
-  using Signature = internal::ExtractSignature<decltype(&Inst::execute)>;
-  Signature::invoke_with_argument_types(
-      [&]<std::same_as<typename Inst::execution_state &>,
-          std::same_as<typename Inst::function_state &>,
-          std::convertible_to<Value>... Ts>() {
-        std::apply(
-            [&](auto... values) {
-              Inst::execute(exec_state, fn_state, values...);
-            },
-            value_stack.pop_suffix<Ts...>());
-      });
+  constexpr auto signature = nth::type<decltype(Inst::execute)>;
+  signature.parameters().template drop<2>().reduce([&](auto... ts) {
+    std::apply(
+        [&](auto... values) { Inst::execute(exec_state, fn_state, values...); },
+        value_stack.pop_suffix<nth::type_t<ts>...>());
+  });
 }
 
 template <internal::ValidInstruction<true, false, false> Inst,

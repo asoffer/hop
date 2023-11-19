@@ -5,7 +5,6 @@
 #include <memory>
 #include <tuple>
 
-#include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "nth/debug/debug.h"
 

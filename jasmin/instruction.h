@@ -11,7 +11,6 @@
 #include "jasmin/execution_state.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
-#include "jasmin/internal/type_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
@@ -43,104 +42,96 @@ concept HasValueStack =
 // instruction set.
 struct InstructionSetBase {};
 
-template <typename Signature, typename I, bool HasExecState, bool HasFuncState>
+constexpr bool NonReferencesConvertibleToValues(auto Seq) {
+  return (not Seq.template any<[](auto t) {
+    return std::is_reference_v<nth::type_t<t>>;
+  }>() and Seq.template all<[](auto t) {
+    return std::convertible_to<nth::type_t<t>, Value>;
+  }>());
+}
+
+template <typename I, bool HasExecState, bool HasFuncState>
 constexpr bool ValidSignatureWithImmediatesImpl() {
   constexpr auto signature = nth::type<decltype(I::execute)>;
   if (signature.return_type() != nth::type<void>) { return false; }
-  if (not HasValueStack<I>) { return false; }
-
-  if constexpr (HasExecState) {
-    if constexpr (HasFuncState) {
-      return Signature::invoke_with_argument_types(
-          []<typename VS, typename ES, typename FS, typename... Ts>() {
-            return std::is_same_v<ES, typename I::execution_state &> and
-                   std::is_same_v<FS, typename I::function_state &> and
-                   not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
-    } else {
-      return Signature::invoke_with_argument_types(
-          []<typename VS, typename ES, typename... Ts>() {
-            return std::is_same_v<ES, typename I::execution_state &> and
-                   not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
-    }
-  } else {
-    if constexpr (HasFuncState) {
-      return Signature::invoke_with_argument_types(
-          []<typename VS, typename FS, typename... Ts>() {
-            return std::is_same_v<FS, typename I::function_state &> and
-                   not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
-
-    } else {
-      return Signature::invoke_with_argument_types(
-          []<typename VS, typename... Ts>() {
-            return not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
-    }
-  }
-}
-
-template <typename Signature, typename I, bool HasExecState, bool HasFuncState>
-constexpr bool ValidSignatureWithoutImmediatesImpl() {
-  using return_type = typename Signature::return_type;
-  if (not std::is_void_v<return_type> and
-      not std::convertible_to<return_type, Value>) {
+  if (nth::type<decltype(I::execute)>.parameters().template get<0>() !=
+      nth::type<ValueStack &>) {
     return false;
   }
 
   if constexpr (HasExecState) {
     if constexpr (HasFuncState) {
-      return Signature::invoke_with_argument_types(
-          []<typename ES, typename FS, typename... Ts>() {
-            return std::is_same_v<ES, typename I::execution_state &> and
-                   std::is_same_v<FS, typename I::function_state &> and
-                   not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
+      return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
+                 nth::type<typename I::execution_state &> and
+             nth::type<decltype(I::execute)>.parameters().template get<2>() ==
+                 nth::type<typename I::function_state &> and
+             NonReferencesConvertibleToValues(
+                 nth::type<decltype(I::execute)>.parameters().template drop<3>());
     } else {
-      return Signature::invoke_with_argument_types(
-          []<typename ES, typename... Ts>() {
-            return std::is_same_v<ES, typename I::execution_state &> and
-                   not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
+      return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
+                 nth::type<typename I::execution_state &> and
+             NonReferencesConvertibleToValues(
+                 nth::type<decltype(I::execute)>.parameters().template drop<2>());
     }
   } else {
     if constexpr (HasFuncState) {
-      return Signature::invoke_with_argument_types(
-          []<typename FS, typename... Ts>() {
-            return std::is_same_v<FS, typename I::function_state &> and
-                   not(std::is_reference_v<Ts> or ...) and
-                   (std::convertible_to<Ts, Value> and ...);
-          });
-
+      return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
+                 nth::type<typename I::function_state &> and
+             NonReferencesConvertibleToValues(
+                 nth::type<decltype(I::execute)>.parameters().template drop<2>());
     } else {
-      return Signature::invoke_with_argument_types([]<typename... Ts>() {
-        return not(std::is_reference_v<Ts> or ...) and
-               (std::convertible_to<Ts, Value> and ...);
-      });
+      return NonReferencesConvertibleToValues(
+          nth::type<decltype(I::execute)>.parameters().template drop<1>());
+    }
+  }
+}
+
+template <typename I, bool HasExecState, bool HasFuncState>
+constexpr bool ValidSignatureWithoutImmediatesImpl() {
+  constexpr auto signature   = nth::type<decltype(I::execute)>;
+  constexpr auto return_type = signature.return_type();
+  if (return_type != nth::type<void> and
+      not std::convertible_to<nth::type_t<return_type>, Value>) {
+    return false;
+  }
+
+  if constexpr (HasExecState) {
+    if constexpr (HasFuncState) {
+      return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
+                 nth::type<typename I::execution_state &> and
+             nth::type<decltype(I::execute)>.parameters().template get<1>() ==
+                 nth::type<typename I::function_state &> and
+             NonReferencesConvertibleToValues(
+                 nth::type<decltype(I::execute)>.parameters().template drop<2>());
+    } else {
+      return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
+                 nth::type<typename I::execution_state &> and
+             NonReferencesConvertibleToValues(
+                 nth::type<decltype(I::execute)>.parameters().template drop<1>());
+    }
+  } else {
+    if constexpr (HasFuncState) {
+      return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
+                 nth::type<typename I::function_state &> and
+             NonReferencesConvertibleToValues(
+                 nth::type<decltype(I::execute)>.parameters().template drop<1>());
+    } else {
+      return NonReferencesConvertibleToValues(
+          nth::type<decltype(I::execute)>.parameters());
     }
   }
 }
 
 // Implementation detail. A concept capturing that the `execute` static member
 // function of the instruction adheres to one of the supported signatures.
-template <typename I,
-          typename Signature = ExtractSignature<decltype(&I::execute)>,
-          bool HasExecState  = HasExecutionState<I>,
-          bool HasFuncState  = HasFunctionState<I>>
+template <typename I, auto Signature = nth::type<decltype(I::execute)>,
+          bool HasExecState = HasExecutionState<I>,
+          bool HasFuncState = HasFunctionState<I>>
 concept HasValidSignature =
     ((HasValueStack<I> and
-      ValidSignatureWithImmediatesImpl<Signature, I, HasExecState,
-                                       HasFuncState>()) or
+      ValidSignatureWithImmediatesImpl<I, HasExecState, HasFuncState>()) or
      (not HasValueStack<I> and
-      ValidSignatureWithoutImmediatesImpl<Signature, I, HasExecState,
-                                          HasFuncState>()));
+      ValidSignatureWithoutImmediatesImpl<I, HasExecState, HasFuncState>()));
 
 template <typename FuncStateStack>
 struct FuncStateImpl {
@@ -258,151 +249,121 @@ struct StackMachineInstruction {
                                                 state);
       }
     } else {
-      using signature = internal::ExtractSignature<decltype(&Inst::execute)>;
+      constexpr auto signature = nth::type<decltype(Inst::execute)>;
 
       constexpr bool ES = HasExecutionState<Inst>;
       constexpr bool FS = internal::HasFunctionState<Inst>;
       constexpr bool VS = internal::HasValueStack<Inst>;
-      constexpr bool RV = std::is_void_v<typename signature::return_type>;
+      constexpr bool RV = (signature.return_type() == nth::type<void>);
       static_assert(RV or not VS);
 
       if constexpr (VS and ES and FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<ValueStack &>,
-                std::same_as<typename Inst::execution_state &>,
-                std::same_as<typename Inst::function_state &>,
-                std::convertible_to<Value>... Ts>() {
-              // Brace-initialization forces the order of evaluation to be in
-              // the order the elements appear in the list.
-              std::apply(
-                  Inst::execute,
-                  std::tuple<ValueStack &, typename Inst::execution_state &,
-                             typename Inst::function_state &, Ts...>{
-                      value_stack,
-                      state->exec_state
-                          ->template get<typename Inst::execution_state>(),
-                      std::get<typename Inst::function_state>(
-                          state->function_state_stack.top()),
-                      (++ip)->as<Ts>()...});
-            });
-      } else if constexpr (VS and ES and not FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<ValueStack &>,
-                std::same_as<typename Inst::execution_state &>,
-                std::convertible_to<Value>... Ts>() {
-              // Brace-initialization forces the order of evaluation to be in
-              // the order the elements appear in the list.
-              std::apply(
-                  Inst::execute,
-                  std::tuple<ValueStack &, typename Inst::execution_state &,
-                             Ts...>{
-                      value_stack,
-                      state->exec_state
-                          ->template get<typename Inst::execution_state>(),
-                      (++ip)->as<Ts>()...});
-            });
-      } else if constexpr (VS and not ES and FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<ValueStack &>,
-                std::same_as<typename Inst::function_state &>,
-                std::convertible_to<Value>... Ts>() {
-              // Brace-initialization forces the order of evaluation to be in
-              // the order the elements appear in the list.
-              std::apply(
-                  Inst::execute,
-                  std::tuple<ValueStack &, typename Inst::function_state &,
-                             Ts...>{value_stack,
-                                    std::get<typename Inst::function_state>(
-                                        state->function_state_stack.top()),
-                                    (++ip)->as<Ts>()...});
-            });
-      } else if constexpr (VS and not ES and not FS) {
-        signature::
-            invoke_with_argument_types([&]<std::same_as<ValueStack &>,
-                                           std::convertible_to<Value>... Ts>() {
-              // Brace-initialization forces the order of evaluation to be in
-              // the order the elements appear in the list.
-              std::apply(Inst::execute, std::tuple<ValueStack &, Ts...>{
-                                            value_stack, (++ip)->as<Ts>()...});
-            });
-      } else if constexpr (RV and not VS and ES and FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::execution_state &>,
-                std::same_as<typename Inst::function_state &>,
-                std::convertible_to<Value>... Ts>() {
-              std::apply(
-                  [&](auto... values) {
-                    Inst::execute(
-                        state->exec_state
-                            ->template get<typename Inst::execution_state>(),
-                        std::get<typename Inst::function_state>(
-                            state->function_state_stack.top()),
-                        values...);
-                  },
-                  value_stack.pop_suffix<Ts...>());
-            });
-      } else if constexpr (RV and not VS and ES and not FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::execution_state &>,
-                std::convertible_to<Value>... Ts>() {
-              std::apply(
-                  [&](auto... values) {
-                    Inst::execute(
-                        state->exec_state
-                            ->template get<typename Inst::execution_state>(),
-                        values...);
-                  },
-                  value_stack.pop_suffix<Ts...>());
-            });
-      } else if constexpr (RV and not VS and not ES and FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::function_state &>,
-                std::convertible_to<Value>... Ts>() {
-              std::apply(
-                  [&](auto... values) {
-                    Inst::execute(std::get<typename Inst::function_state>(
-                                      state->function_state_stack.top()),
-                                  values...);
-                  },
-                  value_stack.pop_suffix<Ts...>());
-            });
-      } else if constexpr (RV and not VS and not ES and not FS) {
-        signature::
-            invoke_with_argument_types([&]<std::convertible_to<Value>... Ts>() {
-              std::apply(Inst::execute, value_stack.pop_suffix<Ts...>());
-            });
-      } else if constexpr (not RV and not VS and ES and FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::execution_state &>,
-                std::same_as<typename Inst::function_state &>,
-                std::convertible_to<Value>... Ts>() {
-              value_stack.call_on_suffix<&Inst::execute, Ts...>(
+        signature.parameters().template drop<3>().reduce([&](auto... ts) {
+          std::apply(
+              Inst::execute,
+              std::tuple<ValueStack &, typename Inst::execution_state &,
+                         typename Inst::function_state &, nth::type_t<ts>...>{
+                  value_stack,
                   state->exec_state
                       ->template get<typename Inst::execution_state>(),
                   std::get<typename Inst::function_state>(
-                      state->function_state_stack.top()));
-            });
+                      state->function_state_stack.top()),
+                  (++ip)->as<nth::type_t<ts>>()...});
+        });
+      } else if constexpr (VS and ES and not FS) {
+        signature.parameters().template drop<2>().reduce([&](auto... ts) {
+          // Brace-initialization forces the order of evaluation to be in
+          // the order the elements appear in the list.
+          std::apply(Inst::execute,
+                     std::tuple<ValueStack &, typename Inst::execution_state &,
+                                nth::type_t<ts>...>{
+                         value_stack,
+                         state->exec_state
+                             ->template get<typename Inst::execution_state>(),
+                         (++ip)->as<nth::type_t<ts>>()...});
+        });
+      } else if constexpr (VS and not ES and FS) {
+        signature.parameters().template drop<2>().reduce([&](auto... ts) {
+          // Brace-initialization forces the order of evaluation to be in
+          // the order the elements appear in the list.
+          std::apply(Inst::execute,
+                     std::tuple<ValueStack &, typename Inst::function_state &,
+                                nth::type_t<ts>...>{
+                         value_stack,
+                         std::get<typename Inst::function_state>(
+                             state->function_state_stack.top()),
+                         (++ip)->as<nth::type_t<ts>>()...});
+        });
+      } else if constexpr (VS and not ES and not FS) {
+        signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          // Brace-initialization forces the order of evaluation to be in
+          // the order the elements appear in the list.
+          std::apply(Inst::execute,
+                     std::tuple<ValueStack &, nth::type_t<ts>...>{
+                         value_stack, (++ip)->as<nth::type_t<ts>>()...});
+        });
+      } else if constexpr (RV and not VS and ES and FS) {
+        signature.parameters().template drop<2>().reduce([&](auto... ts) {
+          std::apply(
+              [&](auto... values) {
+                Inst::execute(
+                    state->exec_state
+                        ->template get<typename Inst::execution_state>(),
+                    std::get<typename Inst::function_state>(
+                        state->function_state_stack.top()),
+                    values...);
+              },
+              value_stack.pop_suffix<nth::type_t<ts>...>());
+        });
+      } else if constexpr (RV and not VS and ES and not FS) {
+        signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          std::apply(
+              [&](auto... values) {
+                Inst::execute(
+                    state->exec_state
+                        ->template get<typename Inst::execution_state>(),
+                    values...);
+              },
+              value_stack.pop_suffix<nth::type_t<ts>...>());
+        });
+      } else if constexpr (RV and not VS and not ES and FS) {
+        signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          std::apply(
+              [&](auto... values) {
+                Inst::execute(std::get<typename Inst::function_state>(
+                                  state->function_state_stack.top()),
+                              values...);
+              },
+              value_stack.pop_suffix<nth::type_t<ts>...>());
+        });
+      } else if constexpr (RV and not VS and not ES and not FS) {
+        signature.parameters().reduce([&](auto... ts) {
+          std::apply(Inst::execute,
+                     value_stack.pop_suffix<nth::type_t<ts>...>());
+        });
+      } else if constexpr (not RV and not VS and ES and FS) {
+        signature.parameters().template drop<2>().reduce([&](auto... ts) {
+          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
+              state->exec_state->template get<typename Inst::execution_state>(),
+              std::get<typename Inst::function_state>(
+                  state->function_state_stack.top()));
+        });
       } else if constexpr (not RV and not VS and ES and not FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::execution_state &>,
-                std::convertible_to<Value>... Ts>() {
-              value_stack.call_on_suffix<&Inst::execute, Ts...>(
-                  state->exec_state
-                      ->template get<typename Inst::execution_state>());
-            });
+        signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
+              state->exec_state
+                  ->template get<typename Inst::execution_state>());
+        });
       } else if constexpr (not RV and not VS and not ES and FS) {
-        signature::invoke_with_argument_types(
-            [&]<std::same_as<typename Inst::function_state &>,
-                std::convertible_to<Value>... Ts>() {
-              value_stack.call_on_suffix<&Inst::execute, Ts...>(
-                  std::get<typename Inst::function_state>(
-                      state->function_state_stack.top()));
-            });
+        signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
+              std::get<typename Inst::function_state>(
+                  state->function_state_stack.top()));
+        });
       } else if constexpr (not RV and not VS and not ES and not FS) {
-        signature::
-            invoke_with_argument_types([&]<std::convertible_to<Value>... Ts>() {
-              value_stack.call_on_suffix<&Inst::execute, Ts...>();
-            });
+        signature.parameters().reduce([&](auto... ts) {
+          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
+        });
       }
       ++ip;
     }

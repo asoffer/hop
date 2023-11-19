@@ -6,7 +6,6 @@
 #include "jasmin/instruction_index.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/instruction_traits.h"
-#include "jasmin/internal/type_traits.h"
 #include "nth/container/interval.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
@@ -53,38 +52,16 @@ struct Function : internal::FunctionBase {
       constexpr size_t DropCount = internal::HasValueStack<I> +
                                    HasExecutionState<I> +
                                    internal::HasFunctionState<I>;
-
-      if constexpr (DropCount == 0) {
-        return internal::ExtractSignature<decltype(&I::execute)>::
-            invoke_with_argument_types([&]<typename... Arguments>() {
-              return internal::FunctionBase::append(
-                  {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
-            });
-      } else if constexpr (DropCount == 1) {
-        return internal::ExtractSignature<decltype(&I::execute)>::
-            invoke_with_argument_types([&]<typename, typename... Arguments>() {
-              return internal::FunctionBase::append(
-                  {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
-            });
-      } else if constexpr (DropCount == 2) {
-        return internal::ExtractSignature<decltype(&I::execute)>::
-            invoke_with_argument_types(
-                [&]<typename, typename, typename... Arguments>() {
-                  return internal::FunctionBase::append(
-                      {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
-                });
-      } else if constexpr (DropCount == 3) {
-        return internal::ExtractSignature<decltype(&I::execute)>::
-            invoke_with_argument_types(
-                [&]<typename, typename, typename, typename... Arguments>() {
-                  return internal::FunctionBase::append(
-                      {ExecPtr<I>(), Value(static_cast<Arguments>(vs))...});
-                });
-      }
+      constexpr auto parameters = nth::type<decltype(I::execute)>.parameters();
+      return parameters.template drop<DropCount>().reduce(
+          [&](auto... argument_types) {
+            return internal::FunctionBase::append(
+                {ExecPtr<I>(), Value(argument_types.cast(vs))...});
+          });
     }
   }
 
-  // Appends an intsruction followed by space for `placeholder_count` values
+  // Appends an instruction followed by space for `placeholder_count` values
   // which are left uninitialized. They may be initialized later via calls to
   // `Function<...>::set_value`. Returns the corresponding
   // `nth::interval<InstructionIndex>`.

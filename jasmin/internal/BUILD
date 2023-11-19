@@ -44,20 +44,3 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-cc_library(
-    name = "type_traits",
-    hdrs = ["type_traits.h"],
-    deps = [
-        "@asoffer_nth//nth/meta:concepts",
-    ],
-)
-
-cc_test(
-  name = "type_traits_test",
-  srcs = ["type_traits_test.cc"],
-  deps = [
-      ":type_traits",
-      "@com_google_googletest//:gtest_main",
-  ]
-)

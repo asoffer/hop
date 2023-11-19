@@ -67,7 +67,6 @@ cc_library(
     hdrs = ["execution_state.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//jasmin/internal:type_traits",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
     ],
@@ -109,7 +108,6 @@ cc_library(
         ":value_stack",
         "//jasmin/internal:function_base",
         "//jasmin/internal:function_state",
-        "//jasmin/internal:type_traits",
         "@asoffer_nth//nth/base:attributes",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",
@@ -142,7 +140,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":value",
-        "//jasmin/internal:type_traits",
         "@asoffer_nth//nth/debug",
     ],
 )
