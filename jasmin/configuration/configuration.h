@@ -13,8 +13,8 @@
 #include "jasmin/configuration/harden.h"
 #endif
 
-#if __has_include("jasmin/configuration/default.h")
-#include "jasmin/configuration/default.h"
+#if __has_include("jasmin/configuration/optimize.h")
+#include "jasmin/configuration/optimize.h"
 #endif
 
 namespace jasmin::internal {

@@ -12,7 +12,6 @@
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
 #include "jasmin/internal/type_traits.h"
-#include "jasmin/op_code.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
@@ -23,6 +22,14 @@
 
 namespace jasmin {
 namespace internal {
+
+struct OpCodeMetadata {
+  friend bool operator==(OpCodeMetadata const &,
+                         OpCodeMetadata const &) = default;
+
+  size_t op_code_value;
+  size_t immediate_value_count;
+};
 
 using exec_fn_type = void (*)(ValueStack &, Value const *&, CallStack &,
                               void *);
@@ -38,18 +45,15 @@ struct InstructionSetBase {};
 
 template <typename Signature, typename I, bool HasExecState, bool HasFuncState>
 constexpr bool ValidSignatureWithImmediatesImpl() {
-  constexpr auto signature  = nth::type<decltype(I::execute)>;
-  if (signature.return_type() != nth::type<void>) {
-    return false;
-  }
+  constexpr auto signature = nth::type<decltype(I::execute)>;
+  if (signature.return_type() != nth::type<void>) { return false; }
   if (not HasValueStack<I>) { return false; }
 
   if constexpr (HasExecState) {
     if constexpr (HasFuncState) {
       return Signature::invoke_with_argument_types(
           []<typename VS, typename ES, typename FS, typename... Ts>() {
-            return 
-            std::is_same_v<ES, typename I::execution_state &> and
+            return std::is_same_v<ES, typename I::execution_state &> and
                    std::is_same_v<FS, typename I::function_state &> and
                    not(std::is_reference_v<Ts> or ...) and
                    (std::convertible_to<Ts, Value> and ...);
@@ -518,9 +522,9 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns the number of instructions in the instruction set.
   static constexpr size_t size() { return sizeof...(Is); }
 
-  // Returns the `OpCodeMetadata` struct corresponding to the op-code as
-  // specified in the byte-code.
-  static struct OpCodeMetadata OpCodeMetadata(Value v) {
+  // Returns the `internal::OpCodeMetadata` struct corresponding to the op-code
+  // as specified in the byte-code.
+  static internal::OpCodeMetadata OpCodeMetadata(Value v) {
     auto iter = Metadata.find(v.as<exec_fn_type>());
     NTH_REQUIRE((v.when(internal::harden)), iter != Metadata.end());
     return iter->second;
@@ -537,7 +541,7 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns a `uint64_t` indicating the op-code for the given template
   // parameter instruction `I`.
   template <nth::any_of<Is...> I>
-  static constexpr struct OpCodeMetadata OpCodeMetadataFor() {
+  static constexpr internal::OpCodeMetadata OpCodeMetadataFor() {
     return {.op_code_value         = OpCodeFor<I>(),
             .immediate_value_count = internal::ImmediateValueCount<I>()};
   }
@@ -551,7 +555,7 @@ struct MakeInstructionSet : InstructionSetBase {
   static constexpr exec_fn_type table[sizeof...(Is)] = {
       &Is::template ExecuteImpl<MakeInstructionSet>...};
 
-  static absl::flat_hash_map<exec_fn_type, struct OpCodeMetadata> const
+  static absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
       Metadata;
 
   template <nth::any_of<Is...> I>
@@ -594,9 +598,9 @@ constexpr auto BuiltinInstructionList =
     nth::type_sequence<Call, Jump, JumpIf, Return>;
 
 template <Instruction... Is>
-absl::flat_hash_map<exec_fn_type, OpCodeMetadata> const
+absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
     MakeInstructionSet<Is...>::Metadata = [] {
-      absl::flat_hash_map<exec_fn_type, struct OpCodeMetadata> result;
+      absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> result;
       (result.emplace(&Is::template ExecuteImpl<self_type>,
                       OpCodeMetadataFor<Is>()),
        ...);

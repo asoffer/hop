@@ -6,6 +6,7 @@
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/core.h"
+#include "nth/container/interval.h"
 
 // This file defines two implementations of functions that compute fibonacci
 // numbers recursively. The implementations have the same high-level pseudocode,
@@ -26,7 +27,8 @@ auto FibonacciWithSubtract() {
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
-  jasmin::OpCodeRange jump = func.append_with_placeholders<jasmin::JumpIf>();
+  nth::interval<jasmin::InstructionIndex> jump =
+      func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{1});
   func.append<jasmin::Subtract<uint64_t>>();
@@ -38,8 +40,8 @@ auto FibonacciWithSubtract() {
   func.append<jasmin::Push>(&func);
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
-  jasmin::OpCodeRange ret = func.append<jasmin::Return>();
-  func.set_value(jump, 0, jasmin::OpCodeRange::Distance(ret, jump));
+  nth::interval<jasmin::InstructionIndex> ret = func.append<jasmin::Return>();
+  func.set_value(jump, 0, ret.lower_bound() - jump.lower_bound());
   return func;
 }
 
@@ -58,7 +60,8 @@ auto FibonacciWithHardCodedDecrements() {
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
-  jasmin::OpCodeRange jump = func.append_with_placeholders<jasmin::JumpIf>();
+  nth::interval<jasmin::InstructionIndex> jump =
+      func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
   func.append<DecrementBy<uint64_t, 1>>();
   func.append<jasmin::Push>(&func);
@@ -68,8 +71,8 @@ auto FibonacciWithHardCodedDecrements() {
   func.append<jasmin::Push>(&func);
   func.append<jasmin::Call>();
   func.append<jasmin::Add<uint64_t>>();
-  jasmin::OpCodeRange ret = func.append<jasmin::Return>();
-  func.set_value(jump, 0, jasmin::OpCodeRange::Distance(ret, jump));
+  nth::interval<jasmin::InstructionIndex> ret = func.append<jasmin::Return>();
+  func.set_value(jump, 0, ret.lower_bound() - jump.lower_bound());
   return func;
 }
 

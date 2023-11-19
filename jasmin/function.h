@@ -5,9 +5,11 @@
 
 #include "jasmin/call_stack.h"
 #include "jasmin/instruction.h"
+#include "jasmin/instruction_index.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/instruction_traits.h"
 #include "jasmin/internal/type_traits.h"
+#include "nth/container/interval.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"
 
@@ -26,9 +28,8 @@ struct Function : internal::FunctionBase {
 
   // Appends an op-code for the given `Instruction I` template parameter.
   template <typename I>
-  requires(
-      Set::instructions.template contains<nth::type<I>>()) constexpr OpCodeRange
-      append(auto... vs) {
+  requires(Set::instructions.template contains<nth::type<I>>()) constexpr nth::
+      interval<InstructionIndex> append(auto... vs) {
     if constexpr (std::is_same_v<I, Return> or std::is_same_v<I, Call>) {
       return internal::FunctionBase::append(
           {Value(&I::template ExecuteImpl<typename Set::self_type>)});
@@ -83,11 +84,11 @@ struct Function : internal::FunctionBase {
 
   // Appends an intsruction followed by space for `placeholder_count` values
   // which are left uninitialized. They may be initialized later via calls to
-  // `Function<...>::set_value`. Returns the corresponding OpCodeRange.
+  // `Function<...>::set_value`. Returns the corresponding
+  // `nth::interval<InstructionIndex>`.
   template <typename I>
-  requires(
-      Set::instructions.template contains<nth::type<I>>()) constexpr OpCodeRange
-      append_with_placeholders() {
+  requires(Set::instructions.template contains<nth::type<I>>()) constexpr nth::
+      interval<InstructionIndex> append_with_placeholders() {
     return internal::FunctionBase::append(
         Value(&I::template ExecuteImpl<typename Set::self_type>),
         internal::ImmediateValueCount<I>());

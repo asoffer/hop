@@ -80,9 +80,11 @@ cc_library(
     deps = [
         ":call_stack",
         ":instruction",
+        ":instruction_index",
         ":value",
         "//jasmin/internal:function_base",
         "//jasmin/internal:instruction_traits",
+        "@asoffer_nth//nth/container:interval",
     ],
 )
 
@@ -128,19 +130,10 @@ cc_test(
 )
 
 cc_library(
-    name = "op_code",
-    hdrs = ["op_code.h"],
+    name = "instruction_index",
+    hdrs = ["instruction_index.h"],
     visibility = ["//visibility:public"],
     deps = [],
-)
-
-cc_test(
-    name = "op_code_test",
-    srcs = ["op_code_test.cc"],
-    deps = [
-        ":op_code",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(

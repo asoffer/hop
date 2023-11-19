@@ -4,8 +4,9 @@
 #include <span>
 #include <vector>
 
-#include "jasmin/op_code.h"
+#include "jasmin/instruction_index.h"
 #include "jasmin/value.h"
+#include "nth/container/interval.h"
 #include "nth/debug/debug.h"
 
 namespace jasmin::internal {
@@ -32,8 +33,8 @@ struct FunctionBase {
   constexpr Value const *entry() const { return instructions_.data(); }
 
   // Returns a span over all values representing instructions in the function.
-  // Values in the span are not distinguished separately as `OpCode`s or
-  // arguments passed to an `OpCode`.
+  // Values in the span are not distinguished separately as op-codes or
+  // immediate values.
   std::span<Value const> raw_instructions() const { return instructions_; }
   std::span<Value> raw_instructions() { return instructions_; }
 
@@ -42,10 +43,11 @@ struct FunctionBase {
   // valid range in `*this` function. This is typically used in conjunction with
   // `append_with_placeholders` to defer setting a value, but may be used to
   // overwrite any such `Value`.
-  void set_value(OpCodeRange range, size_t index, Value value) {
-    NTH_REQUIRE((v.when(internal::harden)), index + 1 < range.size())
+  void set_value(nth::interval<InstructionIndex> range,
+                 InstructionIndex::difference_type index, Value value) {
+    NTH_REQUIRE((v.when(internal::harden)), index + 1 < range.length())
         .Log<"Index larger than range">();
-    instructions_[range.offset() + index + 1] = value;
+    instructions_[range.lower_bound().value() + index + 1] = value;
   }
 
   // Reserves space for up to `capacity` op-codes or immediate values before
@@ -56,26 +58,29 @@ struct FunctionBase {
   // immediate value.
   void raw_append(Value v) { instructions_.push_back(v); }
 
-
  protected:
   // Appends the sequence of `Value`s. To the instructions. The first must
   // represent an op-code and the remainder must represent immediate values.
-  // Returns an `OpCodeRange` representing the appended sequence.
-  OpCodeRange append(std::initializer_list<Value> range) {
+  // Returns an `nth::interval<InstructionIndex>` representing the appended
+  // sequence.
+  nth::interval<InstructionIndex> append(std::initializer_list<Value> range) {
     size_t size = instructions_.size();
     instructions_.insert(instructions_.end(), range.begin(), range.end());
-    return OpCodeRange(size, range.size());
+    return nth::interval(InstructionIndex(size),
+                         InstructionIndex(size + range.size()));
   }
 
   // Appends the sequence of `Value`s. To the instructions. The first must
   // represent an op-code and the remainder must represent immediate values.
-  // Returns an `OpCodeRange` representing the appended sequence.
-  OpCodeRange append(Value fn, size_t placeholders) {
+  // Returns an `nth::interval<InstructionIndex>` representing the appended
+  // sequence.
+  nth::interval<InstructionIndex> append(Value fn, size_t placeholders) {
     size_t size = instructions_.size();
     instructions_.push_back(fn);
     instructions_.resize(instructions_.size() + placeholders,
                          Value::Uninitialized());
-    return OpCodeRange(size, placeholders + 1);
+    return nth::interval(InstructionIndex(size),
+                         InstructionIndex(size + placeholders + 1));
   }
 
  private:

@@ -4,9 +4,10 @@ cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     deps = [
-        "//jasmin:op_code",
+        "//jasmin:instruction_index",
         "//jasmin:value",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/container:interval",
     ],
 )
 
