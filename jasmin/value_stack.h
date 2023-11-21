@@ -110,22 +110,32 @@ struct ValueStack {
     return std::tuple<Ts...>{(p++)->template as<Ts>()...};
   }
 
-  // TODO: qualify `F`.
   template <auto F, typename... Ts, typename... Args>
+  requires std::invocable<decltype(F), Args..., Ts...>
   void call_on_suffix(Args &&...args) {
-    if constexpr (sizeof...(Ts) == 0) {
-      push(F(std::forward<Args>(args)...));
-    } else if constexpr (sizeof...(Ts) == 1) {
-      auto *p = head_ - 1;
-      *p      = F(std::forward<Args>(args)..., p->as<Ts...>());
+    if constexpr (std::is_void_v<
+                      std::invoke_result_t<decltype(F), Args..., Ts...>>) {
+      if constexpr (sizeof...(Ts) == 0) {
+        F(std::forward<Args>(args)...);
+      } else {
+        auto *p = head_ - sizeof...(Ts);
+        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+          F(std::forward<Args>(args)..., (p + Ns)->template as<Ts>()...);
+        }
+        (std::make_index_sequence<sizeof...(Ts)>{});
+        head_ -= sizeof...(Ts);
+      }
     } else {
-      auto result = std::apply(
-          [&](auto... suffix) {
-            return F(std::forward<Args>(args)..., suffix...);
-          },
-          pop_suffix<Ts...>());
-      *head_ = result;
-      ++head_;
+      if constexpr (sizeof...(Ts) == 0) {
+        push(F(std::forward<Args>(args)...));
+      } else {
+        auto *p = head_ - sizeof...(Ts);
+        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+          *p = F(std::forward<Args>(args)..., (p + Ns)->template as<Ts>()...);
+        }
+        (std::make_index_sequence<sizeof...(Ts)>{});
+        head_ -= (sizeof...(Ts) - 1);
+      }
     }
   }
 

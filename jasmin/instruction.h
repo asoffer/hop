@@ -257,113 +257,80 @@ struct StackMachineInstruction {
       constexpr bool RV = (signature.return_type() == nth::type<void>);
       static_assert(RV or not VS);
 
-      if constexpr (VS and ES and FS) {
-        signature.parameters().template drop<3>().reduce([&](auto... ts) {
-          std::apply(
-              Inst::execute,
-              std::tuple<ValueStack &, typename Inst::execution_state &,
-                         typename Inst::function_state &, nth::type_t<ts>...>{
-                  value_stack,
-                  state->exec_state
-                      ->template get<typename Inst::execution_state>(),
-                  std::get<typename Inst::function_state>(
-                      state->function_state_stack.top()),
-                  (++ip)->as<nth::type_t<ts>>()...});
-        });
-      } else if constexpr (VS and ES and not FS) {
-        signature.parameters().template drop<2>().reduce([&](auto... ts) {
-          // Brace-initialization forces the order of evaluation to be in
-          // the order the elements appear in the list.
-          std::apply(Inst::execute,
-                     std::tuple<ValueStack &, typename Inst::execution_state &,
-                                nth::type_t<ts>...>{
-                         value_stack,
-                         state->exec_state
-                             ->template get<typename Inst::execution_state>(),
-                         (++ip)->as<nth::type_t<ts>>()...});
-        });
-      } else if constexpr (VS and not ES and FS) {
-        signature.parameters().template drop<2>().reduce([&](auto... ts) {
-          // Brace-initialization forces the order of evaluation to be in
-          // the order the elements appear in the list.
-          std::apply(Inst::execute,
-                     std::tuple<ValueStack &, typename Inst::function_state &,
-                                nth::type_t<ts>...>{
-                         value_stack,
-                         std::get<typename Inst::function_state>(
-                             state->function_state_stack.top()),
-                         (++ip)->as<nth::type_t<ts>>()...});
-        });
-      } else if constexpr (VS and not ES and not FS) {
-        signature.parameters().template drop<1>().reduce([&](auto... ts) {
-          // Brace-initialization forces the order of evaluation to be in
-          // the order the elements appear in the list.
-          std::apply(Inst::execute,
-                     std::tuple<ValueStack &, nth::type_t<ts>...>{
-                         value_stack, (++ip)->as<nth::type_t<ts>>()...});
-        });
-      } else if constexpr (RV and not VS and ES and FS) {
-        signature.parameters().template drop<2>().reduce([&](auto... ts) {
-          std::apply(
-              [&](auto... values) {
-                Inst::execute(
+      if constexpr (VS) {
+        if constexpr (ES and FS) {
+          signature.parameters().template drop<3>().reduce([&](auto... ts) {
+            std::apply(
+                Inst::execute,
+                std::tuple<ValueStack &, typename Inst::execution_state &,
+                           typename Inst::function_state &, nth::type_t<ts>...>{
+                    value_stack,
                     state->exec_state
                         ->template get<typename Inst::execution_state>(),
                     std::get<typename Inst::function_state>(
                         state->function_state_stack.top()),
-                    values...);
-              },
-              value_stack.pop_suffix<nth::type_t<ts>...>());
-        });
-      } else if constexpr (RV and not VS and ES and not FS) {
-        signature.parameters().template drop<1>().reduce([&](auto... ts) {
-          std::apply(
-              [&](auto... values) {
-                Inst::execute(
+                    (++ip)->as<nth::type_t<ts>>()...});
+          });
+        } else if constexpr (ES and not FS) {
+          signature.parameters().template drop<2>().reduce([&](auto... ts) {
+            // Brace-initialization forces the order of evaluation to be in
+            // the order the elements appear in the list.
+            std::apply(
+                Inst::execute,
+                std::tuple<ValueStack &, typename Inst::execution_state &,
+                           nth::type_t<ts>...>{
+                    value_stack,
                     state->exec_state
                         ->template get<typename Inst::execution_state>(),
-                    values...);
-              },
-              value_stack.pop_suffix<nth::type_t<ts>...>());
-        });
-      } else if constexpr (RV and not VS and not ES and FS) {
-        signature.parameters().template drop<1>().reduce([&](auto... ts) {
-          std::apply(
-              [&](auto... values) {
-                Inst::execute(std::get<typename Inst::function_state>(
-                                  state->function_state_stack.top()),
-                              values...);
-              },
-              value_stack.pop_suffix<nth::type_t<ts>...>());
-        });
-      } else if constexpr (RV and not VS and not ES and not FS) {
-        signature.parameters().reduce([&](auto... ts) {
-          std::apply(Inst::execute,
-                     value_stack.pop_suffix<nth::type_t<ts>...>());
-        });
-      } else if constexpr (not RV and not VS and ES and FS) {
-        signature.parameters().template drop<2>().reduce([&](auto... ts) {
-          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-              state->exec_state->template get<typename Inst::execution_state>(),
-              std::get<typename Inst::function_state>(
-                  state->function_state_stack.top()));
-        });
-      } else if constexpr (not RV and not VS and ES and not FS) {
-        signature.parameters().template drop<1>().reduce([&](auto... ts) {
-          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-              state->exec_state
-                  ->template get<typename Inst::execution_state>());
-        });
-      } else if constexpr (not RV and not VS and not ES and FS) {
-        signature.parameters().template drop<1>().reduce([&](auto... ts) {
-          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-              std::get<typename Inst::function_state>(
-                  state->function_state_stack.top()));
-        });
-      } else if constexpr (not RV and not VS and not ES and not FS) {
-        signature.parameters().reduce([&](auto... ts) {
-          value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
-        });
+                    (++ip)->as<nth::type_t<ts>>()...});
+          });
+        } else if constexpr (not ES and FS) {
+          signature.parameters().template drop<2>().reduce([&](auto... ts) {
+            // Brace-initialization forces the order of evaluation to be in
+            // the order the elements appear in the list.
+            std::apply(Inst::execute,
+                       std::tuple<ValueStack &, typename Inst::function_state &,
+                                  nth::type_t<ts>...>{
+                           value_stack,
+                           std::get<typename Inst::function_state>(
+                               state->function_state_stack.top()),
+                           (++ip)->as<nth::type_t<ts>>()...});
+          });
+        } else if constexpr (not ES and not FS) {
+          signature.parameters().template drop<1>().reduce([&](auto... ts) {
+            // Brace-initialization forces the order of evaluation to be in
+            // the order the elements appear in the list.
+            std::apply(Inst::execute,
+                       std::tuple<ValueStack &, nth::type_t<ts>...>{
+                           value_stack, (++ip)->as<nth::type_t<ts>>()...});
+          });
+        }
+      } else {
+        if constexpr (not ES and not FS) {
+          signature.parameters().reduce([&](auto... ts) {
+            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
+          });
+        } else if constexpr (not ES and FS) {
+          signature.parameters().template drop<1>().reduce([&](auto... ts) {
+            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
+                std::get<typename Inst::function_state>(
+                    state->function_state_stack.top()));
+          });
+        } else if constexpr (ES and not FS) {
+          signature.parameters().template drop<1>().reduce([&](auto... ts) {
+            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
+                state->exec_state
+                    ->template get<typename Inst::execution_state>());
+          });
+        } else if constexpr (ES and FS) {
+          signature.parameters().template drop<2>().reduce([&](auto... ts) {
+            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
+                state->exec_state
+                    ->template get<typename Inst::execution_state>(),
+                std::get<typename Inst::function_state>(
+                    state->function_state_stack.top()));
+          });
+        }
       }
       ++ip;
     }
