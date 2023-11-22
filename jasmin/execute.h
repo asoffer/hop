@@ -12,21 +12,11 @@
 
 namespace jasmin {
 
-template <typename Set>
-constexpr auto FunctionStateType() {
-  if constexpr (std::is_void_v<typename internal::FunctionStateStack<Set>>) {
-    return nth::type<internal::Frame<void>>;
-  } else {
-    return nth::type<internal::Frame<
-        typename internal::FunctionStateStack<Set>::value_type>>;
-  }
-}
-
 // Executes the given function `f` with an initial stack of values given by the
 // object referenced by `value_stack`. `value_stack` is modified in place.
 template <InstructionSet Set>
 void Execute(Function<Set> const &f, ValueStack &value_stack) {
-  using frame_type = nth::type_t<FunctionStateType<Set>()>;
+  using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
   frame_type *call_stack =
       static_cast<frame_type *>(std::malloc(sizeof(frame_type) * 4));
   Value const *ip  = f.entry();

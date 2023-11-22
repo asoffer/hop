@@ -64,12 +64,12 @@ TEST(InstructionSet, State) {
 
   using Set = MakeInstructionSet<None, F>;
   EXPECT_EQ(internal::FunctionStateList<Set>, nth::type_sequence<int>);
-  EXPECT_EQ(nth::type<internal::FunctionStateStack<Set>>,
-            nth::type<std::stack<std::tuple<int>>>);
-  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<None>>>,
+  EXPECT_EQ(nth::type<internal::FunctionState<Set>>,
+            nth::type<std::tuple<int>>);
+  EXPECT_EQ(nth::type<internal::FunctionState<MakeInstructionSet<None>>>,
             nth::type<void>);
-  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<F>>>,
-            nth::type<std::stack<std::tuple<int>>>);
+  EXPECT_EQ(nth::type<internal::FunctionState<MakeInstructionSet<F>>>,
+            nth::type<std::tuple<int>>);
 }
 
 TEST(Instruction, OpCodeMetadata) {

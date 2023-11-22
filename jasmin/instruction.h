@@ -174,23 +174,18 @@ struct Return;
 template <typename Inst>
 struct StackMachineInstruction {
  private:
+  static constexpr bool FS = internal::HasFunctionState<Inst>;
+  static constexpr bool VS = internal::HasValueStack<Inst>;
+
   template <InstructionSet Set>
   static void ExecuteImpl(ValueStack &value_stack, Value const *ip,
                           internal::FrameBase *call_stack,
                           uint64_t cap_and_left) {
+    using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
     if constexpr (std::is_same_v<Inst, Call>) {
       if (internal::NeedsResize(cap_and_left)) [[unlikely]] {
-        if constexpr (std::is_void_v<
-                          ::jasmin::internal::FunctionStateStack<Set>>) {
-          call_stack = internal::Resize(
-              static_cast<internal::Frame<void> *>(call_stack), cap_and_left);
-        } else {
-          call_stack = internal::Resize(
-              static_cast<internal::Frame<
-                  typename internal::FunctionStateStack<Set>::value_type> *>(
-                  call_stack),
-              cap_and_left);
-        }
+        call_stack = internal::Resize(static_cast<frame_type *>(call_stack),
+                                      cap_and_left);
       }
       (++call_stack)->ip = ip;
       Value const *next_ip =
@@ -200,13 +195,11 @@ struct StackMachineInstruction {
       NTH_ATTRIBUTE(tailcall)
       return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
                                                    call_stack, cap_and_left);
-
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
       return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
                                                    call_stack, cap_and_left);
-
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       if (value_stack.pop<bool>()) {
         Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
@@ -234,16 +227,11 @@ struct StackMachineInstruction {
                                                      call_stack, cap_and_left);
       }
     } else {
-      constexpr auto signature = nth::type<decltype(Inst::execute)>;
-
-      constexpr bool FS = internal::HasFunctionState<Inst>;
-      constexpr bool VS = internal::HasValueStack<Inst>;
-      constexpr bool RV = (signature.return_type() == nth::type<void>);
-      static_assert(RV or not VS);
-
-      if constexpr (VS) {
-        if constexpr (FS) {
-          signature.parameters().template drop<2>().reduce([&](auto... ts) {
+      constexpr auto parameters =
+          nth::type<decltype(Inst::execute)>.parameters();
+      parameters.template drop<VS + FS>().reduce([&](auto... ts) {
+        if constexpr (VS) {
+          if constexpr (FS) {
             // Brace-initialization forces the order of evaluation to be in
             // the order the elements appear in the list.
             std::apply(Inst::execute,
@@ -251,37 +239,25 @@ struct StackMachineInstruction {
                                   nth::type_t<ts>...>{
                            value_stack,
                            std::get<typename Inst::function_state>(
-                               static_cast<internal::Frame<
-                                   typename internal::FunctionStateStack<
-                                       Set>::value_type> *>(call_stack)
-                                   ->state),
+                               static_cast<frame_type *>(call_stack)->state),
                            (++ip)->as<nth::type_t<ts>>()...});
-          });
-        } else {
-          signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          } else {
             // Brace-initialization forces the order of evaluation to be in
             // the order the elements appear in the list.
             std::apply(Inst::execute,
                        std::tuple<ValueStack &, nth::type_t<ts>...>{
                            value_stack, (++ip)->as<nth::type_t<ts>>()...});
-          });
-        }
-      } else {
-        if constexpr (not FS) {
-          signature.parameters().reduce([&](auto... ts) {
-            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
-          });
+          }
         } else {
-          signature.parameters().template drop<1>().reduce([&](auto... ts) {
+          if constexpr (FS) {
             value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
                 std::get<typename Inst::function_state>(
-                    static_cast<internal::Frame<
-                        typename internal::FunctionStateStack<Set>::value_type>
-                                    *>(call_stack)
-                        ->state));
-          });
+                    static_cast<frame_type *>(call_stack)->state));
+          } else {
+            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
+          }
         }
-      }
+      });
       NTH_ATTRIBUTE(tailcall)
       return (ip + 1)->as<internal::exec_fn_type>()(value_stack, ip + 1,
                                                     call_stack, cap_and_left);
@@ -324,22 +300,22 @@ struct Return : StackMachineInstruction<Return> {
   }
 };
 
-// The `Instruction` concept indicates that a type `I` represents an instruction
-// which Jasmin is capable of executing. Instructions must either be one of the
-// builtin instructions `jasmin::Call`, `jasmin::Jump`, `jasmin::JumpIf`, or
-// `jasmin::Return`, or publicly inherit from
+// The `Instruction` concept indicates that a type `I` represents an
+// instruction which Jasmin is capable of executing. Instructions must either
+// be one of the builtin instructions `jasmin::Call`, `jasmin::Jump`,
+// `jasmin::JumpIf`, or `jasmin::Return`, or publicly inherit from
 // `jasmin::StackMachineInstruction<I>` and have a static member function
 // `execute` that is not part of an overload set (so that `&Inst::execute` is
 // well-formed) and this function adhere to one of the following:
 //
 //   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
 //       reference to `typename I::function_state` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible to
-//       `Value`. If present the `typename I::function_state&` parameter is a
-//       reference to state shared during a function's execution. The arguments
-//       are intperpreted as the immediate values for the instruction. The void
-//       return type indicates that execution should fall through to the
-//       following instruction.
+//       syntactically valid), and then some number of arguments convertible
+//       to `Value`. If present the `typename I::function_state&` parameter is
+//       a reference to state shared during a function's execution. The
+//       arguments are intperpreted as the immediate values for the
+//       instruction. The void return type indicates that execution should
+//       fall through to the following instruction.
 //
 //   (b) Accepts a mutable reference to `typename I::function_state` (if and
 //       only if that type is syntactically valid), and then some number of
@@ -389,8 +365,8 @@ struct MakeInstructionSet : InstructionSetBase {
   // Returns the number of instructions in the instruction set.
   static constexpr size_t size() { return sizeof...(Is); }
 
-  // Returns the `internal::OpCodeMetadata` struct corresponding to the op-code
-  // as specified in the byte-code.
+  // Returns the `internal::OpCodeMetadata` struct corresponding to the
+  // op-code as specified in the byte-code.
   static internal::OpCodeMetadata OpCodeMetadata(Value v) {
     auto iter = Metadata.find(v.as<exec_fn_type>());
     NTH_REQUIRE((v.when(internal::harden)), iter != Metadata.end());
@@ -427,18 +403,18 @@ struct MakeInstructionSet : InstructionSetBase {
 
   template <nth::any_of<Is...> I>
   static constexpr uint64_t OpCodeForImpl() {
-    // Because the fold-expression below unconditionally adds one to `i` on its
-    // first evaluation, we start `i` at its maximum value and allow it to wrap
-    // around.
+    // Because the fold-expression below unconditionally adds one to `i` on
+    // its first evaluation, we start `i` at its maximum value and allow it to
+    // wrap around.
     uint64_t i = std::numeric_limits<uint64_t>::max();
     static_cast<void>(((++i, std::is_same_v<I, Is>) or ...));
     return i;
   }
 };
 
-// Given a list of `Instruction`s or `InstructionSet`s, `FlattenInstructionList`
-// computes the list of all instructions in the list, in an InstructionSet in
-// the list transitively.
+// Given a list of `Instruction`s or `InstructionSet`s,
+// `FlattenInstructionList` computes the list of all instructions in the list,
+// in an InstructionSet in the list transitively.
 constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
                                       nth::Sequence auto processed) {
   if constexpr (unprocessed.empty()) {

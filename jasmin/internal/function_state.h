@@ -33,13 +33,12 @@ constexpr auto FunctionStateList =
 // to hold all state required by all instructions in `Set`, or `void` if all
 // instructions in `Set` are stateless.
 template <typename Set>
-using FunctionStateStack = nth::type_t<[](auto state_list) {
+using FunctionState = nth::type_t<[](auto state_list) {
   if constexpr (state_list.empty()) {
     return nth::type<void>;
   } else {
-    return state_list.reduce([](auto... ts) {
-      return nth::type<std::stack<std::tuple<nth::type_t<ts>...>>>;
-    });
+    return state_list.reduce(
+        [](auto... ts) { return nth::type<std::tuple<nth::type_t<ts>...>>; });
   }
 }(FunctionStateList<Set>)>;
 
