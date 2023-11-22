@@ -7,7 +7,6 @@
 #include <type_traits>
 
 #include "absl/container/flat_hash_map.h"
-#include "jasmin/call_stack.h"
 #include "jasmin/execution_state.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
@@ -22,6 +21,39 @@
 namespace jasmin {
 namespace internal {
 
+inline constexpr bool NeedsResize(uint64_t cap_and_left) {
+  return (cap_and_left & 0xffffffff) == 0;
+}
+
+inline constexpr bool Empty(uint64_t cap_and_left) {
+  return (cap_and_left & 0xffffffff) == (cap_and_left >> 32);
+}
+
+struct FrameBase {
+  Value const *ip;
+};
+
+template <typename StateType>
+struct Frame : FrameBase {
+  StateType state;
+};
+
+template <>
+struct Frame<void> : FrameBase {};
+
+template <typename T>
+inline Frame<T> *Resize(Frame<T> *call_stack, uint64_t &cap_and_left) {
+  uint32_t size = cap_and_left >> 32;
+  cap_and_left <<= 1;
+  cap_and_left |= size;
+  Frame<T> *ptr =
+      static_cast<Frame<T> *>(std::malloc(sizeof(Frame<T>) * (size << 1)));
+  auto *old_ptr = call_stack - (size - 1);
+  std::memcpy(ptr, old_ptr, sizeof(Frame<T>) * size);
+  std::free(old_ptr);
+  return ptr + (size - 1);
+}
+
 struct OpCodeMetadata {
   friend bool operator==(OpCodeMetadata const &,
                          OpCodeMetadata const &) = default;
@@ -30,8 +62,8 @@ struct OpCodeMetadata {
   size_t immediate_value_count;
 };
 
-using exec_fn_type = void (*)(ValueStack &, Value const *&, CallStack &,
-                              void *);
+using exec_fn_type = void (*)(ValueStack &, Value const *, FrameBase *,
+                              uint64_t, void *);
 
 template <typename Inst>
 concept HasValueStack =
@@ -133,25 +165,6 @@ concept HasValidSignature =
      (not HasValueStack<I> and
       ValidSignatureWithoutImmediatesImpl<I, HasExecState, HasFuncState>()));
 
-template <typename FuncStateStack>
-struct FuncStateImpl {
-  FuncStateStack function_state_stack;
-};
-
-template <>
-struct FuncStateImpl<void> {};
-
-template <typename ExecutionState, typename FuncState>
-struct StateImpl : FuncStateImpl<FuncState> {
-  static constexpr bool has_function_state = not std::is_void_v<FuncState>;
-
-  ExecutionState *exec_state;
-};
-
-template <typename Set>
-using State = StateImpl<::jasmin::ExecutionState<Set>,
-                        ::jasmin::internal::FunctionStateStack<Set>>;
-
 }  // namespace internal
 
 // A concept indicating which types constitute instruction sets understandable
@@ -202,51 +215,66 @@ template <typename Inst>
 struct StackMachineInstruction {
  private:
   template <InstructionSet Set>
-  static void ExecuteImpl(ValueStack &value_stack, Value const *&ip,
-                          CallStack &call_stack, void *state_void_ptr) {
-    auto *state = static_cast<internal::State<Set> *>(state_void_ptr);
+  static void ExecuteImpl(ValueStack &value_stack, Value const *ip,
+                          internal::FrameBase *call_stack,
+                          uint64_t cap_and_left, void *exec_state_void_ptr) {
     if constexpr (std::is_same_v<Inst, Call>) {
-      auto const *f = value_stack.pop<internal::FunctionBase const *>();
-      call_stack.push(f, ip);
-      ip = f->entry();
-      if constexpr (internal::State<Set>::has_function_state) {
-        state->function_state_stack.emplace();
+      if (internal::NeedsResize(cap_and_left)) {
+        if constexpr (std::is_void_v<
+                          ::jasmin::internal::FunctionStateStack<Set>>) {
+          call_stack = internal::Resize(
+              static_cast<internal::Frame<void> *>(call_stack), cap_and_left);
+        } else {
+          call_stack = internal::Resize(
+              static_cast<internal::Frame<
+                  typename internal::FunctionStateStack<Set>::value_type> *>(
+                  call_stack),
+              cap_and_left);
+        }
       }
+      (++call_stack)->ip = ip;
+      Value const *next_ip =
+          value_stack.pop<internal::FunctionBase const *>()->entry();
+
+      --cap_and_left;
       NTH_ATTRIBUTE(tailcall)
-      return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
-                                              state);
+      return next_ip->as<internal::exec_fn_type>()(
+          value_stack, next_ip, call_stack, cap_and_left, exec_state_void_ptr);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
-      ip += (ip + 1)->as<ptrdiff_t>();
-
+      Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
-      return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
-                                              state);
+      return next_ip->as<internal::exec_fn_type>()(
+          value_stack, next_ip, call_stack, cap_and_left, exec_state_void_ptr);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       if (value_stack.pop<bool>()) {
-        ip += (ip + 1)->as<ptrdiff_t>();
+        Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
+        NTH_ATTRIBUTE(tailcall)
+        return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
+                                                     call_stack, cap_and_left,
+                                                     exec_state_void_ptr);
       } else {
-        ip += 2;
+        Value const *next_ip = ip + 2;
+        NTH_ATTRIBUTE(tailcall)
+        return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
+                                                     call_stack, cap_and_left,
+                                                     exec_state_void_ptr);
       }
-
-      NTH_ATTRIBUTE(tailcall)
-      return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
-                                              state);
-
     } else if constexpr (std::is_same_v<Inst, Return>) {
-      ip = call_stack.pop();
-
-      if constexpr (internal::State<Set>::has_function_state) {
-        state->function_state_stack.pop();
-      }
-      ++ip;
-      if (call_stack.empty()) [[unlikely]] {
+      Value const *next_ip = (call_stack--)->ip + 1;
+      ++cap_and_left;
+      if (internal::Empty(cap_and_left)) [[unlikely]] {
+        uint32_t left = cap_and_left & 0xffffffff;
+        uint32_t cap  = cap_and_left >> 32;
+        auto *old_ptr = call_stack + 1 - (cap - left);
+        std::free(old_ptr);
         return;
       } else {
         NTH_ATTRIBUTE(tailcall)
-        return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
-                                                state);
+        return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
+                                                     call_stack, cap_and_left,
+                                                     exec_state_void_ptr);
       }
     } else {
       constexpr auto signature = nth::type<decltype(Inst::execute)>;
@@ -265,10 +293,14 @@ struct StackMachineInstruction {
                 std::tuple<ValueStack &, typename Inst::execution_state &,
                            typename Inst::function_state &, nth::type_t<ts>...>{
                     value_stack,
-                    state->exec_state
+                    static_cast<::jasmin::ExecutionState<Set> *>(
+                        exec_state_void_ptr)
                         ->template get<typename Inst::execution_state>(),
                     std::get<typename Inst::function_state>(
-                        state->function_state_stack.top()),
+                        static_cast<internal::Frame<
+                            typename internal::FunctionStateStack<
+                                Set>::value_type> *>(call_stack)
+                            ->state),
                     (++ip)->as<nth::type_t<ts>>()...});
           });
         } else if constexpr (ES and not FS) {
@@ -280,7 +312,8 @@ struct StackMachineInstruction {
                 std::tuple<ValueStack &, typename Inst::execution_state &,
                            nth::type_t<ts>...>{
                     value_stack,
-                    state->exec_state
+                    static_cast<::jasmin::ExecutionState<Set> *>(
+                        exec_state_void_ptr)
                         ->template get<typename Inst::execution_state>(),
                     (++ip)->as<nth::type_t<ts>>()...});
           });
@@ -293,7 +326,10 @@ struct StackMachineInstruction {
                                   nth::type_t<ts>...>{
                            value_stack,
                            std::get<typename Inst::function_state>(
-                               state->function_state_stack.top()),
+                               static_cast<internal::Frame<
+                                   typename internal::FunctionStateStack<
+                                       Set>::value_type> *>(call_stack)
+                                   ->state),
                            (++ip)->as<nth::type_t<ts>>()...});
           });
         } else if constexpr (not ES and not FS) {
@@ -314,29 +350,36 @@ struct StackMachineInstruction {
           signature.parameters().template drop<1>().reduce([&](auto... ts) {
             value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
                 std::get<typename Inst::function_state>(
-                    state->function_state_stack.top()));
+                    static_cast<internal::Frame<
+                        typename internal::FunctionStateStack<Set>::value_type>
+                                    *>(call_stack)
+                        ->state));
           });
         } else if constexpr (ES and not FS) {
           signature.parameters().template drop<1>().reduce([&](auto... ts) {
             value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-                state->exec_state
+                static_cast<::jasmin::ExecutionState<Set> *>(
+                    exec_state_void_ptr)
                     ->template get<typename Inst::execution_state>());
           });
         } else if constexpr (ES and FS) {
           signature.parameters().template drop<2>().reduce([&](auto... ts) {
             value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-                state->exec_state
+                static_cast<::jasmin::ExecutionState<Set> *>(
+                    exec_state_void_ptr)
                     ->template get<typename Inst::execution_state>(),
                 std::get<typename Inst::function_state>(
-                    state->function_state_stack.top()));
+                    static_cast<internal::Frame<
+                        typename internal::FunctionStateStack<Set>::value_type>
+                                    *>(call_stack)
+                        ->state));
           });
         }
       }
-      ++ip;
+      NTH_ATTRIBUTE(tailcall)
+      return (ip + 1)->as<internal::exec_fn_type>()(
+          value_stack, ip + 1, call_stack, cap_and_left, exec_state_void_ptr);
     }
-
-    NTH_ATTRIBUTE(tailcall)
-    return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack, state);
   }
 };
 

@@ -4,7 +4,6 @@
 #include <initializer_list>
 #include <type_traits>
 
-#include "jasmin/call_stack.h"
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/value.h"
@@ -13,24 +12,29 @@
 
 namespace jasmin {
 
+template <typename Set>
+constexpr auto FunctionStateType() {
+  if constexpr (std::is_void_v<typename internal::FunctionStateStack<Set>>) {
+    return nth::type<internal::Frame<void>>;
+  } else {
+    return nth::type<internal::Frame<
+        typename internal::FunctionStateStack<Set>::value_type>>;
+  }
+}
+
 // Executes the given function `f` with an initial stack of values given by the
 // object referenced by `value_stack`. `value_stack` is modified in place.
 template <InstructionSet Set>
 void Execute(Function<Set> const &f, ExecutionState<Set> exec_state,
              ValueStack &value_stack) {
-  CallStack call_stack;
-  Value const *ip = f.entry();
-  call_stack.push(&f, ip);
-  using state_type = internal::State<Set>;
-  state_type state{.exec_state = &exec_state};
+  using frame_type = nth::type_t<FunctionStateType<Set>()>;
+  frame_type *call_stack =
+      static_cast<frame_type *>(std::malloc(sizeof(frame_type) * 4));
+  Value const *ip  = f.entry();
+  call_stack[0].ip = ip;
 
-  if constexpr (state_type::has_function_state) {
-    state.function_state_stack.emplace();
-  }
-
-  using exec_fn_type =
-      void (*)(ValueStack &, Value const *&, CallStack &, state_type *);
-  return ip->as<exec_fn_type>()(value_stack, ip, call_stack, &state);
+  return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
+                                          0x00000004'00000003, &exec_state);
 }
 
 template <InstructionSet Set>

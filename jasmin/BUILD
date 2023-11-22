@@ -1,27 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
-    name = "call_stack",
-    hdrs = ["call_stack.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//jasmin/internal:function_base",
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_test(
-    name = "call_stack_test",
-    srcs = ["call_stack_test.cc"],
-    deps = [
-        ":call_stack",
-        "@com_google_googletest//:gtest_main",
-        "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/debug/log:stderr_log_sink",
-    ],
-)
-
-cc_library(
     name = "debug",
     hdrs = ["debug.h"],
     srcs = ["debug.cc"],
@@ -53,7 +32,6 @@ cc_library(
     hdrs = ["execute.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":call_stack",
         ":function",
         ":instruction",
         ":value",
@@ -77,7 +55,6 @@ cc_library(
     hdrs = ["function.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":call_stack",
         ":instruction",
         ":instruction_index",
         ":value",
@@ -102,7 +79,6 @@ cc_library(
     hdrs = ["instruction.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":call_stack",
         ":execution_state",
         ":value",
         ":value_stack",

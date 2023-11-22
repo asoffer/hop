@@ -1,7 +1,6 @@
 #ifndef JASMIN_FUNCTION_H
 #define JASMIN_FUNCTION_H
 
-#include "jasmin/call_stack.h"
 #include "jasmin/instruction.h"
 #include "jasmin/instruction_index.h"
 #include "jasmin/internal/function_base.h"
