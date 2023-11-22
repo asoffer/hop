@@ -16,9 +16,8 @@ namespace jasmin {
 // object referenced by `value_stack`. `value_stack` is modified in place.
 template <InstructionSet Set>
 void Execute(Function<Set> const &f, ValueStack &value_stack) {
-  Value head     = value_stack.stack_start() + value_stack.size() - 1;
-  Value size     = value_stack.size();
-  Value capacity = value_stack.capacity();
+  Value head         = value_stack.head();
+  Value cap_and_left = value_stack.cap_and_left();
   value_stack.ignore();
 
   using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
@@ -29,15 +28,13 @@ void Execute(Function<Set> const &f, ValueStack &value_stack) {
   // execution to store information about the ValueStack so it can be
   // reconstituted after the fact.
   call_stack[0].ip = &head;
-  call_stack[1].ip = &size;
-  call_stack[2].ip = &capacity;
-  call_stack[3].ip = ip;
+  call_stack[1].ip = &cap_and_left;
+  call_stack[2].ip = ip;
 
-  ip->as<internal::exec_fn_type>()(head.as<Value *>() + size.as<size_t>() - 1,
-                                   size.as<size_t>(), capacity.as<size_t>(), ip,
-                                   &call_stack[3], 0x00000008'00000004);
-  value_stack =
-      ValueStack(head.as<Value *>(), size.as<size_t>(), capacity.as<size_t>());
+  ip->as<internal::exec_fn_type>()(head.as<Value *>(),
+                                   cap_and_left.as<uint64_t>(), ip,
+                                   &call_stack[2], 0x00000008'00000005);
+  value_stack = ValueStack(head.as<Value *>(), cap_and_left.as<uint64_t>());
 }
 
 // Interprets the given function `f` with arguments provided in the

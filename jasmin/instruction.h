@@ -25,7 +25,7 @@ inline constexpr bool NeedsResize(uint64_t cap_and_left) {
 }
 
 inline constexpr bool Empty(uint64_t cap_and_left) {
-  return (cap_and_left >> 32) - (cap_and_left & 0xffffffff) == 3;
+  return (cap_and_left >> 32) - (cap_and_left & 0xffffffff) == 2;
 }
 
 struct FrameBase {
@@ -61,8 +61,8 @@ struct OpCodeMetadata {
   size_t immediate_value_count;
 };
 
-using exec_fn_type = void (*)(Value *, size_t, size_t, Value const *,
-                              FrameBase *, uint64_t);
+using exec_fn_type = void (*)(Value *, uint64_t, Value const *, FrameBase *,
+                              uint64_t);
 
 template <typename Inst>
 concept HasValueStack =
@@ -178,9 +178,8 @@ struct StackMachineInstruction {
   static constexpr bool VS = internal::HasValueStack<Inst>;
 
   template <InstructionSet Set>
-  static void ExecuteImpl(Value *value_stack_head, size_t value_stack_size,
-                          size_t value_stack_capacity, Value const *ip,
-                          internal::FrameBase *call_stack,
+  static void ExecuteImpl(Value *value_stack_head, uint64_t vs_cap_and_left,
+                          Value const *ip, internal::FrameBase *call_stack,
                           uint64_t cap_and_left) {
     using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
     if constexpr (std::is_same_v<Inst, Call>) {
@@ -190,50 +189,46 @@ struct StackMachineInstruction {
       }
       (++call_stack)->ip = ip;
       Value const *next_ip =
-          value_stack_head->as<internal::FunctionBase const *>()->entry();
+          (value_stack_head - 1)->as<internal::FunctionBase const *>()->entry();
 
       --cap_and_left;
       NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(
-          value_stack_head - 1, value_stack_size - 1, value_stack_capacity,
-          next_ip, call_stack, cap_and_left);
+      return next_ip->as<internal::exec_fn_type>()(value_stack_head - 1,
+                                                   vs_cap_and_left + 1, next_ip,
+                                                   call_stack, cap_and_left);
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
       return next_ip->as<internal::exec_fn_type>()(
-          value_stack_head, value_stack_size, value_stack_capacity, next_ip,
-          call_stack, cap_and_left);
+          value_stack_head, vs_cap_and_left, next_ip, call_stack, cap_and_left);
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      if (value_stack_head->as<bool>()) {
+      if ((value_stack_head - 1)->as<bool>()) {
         Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
         NTH_ATTRIBUTE(tailcall)
         return next_ip->as<internal::exec_fn_type>()(
-            value_stack_head - 1, value_stack_size - 1, value_stack_capacity,
-            next_ip, call_stack, cap_and_left);
+            value_stack_head - 1, vs_cap_and_left + 1, next_ip, call_stack,
+            cap_and_left);
       } else {
         Value const *next_ip = ip + 2;
         NTH_ATTRIBUTE(tailcall)
         return next_ip->as<internal::exec_fn_type>()(
-            value_stack_head - 1, value_stack_size - 1, value_stack_capacity,
-            next_ip, call_stack, cap_and_left);
+            value_stack_head - 1, vs_cap_and_left + 1, next_ip, call_stack,
+            cap_and_left);
       }
     } else if constexpr (std::is_same_v<Inst, Return>) {
       Value const *next_ip = (call_stack--)->ip + 1;
       ++cap_and_left;
       if (internal::Empty(cap_and_left)) [[unlikely]] {
-        const_cast<Value &>(*call_stack->ip) = value_stack_capacity;
+        const_cast<Value &>(*call_stack->ip) = vs_cap_and_left;
         --call_stack;
-        const_cast<Value &>(*call_stack->ip) = value_stack_size;
-        --call_stack;
-        const_cast<Value &>(*call_stack->ip) =
-            value_stack_head + 1 - value_stack_size;
+        const_cast<Value &>(*call_stack->ip) = value_stack_head;
         std::free(call_stack);
         return;
       } else {
         NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(
-            value_stack_head, value_stack_size, value_stack_capacity, next_ip,
-            call_stack, cap_and_left);
+        return next_ip->as<internal::exec_fn_type>()(value_stack_head,
+                                                     vs_cap_and_left, next_ip,
+                                                     call_stack, cap_and_left);
       }
     } else {
 #define JASMIN_INTERNAL_GET(p, Ns)                                             \
@@ -244,8 +239,7 @@ struct StackMachineInstruction {
 
       if constexpr (VS) {
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          ValueStack vs(value_stack_head, value_stack_size,
-                        value_stack_capacity);
+          ValueStack vs(value_stack_head, vs_cap_and_left);
           if constexpr (FS) {
             Inst::execute(vs,
                           std::get<typename Inst::function_state>(
@@ -254,9 +248,9 @@ struct StackMachineInstruction {
           } else {
             Inst::execute(vs, JASMIN_INTERNAL_GET(ip + 1, Ns)...);
           }
-          value_stack_size     = vs.size();
-          value_stack_capacity = vs.capacity();
-          value_stack_head     = vs.stack_start() + value_stack_size - 1;
+          vs_cap_and_left = (static_cast<uint64_t>(vs.capacity()) << 32) |
+                            (vs.capacity() - vs.size());
+          value_stack_head = vs.head();
           vs.ignore();
         }
         (std::make_index_sequence<parameter_types.size()>{});
@@ -264,7 +258,7 @@ struct StackMachineInstruction {
         NTH_ATTRIBUTE(tailcall)
         return (ip + parameter_types.size() + 1)
             ->template as<internal::exec_fn_type>()(
-                value_stack_head, value_stack_size, value_stack_capacity,
+                value_stack_head, vs_cap_and_left,
                 (ip + parameter_types.size() + 1), call_stack, cap_and_left);
       } else {
         constexpr bool ReturnsVoid =
@@ -272,7 +266,7 @@ struct StackMachineInstruction {
              nth::type<void>);
 
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          auto *p = value_stack_head - (parameter_types.size() - 1);
+          auto *p = value_stack_head - parameter_types.size();
           if constexpr (ReturnsVoid) {
             if constexpr (FS) {
               Inst::execute(std::get<typename Inst::function_state>(
@@ -296,13 +290,13 @@ struct StackMachineInstruction {
 #undef JASMIN_INTERNAL_GET
 
         constexpr size_t ReductionAmount =
-            parameter_types.size() - 1 + ReturnsVoid;
+            parameter_types.size() - not ReturnsVoid;
 
         NTH_ATTRIBUTE(tailcall)
         return (ip + 1)->as<internal::exec_fn_type>()(
             value_stack_head - ReductionAmount,
-            value_stack_size - ReductionAmount, value_stack_capacity, ip + 1,
-            call_stack, cap_and_left);
+            vs_cap_and_left + ReductionAmount, ip + 1, call_stack,
+            cap_and_left);
       }
     }
   }

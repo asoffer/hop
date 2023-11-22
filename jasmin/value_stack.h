@@ -14,13 +14,8 @@ namespace jasmin {
 struct ValueStack {
   // Constructs an empty `ValueStack`.
   ValueStack()
-      : cap_(16),
-        values_(static_cast<Value *>(operator new[](16 * sizeof(Value)))),
-        head_(values_.get()) {
-    for (size_t i = 0; i < cap_; ++i) {
-      new (&values_[i]) Value(Value::Uninitialized());
-    }
-  }
+      : head_(static_cast<Value *>(std::malloc(16 * sizeof(Value)))),
+        cap_and_left_((uint64_t{16} << 32) | 16) {}
 
   // Construts a value stack with the given initializer_list elements pushed
   // onto the stack in the same order as they appear in `list`.
@@ -29,28 +24,29 @@ struct ValueStack {
   }
 
   // Returns the number of elements on the stack.
-  constexpr size_t size() const { return head_ - values_.get(); }
+  constexpr size_t size() const { return capacity() - left(); }
 
-  constexpr size_t capacity() const { return cap_; }
-  Value *stack_start() const { return values_.get(); }
+  constexpr size_t cap_and_left() const { return cap_and_left_; }
+
+  constexpr size_t capacity() const { return cap_and_left_ >> 32; }
+  Value *head() { return head_; }
+  Value const *head() const { return head_; }
 
   // Returns true if the stack has no elements and false otherwise.
-  constexpr bool empty() const { return size() == 0; }
+  constexpr bool empty() const { return capacity() == left(); }
 
   // Pushes the given value `v` onto the stack.
   void push(Value const &v) {
-    if (head_ == values_.get() + cap_) [[unlikely]] { reallocate(); }
-    NTH_REQUIRE((v.when(internal::harden)), head_ != values_.get() + cap_)
-        .Log<"Something went wrong with reallocate()">();
-    *head_ = v;
-    ++head_;
+    if (left() == 0) [[unlikely]] { reallocate(); }
+    *head_++ = v;
+    --cap_and_left_;
   }
   void push(SmallTrivialValue auto v) { push(Value(v)); }
 
   using const_iterator = Value const *;
 
   // Returns an iterator referrencing one passed the end of the `ValueStack`.
-  const_iterator begin() const { return values_.get(); }
+  const_iterator begin() const { return head_ - size(); }
   const_iterator end() const { return head_; }
 
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
@@ -58,6 +54,7 @@ struct ValueStack {
   Value pop_value() {
     NTH_REQUIRE((v.when(internal::harden)), not empty())
         .Log<"Unexpectedly empty ValueStack">();
+    ++cap_and_left_;
     return *--head_;
   }
 
@@ -153,38 +150,56 @@ struct ValueStack {
     NTH_REQUIRE((v.when(internal::harden)), end <= size())
         .Log<"Unexpectedly too few elements in ValueStack">();
 
-    std::memcpy(values_.get() + start, values_.get() + end,
-                sizeof(Value) * (head_ - values_.get() - end));
+    std::memmove(head_ - (size() - start), head_ - (size() - end),
+                 sizeof(Value) * (size() - end));
     head_ -= end - start;
   }
 
-  ValueStack(Value *head, size_t size, size_t cap)
-      : cap_(cap), values_(head + 1 - size), head_(head + 1) {}
+  ValueStack(ValueStack const &v) { *this = v; }
+  ValueStack(ValueStack &&v)
+      : head_(std::exchange(v.head_, nullptr)),
+        cap_and_left_(v.cap_and_left_) {}
 
-  void ignore() { values_.release(); }
-
- private:
-  void reallocate() {
-    std::unique_ptr<Value[]> buffer(
-        static_cast<Value *>(operator new[](2 * cap_ * sizeof(Value))));
-
-    std::memcpy(buffer.get(), values_.get(), sizeof(Value) * cap_);
-
-    // This whole loop we really hope to be optimized down to a no-op, but it is
-    // technically necessary to start the lifetime of `Value`s in the back half
-    // of the buffer.
-    for (size_t i = cap_; i < cap_ * 2; ++i) {
-      new (&buffer[i]) Value(Value::Uninitialized());
-    }
-
-    head_ = buffer.get() + cap_;
-    cap_ *= 2;
-    values_ = std::move(buffer);
+  ValueStack &operator=(ValueStack const &v) {
+    Value *ptr = static_cast<Value *>(std::malloc(v.size() * sizeof(Value)));
+    std::memcpy(ptr, v.begin(), v.size() * sizeof(Value));
+    head_         = ptr + v.size();
+    cap_and_left_ = v.size() << 32;
+    return *this;
   }
 
-  size_t cap_;
-  std::unique_ptr<Value[]> values_;
+  ValueStack &operator=(ValueStack &&v) {
+    head_         = std::exchange(v.head_, nullptr);
+    cap_and_left_ = v.cap_and_left_;
+    return *this;
+  }
+
+  ValueStack(Value *head, uint64_t cap_and_left)
+      : head_(head), cap_and_left_(cap_and_left) {}
+
+  void ignore() { head_ = nullptr; }
+
+  ~ValueStack() {
+    if (head_) {
+      std::free(head_ - size());
+      head_ = nullptr;
+    }
+  }
+
+ private:
+  uint32_t left() const { return cap_and_left_ & 0xffffffff; }
+
+  void reallocate() {
+    Value *new_ptr =
+        static_cast<Value *>(std::malloc(2 * capacity() * sizeof(Value)));
+    std::memcpy(new_ptr, head_ - size(), sizeof(Value) * capacity());
+    std::free(head_ - size());
+    head_ = new_ptr + size();
+    cap_and_left_ = cap_and_left_ * 2 | capacity();
+  }
+
   Value *head_;
+  uint64_t cap_and_left_;
 };
 
 }  // namespace jasmin
