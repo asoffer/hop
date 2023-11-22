@@ -7,7 +7,6 @@
 #include <type_traits>
 
 #include "absl/container/flat_hash_map.h"
-#include "jasmin/execution_state.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
 #include "jasmin/value.h"
@@ -63,7 +62,7 @@ struct OpCodeMetadata {
 };
 
 using exec_fn_type = void (*)(ValueStack &, Value const *, FrameBase *,
-                              uint64_t, void *);
+                              uint64_t);
 
 template <typename Inst>
 concept HasValueStack =
@@ -82,7 +81,7 @@ constexpr bool NonReferencesConvertibleToValues(auto Seq) {
   }>());
 }
 
-template <typename I, bool HasExecState, bool HasFuncState>
+template <typename I, bool HasFuncState>
 constexpr bool ValidSignatureWithImmediatesImpl() {
   constexpr auto signature = nth::type<decltype(I::execute)>;
   if (signature.return_type() != nth::type<void>) { return false; }
@@ -91,34 +90,18 @@ constexpr bool ValidSignatureWithImmediatesImpl() {
     return false;
   }
 
-  if constexpr (HasExecState) {
-    if constexpr (HasFuncState) {
-      return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
-                 nth::type<typename I::execution_state &> and
-             nth::type<decltype(I::execute)>.parameters().template get<2>() ==
-                 nth::type<typename I::function_state &> and
-             NonReferencesConvertibleToValues(
-                 nth::type<decltype(I::execute)>.parameters().template drop<3>());
-    } else {
-      return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
-                 nth::type<typename I::execution_state &> and
-             NonReferencesConvertibleToValues(
-                 nth::type<decltype(I::execute)>.parameters().template drop<2>());
-    }
+  if constexpr (HasFuncState) {
+    return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
+               nth::type<typename I::function_state &> and
+           NonReferencesConvertibleToValues(
+               nth::type<decltype(I::execute)>.parameters().template drop<2>());
   } else {
-    if constexpr (HasFuncState) {
-      return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
-                 nth::type<typename I::function_state &> and
-             NonReferencesConvertibleToValues(
-                 nth::type<decltype(I::execute)>.parameters().template drop<2>());
-    } else {
-      return NonReferencesConvertibleToValues(
-          nth::type<decltype(I::execute)>.parameters().template drop<1>());
-    }
+    return NonReferencesConvertibleToValues(
+        nth::type<decltype(I::execute)>.parameters().template drop<1>());
   }
 }
 
-template <typename I, bool HasExecState, bool HasFuncState>
+template <typename I, bool HasFuncState>
 constexpr bool ValidSignatureWithoutImmediatesImpl() {
   constexpr auto signature   = nth::type<decltype(I::execute)>;
   constexpr auto return_type = signature.return_type();
@@ -127,43 +110,26 @@ constexpr bool ValidSignatureWithoutImmediatesImpl() {
     return false;
   }
 
-  if constexpr (HasExecState) {
-    if constexpr (HasFuncState) {
-      return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
-                 nth::type<typename I::execution_state &> and
-             nth::type<decltype(I::execute)>.parameters().template get<1>() ==
-                 nth::type<typename I::function_state &> and
-             NonReferencesConvertibleToValues(
-                 nth::type<decltype(I::execute)>.parameters().template drop<2>());
-    } else {
-      return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
-                 nth::type<typename I::execution_state &> and
-             NonReferencesConvertibleToValues(
-                 nth::type<decltype(I::execute)>.parameters().template drop<1>());
-    }
+  if constexpr (HasFuncState) {
+    return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
+               nth::type<typename I::function_state &> and
+           NonReferencesConvertibleToValues(
+               nth::type<decltype(I::execute)>.parameters().template drop<1>());
   } else {
-    if constexpr (HasFuncState) {
-      return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
-                 nth::type<typename I::function_state &> and
-             NonReferencesConvertibleToValues(
-                 nth::type<decltype(I::execute)>.parameters().template drop<1>());
-    } else {
-      return NonReferencesConvertibleToValues(
-          nth::type<decltype(I::execute)>.parameters());
-    }
+    return NonReferencesConvertibleToValues(
+        nth::type<decltype(I::execute)>.parameters());
   }
 }
 
 // Implementation detail. A concept capturing that the `execute` static member
 // function of the instruction adheres to one of the supported signatures.
 template <typename I, auto Signature = nth::type<decltype(I::execute)>,
-          bool HasExecState = HasExecutionState<I>,
           bool HasFuncState = HasFunctionState<I>>
 concept HasValidSignature =
     ((HasValueStack<I> and
-      ValidSignatureWithImmediatesImpl<I, HasExecState, HasFuncState>()) or
+      ValidSignatureWithImmediatesImpl<I, HasFuncState>()) or
      (not HasValueStack<I> and
-      ValidSignatureWithoutImmediatesImpl<I, HasExecState, HasFuncState>()));
+      ValidSignatureWithoutImmediatesImpl<I, HasFuncState>()));
 
 }  // namespace internal
 
@@ -188,24 +154,18 @@ struct Return;
 // adhere to one of the following:
 //
 //   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
-//       reference to `typename I::execution_state` (if and only if that
-//       type syntactically valid), then a mutable reference to
-//       `typename I::function_state` (if and only if that type syntactically
-//       valid), and then some number of arguments convertible to `Value`. If
-//       present the `typename I::execution_state&` parameter is a reference to
-//       state shared throughout the entire execution. If present the `typename
-//       I::function_state&` parameter is a reference to state shared during a
-//       function's execution. The arguments are intperpreted as the immediate
-//       values for the instruction. The void return type indicates that
-//       execution should fall through to the following instruction.
+//       reference to `typename I::function_state` (if and only if that type
+//       syntactically valid), and then some number of arguments convertible to
+//       `Value`. If present the `typename I::function_state&` parameter is a
+//       reference to state shared during a function's execution. The arguments
+//       are intperpreted as the immediate values for the instruction. The void
+//       return type indicates that execution should fall through to the
+//       following instruction.
 //
-//   (b) Accepts a mutable reference to `typename I::execution_state` (if
-//       and only if that type syntactically valid), then a mutable reference to
-//       `typename I::function_state` (if and only if that type syntactically
-//       valid), and then some number of arguments convertible to `Value`. The
-//       function may return `void` or another type convertible to `Value`. If
-//       present the `typename I::execution_state&` parameter is a reference to
-//       state shared throughout the entire execution. If present the `typename
+//   (b) Accepts a mutable reference to `typename I::function_state` (if and
+//       only if that type syntactically valid), and then some number of
+//       arguments convertible to `Value`. The function may return `void` or
+//       another type convertible to `Value`. If present the `typename
 //       I::function_state&` parameter is a reference to state shared during a
 //       function's execution. The arguments are to be popped from the value
 //       stack, and the returned value, if any, will be pushed onto the value
@@ -217,9 +177,9 @@ struct StackMachineInstruction {
   template <InstructionSet Set>
   static void ExecuteImpl(ValueStack &value_stack, Value const *ip,
                           internal::FrameBase *call_stack,
-                          uint64_t cap_and_left, void *exec_state_void_ptr) {
+                          uint64_t cap_and_left) {
     if constexpr (std::is_same_v<Inst, Call>) {
-      if (internal::NeedsResize(cap_and_left)) {
+      if (internal::NeedsResize(cap_and_left)) [[unlikely]] {
         if constexpr (std::is_void_v<
                           ::jasmin::internal::FunctionStateStack<Set>>) {
           call_stack = internal::Resize(
@@ -238,28 +198,26 @@ struct StackMachineInstruction {
 
       --cap_and_left;
       NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(
-          value_stack, next_ip, call_stack, cap_and_left, exec_state_void_ptr);
+      return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
+                                                   call_stack, cap_and_left);
 
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(
-          value_stack, next_ip, call_stack, cap_and_left, exec_state_void_ptr);
+      return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
+                                                   call_stack, cap_and_left);
 
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
       if (value_stack.pop<bool>()) {
         Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
         NTH_ATTRIBUTE(tailcall)
         return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                     call_stack, cap_and_left,
-                                                     exec_state_void_ptr);
+                                                     call_stack, cap_and_left);
       } else {
         Value const *next_ip = ip + 2;
         NTH_ATTRIBUTE(tailcall)
         return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                     call_stack, cap_and_left,
-                                                     exec_state_void_ptr);
+                                                     call_stack, cap_and_left);
       }
     } else if constexpr (std::is_same_v<Inst, Return>) {
       Value const *next_ip = (call_stack--)->ip + 1;
@@ -273,51 +231,18 @@ struct StackMachineInstruction {
       } else {
         NTH_ATTRIBUTE(tailcall)
         return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                     call_stack, cap_and_left,
-                                                     exec_state_void_ptr);
+                                                     call_stack, cap_and_left);
       }
     } else {
       constexpr auto signature = nth::type<decltype(Inst::execute)>;
 
-      constexpr bool ES = HasExecutionState<Inst>;
       constexpr bool FS = internal::HasFunctionState<Inst>;
       constexpr bool VS = internal::HasValueStack<Inst>;
       constexpr bool RV = (signature.return_type() == nth::type<void>);
       static_assert(RV or not VS);
 
       if constexpr (VS) {
-        if constexpr (ES and FS) {
-          signature.parameters().template drop<3>().reduce([&](auto... ts) {
-            std::apply(
-                Inst::execute,
-                std::tuple<ValueStack &, typename Inst::execution_state &,
-                           typename Inst::function_state &, nth::type_t<ts>...>{
-                    value_stack,
-                    static_cast<::jasmin::ExecutionState<Set> *>(
-                        exec_state_void_ptr)
-                        ->template get<typename Inst::execution_state>(),
-                    std::get<typename Inst::function_state>(
-                        static_cast<internal::Frame<
-                            typename internal::FunctionStateStack<
-                                Set>::value_type> *>(call_stack)
-                            ->state),
-                    (++ip)->as<nth::type_t<ts>>()...});
-          });
-        } else if constexpr (ES and not FS) {
-          signature.parameters().template drop<2>().reduce([&](auto... ts) {
-            // Brace-initialization forces the order of evaluation to be in
-            // the order the elements appear in the list.
-            std::apply(
-                Inst::execute,
-                std::tuple<ValueStack &, typename Inst::execution_state &,
-                           nth::type_t<ts>...>{
-                    value_stack,
-                    static_cast<::jasmin::ExecutionState<Set> *>(
-                        exec_state_void_ptr)
-                        ->template get<typename Inst::execution_state>(),
-                    (++ip)->as<nth::type_t<ts>>()...});
-          });
-        } else if constexpr (not ES and FS) {
+        if constexpr (FS) {
           signature.parameters().template drop<2>().reduce([&](auto... ts) {
             // Brace-initialization forces the order of evaluation to be in
             // the order the elements appear in the list.
@@ -332,7 +257,7 @@ struct StackMachineInstruction {
                                    ->state),
                            (++ip)->as<nth::type_t<ts>>()...});
           });
-        } else if constexpr (not ES and not FS) {
+        } else {
           signature.parameters().template drop<1>().reduce([&](auto... ts) {
             // Brace-initialization forces the order of evaluation to be in
             // the order the elements appear in the list.
@@ -342,32 +267,13 @@ struct StackMachineInstruction {
           });
         }
       } else {
-        if constexpr (not ES and not FS) {
+        if constexpr (not FS) {
           signature.parameters().reduce([&](auto... ts) {
             value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
           });
-        } else if constexpr (not ES and FS) {
+        } else {
           signature.parameters().template drop<1>().reduce([&](auto... ts) {
             value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-                std::get<typename Inst::function_state>(
-                    static_cast<internal::Frame<
-                        typename internal::FunctionStateStack<Set>::value_type>
-                                    *>(call_stack)
-                        ->state));
-          });
-        } else if constexpr (ES and not FS) {
-          signature.parameters().template drop<1>().reduce([&](auto... ts) {
-            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-                static_cast<::jasmin::ExecutionState<Set> *>(
-                    exec_state_void_ptr)
-                    ->template get<typename Inst::execution_state>());
-          });
-        } else if constexpr (ES and FS) {
-          signature.parameters().template drop<2>().reduce([&](auto... ts) {
-            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-                static_cast<::jasmin::ExecutionState<Set> *>(
-                    exec_state_void_ptr)
-                    ->template get<typename Inst::execution_state>(),
                 std::get<typename Inst::function_state>(
                     static_cast<internal::Frame<
                         typename internal::FunctionStateStack<Set>::value_type>
@@ -377,8 +283,8 @@ struct StackMachineInstruction {
         }
       }
       NTH_ATTRIBUTE(tailcall)
-      return (ip + 1)->as<internal::exec_fn_type>()(
-          value_stack, ip + 1, call_stack, cap_and_left, exec_state_void_ptr);
+      return (ip + 1)->as<internal::exec_fn_type>()(value_stack, ip + 1,
+                                                    call_stack, cap_and_left);
     }
   }
 };
@@ -427,30 +333,22 @@ struct Return : StackMachineInstruction<Return> {
 // well-formed) and this function adhere to one of the following:
 //
 //   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
-//       reference to `typename I::execution_state` (if and only if that
-//       type syntactically valid), then a mutable reference to
-//       `typename I::function_state` (if and only if that type syntactically
-//       valid), and then some number of arguments convertible to `Value`. If
-//       present the `typename I::execution_state&` parameter is a
-//       reference to state shared throughout the entire execution. If present
-//       the `typename I::function_state&` parameter is a reference to state
-//       shared during a function's execution. The arguments are intperpreted as
-//       the immediate values for the instruction. The void return type
-//       indicates that execution should fall through to the following
-//       instruction.
+//       reference to `typename I::function_state` (if and only if that type
+//       syntactically valid), and then some number of arguments convertible to
+//       `Value`. If present the `typename I::function_state&` parameter is a
+//       reference to state shared during a function's execution. The arguments
+//       are intperpreted as the immediate values for the instruction. The void
+//       return type indicates that execution should fall through to the
+//       following instruction.
 //
-//   (b) Accepts a mutable reference to `typename I::execution_state` (if
-//       and only if that type syntactically valid), then a mutable reference to
-//       `typename I::function_state` (if and only if that type syntactically
-//       valid), and then some number of arguments convertible to `Value`. The
-//       function may return `void` or another type convertible to `Value`. If
-//       present the `typename I::execution_state&` parameter is a
-//       reference to state shared throughout the entire execution. If present
-//       the `typename I::function_state&` parameter is a reference to state
-//       shared during a function's execution. The arguments are to be popped
-//       from the value stack, and the returned value, if any, will be pushed
-//       onto the value stack. Execution will fall through to the following
-//       instruction.
+//   (b) Accepts a mutable reference to `typename I::function_state` (if and
+//       only if that type is syntactically valid), and then some number of
+//       arguments convertible to `Value`. The function may return `void` or
+//       another type convertible to `Value`. If present the `typename
+//       I::function_state&` parameter is a reference to state shared during a
+//       function's execution. The arguments are to be popped from the value
+//       stack, and the returned value, if any, will be pushed onto the value
+//       stack. Execution will fall through to the following instruction.
 //
 template <typename I>
 concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Return> or
@@ -468,13 +366,11 @@ constexpr size_t ImmediateValueCount() {
   } else {
     size_t immediate_value_count =
         nth::type<decltype(I::execute)>.parameters().size();
-    constexpr bool ES = HasExecutionState<I>;
     constexpr bool FS = internal::HasFunctionState<I>;
     constexpr bool VS = internal::HasValueStack<I>;
 
     if (not VS) { return 0; }
     --immediate_value_count;  // Ignore the `ValueStack&` parameter.
-    if (ES) { --immediate_value_count; }
     if (FS) { --immediate_value_count; }
     return immediate_value_count;
   }

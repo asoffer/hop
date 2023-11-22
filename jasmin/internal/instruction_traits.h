@@ -17,7 +17,6 @@ constexpr size_t ParameterCount() {
       return I::parameter_count;
     } else {
       size_t parameters = nth::type<decltype(I::execute)>.parameters().size();
-      if (HasExecutionState<I>) { --parameters; }
       if (internal::HasFunctionState<I>) { --parameters; }
       return parameters;
     }

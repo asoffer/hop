@@ -61,28 +61,14 @@ TEST(InstructionSet, State) {
     using function_state = int;
     static int execute(function_state&, int) { return 0; }
   };
-  struct E : StackMachineInstruction<E> {
-    using execution_state = char;
-    static int execute(execution_state&, int) { return 0; }
-  };
-  struct EF : StackMachineInstruction<EF> {
-    using execution_state = char;
-    using function_state  = int;
-    static int execute(execution_state&, function_state&, int) { return 0; }
-  };
 
-  using Set = MakeInstructionSet<None, E, F, EF>;
+  using Set = MakeInstructionSet<None, F>;
   EXPECT_EQ(internal::FunctionStateList<Set>, nth::type_sequence<int>);
-  EXPECT_EQ(internal::ExecutionStateList<Set>, nth::type_sequence<char>);
   EXPECT_EQ(nth::type<internal::FunctionStateStack<Set>>,
             nth::type<std::stack<std::tuple<int>>>);
   EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<None>>>,
             nth::type<void>);
-  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<E>>>,
-            nth::type<void>);
   EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<F>>>,
-            nth::type<std::stack<std::tuple<int>>>);
-  EXPECT_EQ(nth::type<internal::FunctionStateStack<MakeInstructionSet<EF>>>,
             nth::type<std::stack<std::tuple<int>>>);
 }
 
@@ -94,34 +80,17 @@ TEST(Instruction, OpCodeMetadata) {
     using function_state = int;
     static void execute(ValueStack&, function_state&, int) {}
   };
-  struct E : StackMachineInstruction<E> {
-    using execution_state = char;
-    static void execute(ValueStack&, execution_state&, int, bool, char) {}
-  };
-  struct EF : StackMachineInstruction<EF> {
-    using execution_state = char;
-    using function_state  = int;
-    static void execute(ValueStack&, execution_state&, function_state&, int) {}
-  };
 
-  using Set = MakeInstructionSet<None, E, F, EF>;
+  using Set = MakeInstructionSet<None, F>;
   EXPECT_EQ(Set::OpCodeMetadataFor<None>().op_code_value, 4);
   EXPECT_EQ(Set::OpCodeMetadataFor<None>().immediate_value_count, 1);
-  EXPECT_EQ(Set::OpCodeMetadataFor<E>().op_code_value, 5);
-  EXPECT_EQ(Set::OpCodeMetadataFor<E>().immediate_value_count, 3);
-  EXPECT_EQ(Set::OpCodeMetadataFor<F>().op_code_value, 6);
+  EXPECT_EQ(Set::OpCodeMetadataFor<F>().op_code_value, 5);
   EXPECT_EQ(Set::OpCodeMetadataFor<F>().immediate_value_count, 1);
-  EXPECT_EQ(Set::OpCodeMetadataFor<EF>().op_code_value, 7);
-  EXPECT_EQ(Set::OpCodeMetadataFor<EF>().immediate_value_count, 1);
 
   EXPECT_EQ(Set::OpCodeMetadata(None::ExecuteImpl<Set>),
             Set::OpCodeMetadataFor<None>());
-  EXPECT_EQ(Set::OpCodeMetadata(E::ExecuteImpl<Set>),
-            Set::OpCodeMetadataFor<E>());
   EXPECT_EQ(Set::OpCodeMetadata(F::ExecuteImpl<Set>),
             Set::OpCodeMetadataFor<F>());
-  EXPECT_EQ(Set::OpCodeMetadata(EF::ExecuteImpl<Set>),
-            Set::OpCodeMetadataFor<EF>());
 }
 
 }  // namespace

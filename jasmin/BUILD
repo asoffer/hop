@@ -41,16 +41,6 @@ cc_library(
 )
 
 cc_library(
-    name = "execution_state",
-    hdrs = ["execution_state.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "@asoffer_nth//nth/meta:sequence",
-        "@asoffer_nth//nth/meta:type",
-    ],
-)
-
-cc_library(
     name = "function",
     hdrs = ["function.h"],
     visibility = ["//visibility:public"],
@@ -79,7 +69,6 @@ cc_library(
     hdrs = ["instruction.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":execution_state",
         ":value",
         ":value_stack",
         "//jasmin/internal:function_base",

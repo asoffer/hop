@@ -48,9 +48,8 @@ struct Function : internal::FunctionBase {
           "Incorrect number of immediate values provided to `append`.");
       return internal::FunctionBase::append({ExecPtr<I>(), Value(vs)...});
     } else {
-      constexpr size_t DropCount = internal::HasValueStack<I> +
-                                   HasExecutionState<I> +
-                                   internal::HasFunctionState<I>;
+      constexpr size_t DropCount =
+          internal::HasValueStack<I> + internal::HasFunctionState<I>;
       constexpr auto parameters = nth::type<decltype(I::execute)>.parameters();
       return parameters.template drop<DropCount>().reduce(
           [&](auto... argument_types) {
