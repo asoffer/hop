@@ -25,7 +25,7 @@ inline constexpr bool NeedsResize(uint64_t cap_and_left) {
 }
 
 inline constexpr bool Empty(uint64_t cap_and_left) {
-  return (cap_and_left & 0xffffffff) == (cap_and_left >> 32);
+  return (cap_and_left >> 32) - (cap_and_left & 0xffffffff) == 3;
 }
 
 struct FrameBase {
@@ -61,8 +61,8 @@ struct OpCodeMetadata {
   size_t immediate_value_count;
 };
 
-using exec_fn_type = void (*)(ValueStack &, Value const *, FrameBase *,
-                              uint64_t);
+using exec_fn_type = void (*)(Value *, size_t, size_t, Value const *,
+                              FrameBase *, uint64_t);
 
 template <typename Inst>
 concept HasValueStack =
@@ -178,7 +178,8 @@ struct StackMachineInstruction {
   static constexpr bool VS = internal::HasValueStack<Inst>;
 
   template <InstructionSet Set>
-  static void ExecuteImpl(ValueStack &value_stack, Value const *ip,
+  static void ExecuteImpl(Value *value_stack_head, size_t value_stack_size,
+                          size_t value_stack_capacity, Value const *ip,
                           internal::FrameBase *call_stack,
                           uint64_t cap_and_left) {
     using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
@@ -189,78 +190,120 @@ struct StackMachineInstruction {
       }
       (++call_stack)->ip = ip;
       Value const *next_ip =
-          value_stack.pop<internal::FunctionBase const *>()->entry();
+          value_stack_head->as<internal::FunctionBase const *>()->entry();
 
       --cap_and_left;
       NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                   call_stack, cap_and_left);
+      return next_ip->as<internal::exec_fn_type>()(
+          value_stack_head - 1, value_stack_size - 1, value_stack_capacity,
+          next_ip, call_stack, cap_and_left);
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                   call_stack, cap_and_left);
+      return next_ip->as<internal::exec_fn_type>()(
+          value_stack_head, value_stack_size, value_stack_capacity, next_ip,
+          call_stack, cap_and_left);
     } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      if (value_stack.pop<bool>()) {
+      if (value_stack_head->as<bool>()) {
         Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
         NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                     call_stack, cap_and_left);
+        return next_ip->as<internal::exec_fn_type>()(
+            value_stack_head - 1, value_stack_size - 1, value_stack_capacity,
+            next_ip, call_stack, cap_and_left);
       } else {
         Value const *next_ip = ip + 2;
         NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                     call_stack, cap_and_left);
+        return next_ip->as<internal::exec_fn_type>()(
+            value_stack_head - 1, value_stack_size - 1, value_stack_capacity,
+            next_ip, call_stack, cap_and_left);
       }
     } else if constexpr (std::is_same_v<Inst, Return>) {
       Value const *next_ip = (call_stack--)->ip + 1;
       ++cap_and_left;
       if (internal::Empty(cap_and_left)) [[unlikely]] {
-        uint32_t left = cap_and_left & 0xffffffff;
-        uint32_t cap  = cap_and_left >> 32;
-        auto *old_ptr = call_stack + 1 - (cap - left);
-        std::free(old_ptr);
+        const_cast<Value &>(*call_stack->ip) = value_stack_capacity;
+        --call_stack;
+        const_cast<Value &>(*call_stack->ip) = value_stack_size;
+        --call_stack;
+        const_cast<Value &>(*call_stack->ip) =
+            value_stack_head + 1 - value_stack_size;
+        std::free(call_stack);
         return;
       } else {
         NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(value_stack, next_ip,
-                                                     call_stack, cap_and_left);
+        return next_ip->as<internal::exec_fn_type>()(
+            value_stack_head, value_stack_size, value_stack_capacity, next_ip,
+            call_stack, cap_and_left);
       }
     } else {
-      constexpr auto parameters =
-          nth::type<decltype(Inst::execute)>.parameters();
-      parameters.template drop<VS + FS>().reduce([&](auto... ts) {
-        if constexpr (VS) {
+#define JASMIN_INTERNAL_GET(p, Ns)                                             \
+  (p + Ns)->template as<nth::type_t<parameter_types.template get<Ns>()>>()
+
+      auto parameter_types =
+          nth::type<decltype(Inst::execute)>.parameters().template drop<VS + FS>();
+
+      if constexpr (VS) {
+        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+          ValueStack vs(value_stack_head, value_stack_size,
+                        value_stack_capacity);
           if constexpr (FS) {
-            // Brace-initialization forces the order of evaluation to be in
-            // the order the elements appear in the list.
-            std::apply(Inst::execute,
-                       std::tuple<ValueStack &, typename Inst::function_state &,
-                                  nth::type_t<ts>...>{
-                           value_stack,
-                           std::get<typename Inst::function_state>(
-                               static_cast<frame_type *>(call_stack)->state),
-                           (++ip)->as<nth::type_t<ts>>()...});
+            Inst::execute(vs,
+                          std::get<typename Inst::function_state>(
+                              static_cast<frame_type *>(call_stack)->state),
+                          JASMIN_INTERNAL_GET(ip + 1, Ns)...);
           } else {
-            // Brace-initialization forces the order of evaluation to be in
-            // the order the elements appear in the list.
-            std::apply(Inst::execute,
-                       std::tuple<ValueStack &, nth::type_t<ts>...>{
-                           value_stack, (++ip)->as<nth::type_t<ts>>()...});
+            Inst::execute(vs, JASMIN_INTERNAL_GET(ip + 1, Ns)...);
           }
-        } else {
-          if constexpr (FS) {
-            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>(
-                std::get<typename Inst::function_state>(
-                    static_cast<frame_type *>(call_stack)->state));
+          value_stack_size     = vs.size();
+          value_stack_capacity = vs.capacity();
+          value_stack_head     = vs.stack_start() + value_stack_size - 1;
+          vs.ignore();
+        }
+        (std::make_index_sequence<parameter_types.size()>{});
+
+        NTH_ATTRIBUTE(tailcall)
+        return (ip + parameter_types.size() + 1)
+            ->template as<internal::exec_fn_type>()(
+                value_stack_head, value_stack_size, value_stack_capacity,
+                (ip + parameter_types.size() + 1), call_stack, cap_and_left);
+      } else {
+        constexpr bool ReturnsVoid =
+            (nth::type<decltype(Inst::execute)>.return_type() ==
+             nth::type<void>);
+
+        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+          auto *p = value_stack_head - (parameter_types.size() - 1);
+          if constexpr (ReturnsVoid) {
+            if constexpr (FS) {
+              Inst::execute(std::get<typename Inst::function_state>(
+                                static_cast<frame_type *>(call_stack)->state),
+                            JASMIN_INTERNAL_GET(p, Ns)...);
+            } else {
+              Inst::execute(JASMIN_INTERNAL_GET(p, Ns)...);
+            }
           } else {
-            value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
+            if constexpr (FS) {
+              *p = Inst::execute(
+                  std::get<typename Inst::function_state>(
+                      static_cast<frame_type *>(call_stack)->state),
+                  JASMIN_INTERNAL_GET(p, Ns)...);
+            } else {
+              *p = Inst::execute(JASMIN_INTERNAL_GET(p, Ns)...);
+            }
           }
         }
-      });
-      NTH_ATTRIBUTE(tailcall)
-      return (ip + 1)->as<internal::exec_fn_type>()(value_stack, ip + 1,
-                                                    call_stack, cap_and_left);
+        (std::make_index_sequence<parameter_types.size()>{});
+#undef JASMIN_INTERNAL_GET
+
+        constexpr size_t ReductionAmount =
+            parameter_types.size() - 1 + ReturnsVoid;
+
+        NTH_ATTRIBUTE(tailcall)
+        return (ip + 1)->as<internal::exec_fn_type>()(
+            value_stack_head - ReductionAmount,
+            value_stack_size - ReductionAmount, value_stack_capacity, ip + 1,
+            call_stack, cap_and_left);
+      }
     }
   }
 };

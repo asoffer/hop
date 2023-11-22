@@ -16,14 +16,28 @@ namespace jasmin {
 // object referenced by `value_stack`. `value_stack` is modified in place.
 template <InstructionSet Set>
 void Execute(Function<Set> const &f, ValueStack &value_stack) {
+  Value head     = value_stack.stack_start() + value_stack.size() - 1;
+  Value size     = value_stack.size();
+  Value capacity = value_stack.capacity();
+  value_stack.ignore();
+
   using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
   frame_type *call_stack =
-      static_cast<frame_type *>(std::malloc(sizeof(frame_type) * 4));
-  Value const *ip  = f.entry();
-  call_stack[0].ip = ip;
+      static_cast<frame_type *>(std::malloc(sizeof(frame_type) * 8));
+  Value const *ip = f.entry();
+  // These aren't actually instruction pointers, but we're using them during
+  // execution to store information about the ValueStack so it can be
+  // reconstituted after the fact.
+  call_stack[0].ip = &head;
+  call_stack[1].ip = &size;
+  call_stack[2].ip = &capacity;
+  call_stack[3].ip = ip;
 
-  return ip->as<internal::exec_fn_type>()(value_stack, ip, call_stack,
-                                          0x00000004'00000003);
+  ip->as<internal::exec_fn_type>()(head.as<Value *>() + size.as<size_t>() - 1,
+                                   size.as<size_t>(), capacity.as<size_t>(), ip,
+                                   &call_stack[3], 0x00000008'00000004);
+  value_stack =
+      ValueStack(head.as<Value *>(), size.as<size_t>(), capacity.as<size_t>());
 }
 
 // Interprets the given function `f` with arguments provided in the

@@ -31,6 +31,9 @@ struct ValueStack {
   // Returns the number of elements on the stack.
   constexpr size_t size() const { return head_ - values_.get(); }
 
+  constexpr size_t capacity() const { return cap_; }
+  Value *stack_start() const { return values_.get(); }
+
   // Returns true if the stack has no elements and false otherwise.
   constexpr bool empty() const { return size() == 0; }
 
@@ -155,6 +158,11 @@ struct ValueStack {
     head_ -= end - start;
   }
 
+  ValueStack(Value *head, size_t size, size_t cap)
+      : cap_(cap), values_(head + 1 - size), head_(head + 1) {}
+
+  void ignore() { values_.release(); }
+
  private:
   void reallocate() {
     std::unique_ptr<Value[]> buffer(
@@ -166,7 +174,7 @@ struct ValueStack {
     // technically necessary to start the lifetime of `Value`s in the back half
     // of the buffer.
     for (size_t i = cap_; i < cap_ * 2; ++i) {
-      buffer[i] = Value::Uninitialized();
+      new (&buffer[i]) Value(Value::Uninitialized());
     }
 
     head_ = buffer.get() + cap_;
