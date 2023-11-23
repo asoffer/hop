@@ -9,13 +9,23 @@
 #include "nth/debug/debug.h"
 
 namespace jasmin {
+struct ValueStack;
+
+namespace internal {
+
+ValueStack Concoct(Value *, uint64_t remaining);
+void Ignore(ValueStack &);
+
+}  // namespace internal
 
 // A stack of `Value`s to be used as a core component in the stack machine.
 struct ValueStack {
   // Constructs an empty `ValueStack`.
   ValueStack()
       : head_(static_cast<Value *>(std::malloc(16 * sizeof(Value)))),
-        cap_and_left_((uint64_t{16} << 32) | 16) {}
+        left_(15) {
+    *(head_ + 15) = 16;
+  }
 
   // Construts a value stack with the given initializer_list elements pushed
   // onto the stack in the same order as they appear in `list`.
@@ -23,30 +33,63 @@ struct ValueStack {
     for (Value v : list) { push(v); }
   }
 
+  ValueStack(ValueStack const &v) { *this = v; }
+
+  ValueStack(ValueStack &&v)
+      : head_(std::exchange(v.head_, nullptr)),
+        left_(std::exchange(v.left_, 0)) {}
+
+  ValueStack &operator=(ValueStack const &v) {
+    Value *ptr =
+        static_cast<Value *>(std::malloc((1 + v.size()) * sizeof(Value)));
+    std::memcpy(ptr, v.begin(), v.size() * sizeof(Value));
+    head_  = ptr + v.size();
+    *head_ = v.size() + 1;
+    left_  = 0;
+    return *this;
+  }
+
+  ValueStack &operator=(ValueStack &&v) {
+    head_ = std::exchange(v.head_, nullptr);
+    left_ = std::exchange(v.left_, 0);
+    return *this;
+  }
+
+  ~ValueStack() {
+    if (head_) { std::free(head_ - size()); }
+  }
+
   // Returns the number of elements on the stack.
-  constexpr size_t size() const { return capacity() - left(); }
+  constexpr size_t size() const { return capacity() - space_remaining() - 1; }
 
-  constexpr size_t cap_and_left() const { return cap_and_left_; }
+  constexpr size_t space_remaining() const { return left_; }
 
-  constexpr size_t capacity() const { return cap_and_left_ >> 32; }
+  constexpr size_t capacity() const {
+    return head_ ? (head_ + space_remaining())->as<size_t>() : 0;
+  }
+
   Value *head() { return head_; }
   Value const *head() const { return head_; }
 
   // Returns true if the stack has no elements and false otherwise.
-  constexpr bool empty() const { return capacity() == left(); }
+  constexpr bool empty() const { return size() == 0; }
 
   // Pushes the given value `v` onto the stack.
   void push(Value const &v) {
-    if (left() == 0) [[unlikely]] { reallocate(); }
+    if (space_remaining() == 0) [[unlikely]] { reallocate(); }
     *head_++ = v;
-    --cap_and_left_;
+    --left_;
   }
   void push(SmallTrivialValue auto v) { push(Value(v)); }
 
   using const_iterator = Value const *;
+  using iterator       = Value *;
 
-  // Returns an iterator referrencing one passed the end of the `ValueStack`.
+  // Returns an iterator referrencing the first entry of the `ValueStack`.
+  iterator begin() { return head_ - size(); }
   const_iterator begin() const { return head_ - size(); }
+  // Returns an iterator referrencing one passed the end of the `ValueStack`.
+  iterator end() { return head_; }
   const_iterator end() const { return head_; }
 
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
@@ -54,7 +97,7 @@ struct ValueStack {
   Value pop_value() {
     NTH_REQUIRE((v.when(internal::harden)), not empty())
         .Log<"Unexpectedly empty ValueStack">();
-    ++cap_and_left_;
+    ++left_;
     return *--head_;
   }
 
@@ -155,52 +198,45 @@ struct ValueStack {
     head_ -= end - start;
   }
 
-  ValueStack(ValueStack const &v) { *this = v; }
-  ValueStack(ValueStack &&v)
-      : head_(std::exchange(v.head_, nullptr)),
-        cap_and_left_(v.cap_and_left_) {}
-
-  ValueStack &operator=(ValueStack const &v) {
-    Value *ptr = static_cast<Value *>(std::malloc(v.size() * sizeof(Value)));
-    std::memcpy(ptr, v.begin(), v.size() * sizeof(Value));
-    head_         = ptr + v.size();
-    cap_and_left_ = v.size() << 32;
-    return *this;
-  }
-
-  ValueStack &operator=(ValueStack &&v) {
-    head_         = std::exchange(v.head_, nullptr);
-    cap_and_left_ = v.cap_and_left_;
-    return *this;
-  }
-
-  ValueStack(Value *head, uint64_t cap_and_left)
-      : head_(head), cap_and_left_(cap_and_left) {}
-
-  void ignore() { head_ = nullptr; }
-
-  ~ValueStack() {
-    if (head_) {
-      std::free(head_ - size());
-      head_ = nullptr;
-    }
-  }
-
  private:
-  uint32_t left() const { return cap_and_left_ & 0xffffffff; }
+  friend ValueStack internal::Concoct(Value *, uint64_t remaining);
+  friend void internal::Ignore(ValueStack &);
+
+  ValueStack(Value *head, size_t remaining) : head_(head), left_(remaining) {}
+
+  void ignore() {
+    head_ = nullptr;
+    left_ = 0;
+  }
 
   void reallocate() {
-    Value *new_ptr =
-        static_cast<Value *>(std::malloc(2 * capacity() * sizeof(Value)));
-    std::memcpy(new_ptr, head_ - size(), sizeof(Value) * capacity());
-    std::free(head_ - size());
-    head_ = new_ptr + size();
-    cap_and_left_ = cap_and_left_ * 2 | capacity();
+    size_t capacity = head_->as<size_t>();
+    size_t bytes    = capacity * sizeof(Value);
+
+    Value *new_ptr = static_cast<Value *>(std::malloc(2 * bytes));
+    std::memcpy(new_ptr, head_ - (capacity - 1), bytes);
+    *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
+
+    static int n = 5;
+    if (--n == 0) std::abort();
+
+    std::free(head_ - (capacity - 1));
+    head_ = new_ptr + capacity - 1;
+    left_ = capacity;
   }
 
   Value *head_;
-  uint64_t cap_and_left_;
+  uint64_t left_;
 };
+
+namespace internal {
+inline ValueStack Concoct(Value *head, uint64_t remaining) {
+  return ValueStack(head, remaining);
+}
+
+inline void Ignore(ValueStack &vs) { vs.ignore(); }
+
+}  // namespace internal
 
 }  // namespace jasmin
 
