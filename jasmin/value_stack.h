@@ -55,9 +55,7 @@ struct ValueStack {
     return *this;
   }
 
-  ~ValueStack() {
-    if (head_) { std::free(head_ - size()); }
-  }
+  ~ValueStack() { std::free(head_ - size()); }
 
   // Returns the number of elements on the stack.
   constexpr size_t size() const { return capacity() - space_remaining() - 1; }
@@ -65,7 +63,7 @@ struct ValueStack {
   constexpr size_t space_remaining() const { return left_; }
 
   constexpr size_t capacity() const {
-    return head_ ? (head_ + space_remaining())->as<size_t>() : 0;
+    return head_ ? (head_ + space_remaining())->as<size_t>() : 1;
   }
 
   Value *head() { return head_; }
@@ -149,6 +147,7 @@ struct ValueStack {
     NTH_REQUIRE((v.when(internal::harden)), size() >= sizeof...(Ts))
         .Log<"Unexpectedly too few elements in ValueStack">();
     head_ -= sizeof...(Ts);
+    left_ += sizeof...(Ts);
     auto *p = head_;
     return std::tuple<Ts...>{(p++)->template as<Ts>()...};
   }
@@ -167,6 +166,7 @@ struct ValueStack {
         }
         (std::make_index_sequence<sizeof...(Ts)>{});
         head_ -= sizeof...(Ts);
+        left_ += sizeof...(Ts);
       }
     } else {
       if constexpr (sizeof...(Ts) == 0) {
@@ -178,6 +178,7 @@ struct ValueStack {
         }
         (std::make_index_sequence<sizeof...(Ts)>{});
         head_ -= (sizeof...(Ts) - 1);
+        left_ += (sizeof...(Ts) - 1);
       }
     }
   }
@@ -196,6 +197,7 @@ struct ValueStack {
     std::memmove(head_ - (size() - start), head_ - (size() - end),
                  sizeof(Value) * (size() - end));
     head_ -= end - start;
+    left_ += end - start;
   }
 
  private:
