@@ -20,10 +20,6 @@
 namespace jasmin {
 namespace internal {
 
-inline constexpr bool NeedsResize(uint64_t cap_and_left) {
-  return (cap_and_left & 0xffffffff) == 0;
-}
-
 inline constexpr bool Empty(uint64_t cap_and_left) {
   return (cap_and_left >> 32) - (cap_and_left & 0xffffffff) == 2;
 }
@@ -40,17 +36,39 @@ struct Frame : FrameBase {
 template <>
 struct Frame<void> : FrameBase {};
 
-template <typename T>
-inline Frame<T> *Resize(Frame<T> *call_stack, uint64_t &cap_and_left) {
+using exec_fn_type = void (*)(Value *, size_t, Value const *, FrameBase *,
+                              uint64_t);
+
+template <size_t N>
+void ReallocateCallStack(Value *value_stack_head, size_t capacity,
+                         Value const *ip, FrameBase *call_stack,
+                         uint64_t cap_and_left) {
   uint32_t size = cap_and_left >> 32;
-  cap_and_left <<= 1;
-  cap_and_left |= size;
-  Frame<T> *ptr =
-      static_cast<Frame<T> *>(std::malloc(sizeof(Frame<T>) * (size << 1)));
+  auto *ptr     = static_cast<FrameBase *>(operator new(N *(size << 1)));
   auto *old_ptr = call_stack - (size - 1);
-  std::memcpy(ptr, old_ptr, sizeof(Frame<T>) * size);
-  std::free(old_ptr);
-  return ptr + (size - 1);
+  std::memcpy(ptr, old_ptr, N * size);
+  operator delete(old_ptr);
+
+  NTH_ATTRIBUTE(tailcall)
+  return ip->template as<exec_fn_type>()(value_stack_head, capacity, ip,
+                                         ptr + (size - 1),
+                                         cap_and_left * 2 | size);
+}
+
+void ReallocateValueStack(Value *value_stack_head, size_t, Value const *ip,
+                          FrameBase *call_stack, uint64_t cap_and_left) {
+  size_t capacity = value_stack_head->as<size_t>();
+  size_t bytes    = capacity * sizeof(Value);
+
+  Value *new_ptr = static_cast<Value *>(operator new(2 * bytes));
+  std::memcpy(new_ptr, value_stack_head - (capacity - 1), bytes);
+  *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
+
+  operator delete(value_stack_head - (capacity - 1));
+
+  NTH_ATTRIBUTE(tailcall)
+  return ip->template as<exec_fn_type>()(new_ptr + capacity - 1, capacity, ip,
+                                         call_stack, cap_and_left);
 }
 
 struct OpCodeMetadata {
@@ -60,9 +78,6 @@ struct OpCodeMetadata {
   size_t op_code_value;
   size_t immediate_value_count;
 };
-
-using exec_fn_type = void (*)(Value *, size_t, Value const *, FrameBase *,
-                              uint64_t);
 
 template <typename Inst>
 concept HasValueStackRef =
@@ -131,25 +146,6 @@ concept HasValidSignature =
      (not HasValueStackRef<I> and
       ValidSignatureWithoutImmediatesImpl<I, HasFuncState>()));
 
-static void ReallocateValueStack(Value *value_stack_head, size_t,
-                                 Value const *ip,
-                                 internal::FrameBase *call_stack,
-                                 uint64_t cap_and_left) {
-  size_t capacity = value_stack_head->as<size_t>();
-  size_t bytes    = capacity * sizeof(Value);
-
-  Value *new_ptr = static_cast<Value *>(operator new(2 * bytes));
-  auto *q        = value_stack_head - (capacity - 1);
-  for (auto *p = new_ptr; p != new_ptr + bytes; ++p, ++q) { *p = *q; }
-  *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
-
-  operator delete(value_stack_head - (capacity - 1));
-
-  NTH_ATTRIBUTE(tailcall)
-  return ip->template as<internal::exec_fn_type>()(
-      new_ptr + capacity - 1, capacity, ip, call_stack, cap_and_left);
-}
-
 }  // namespace internal
 
 // A concept indicating which types constitute instruction sets understandable
@@ -205,18 +201,19 @@ struct StackMachineInstruction {
                           uint64_t cap_and_left) {
     using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
     if constexpr (std::is_same_v<Inst, Call>) {
-      if (internal::NeedsResize(cap_and_left)) [[unlikely]] {
-        call_stack = internal::Resize(static_cast<frame_type *>(call_stack),
-                                      cap_and_left);
+      if ((cap_and_left & 0xffffffff) == 0) [[unlikely]] {
+        return internal::ReallocateCallStack<sizeof(frame_type)>(
+            value_stack_head, vs_left, ip, call_stack, cap_and_left);
+      } else {
+        (++call_stack)->ip   = ip;
+        Value const *next_ip = (value_stack_head - 1)
+                                   ->as<internal::FunctionBase const *>()
+                                   ->entry();
+        NTH_ATTRIBUTE(tailcall)
+        return next_ip->as<internal::exec_fn_type>()(
+            value_stack_head - 1, vs_left + 1, next_ip, call_stack,
+            cap_and_left - 1);
       }
-      (++call_stack)->ip = ip;
-      Value const *next_ip =
-          (value_stack_head - 1)->as<internal::FunctionBase const *>()->entry();
-
-      --cap_and_left;
-      NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(
-          value_stack_head - 1, vs_left + 1, next_ip, call_stack, cap_and_left);
     } else if constexpr (std::is_same_v<Inst, Duplicate>) {
       if (vs_left == 0) [[unlikely]] {
         NTH_ATTRIBUTE(tailcall)
