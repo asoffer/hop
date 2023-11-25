@@ -161,6 +161,8 @@ concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
 // Jasmin's interpreter and are built-in to every instruction set. Definitions
 // appear below.
 struct Call;
+struct Duplicate;
+struct DuplicateAt;
 struct Jump;
 struct JumpIf;
 struct Push;
@@ -215,6 +217,31 @@ struct StackMachineInstruction {
       NTH_ATTRIBUTE(tailcall)
       return next_ip->as<internal::exec_fn_type>()(
           value_stack_head - 1, vs_left + 1, next_ip, call_stack, cap_and_left);
+    } else if constexpr (std::is_same_v<Inst, Duplicate>) {
+      if (vs_left == 0) [[unlikely]] {
+        NTH_ATTRIBUTE(tailcall)
+        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
+      } else {
+        *value_stack_head = *(value_stack_head - 1);
+        NTH_ATTRIBUTE(tailcall)
+        return (ip + 1)->template as<internal::exec_fn_type>()(
+            value_stack_head + 1, vs_left - 1, (ip + 1), call_stack,
+            cap_and_left);
+      }
+    } else if constexpr (std::is_same_v<Inst, DuplicateAt>) {
+      if (vs_left == 0) [[unlikely]] {
+        NTH_ATTRIBUTE(tailcall)
+        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
+      } else {
+        *value_stack_head = *(value_stack_head - (ip + 1)->as<size_t>());
+        NTH_ATTRIBUTE(tailcall)
+        return (ip + 2)->template as<internal::exec_fn_type>()(
+            value_stack_head + 1, vs_left - 1, (ip + 2), call_stack,
+            cap_and_left);
+      }
+
     } else if constexpr (std::is_same_v<Inst, Jump>) {
       Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
@@ -334,6 +361,19 @@ struct Call : StackMachineInstruction<Call> {
   }
 };
 
+struct Duplicate : StackMachineInstruction<Duplicate> {
+  static constexpr std::string_view debug(std::span<Value const, 0>) {
+    return "duplicate";
+  }
+};
+
+struct DuplicateAt : StackMachineInstruction<DuplicateAt> {
+  static constexpr std::string debug(
+      std::span<Value const, 1> immediate_values) {
+    return "duplicate at " + std::to_string(immediate_values[0].as<size_t>());
+  }
+};
+
 struct Jump : StackMachineInstruction<Jump> {
   static std::string debug(std::span<Value const, 1> immediate_values) {
     ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
@@ -357,8 +397,9 @@ struct JumpIf : StackMachineInstruction<JumpIf> {
 };
 
 struct Push : StackMachineInstruction<Push> {
-  static constexpr std::string_view debug(std::span<Value const, 0>) {
-    return "return";
+  static constexpr std::string debug(
+      std::span<Value const, 1> immediate_values) {
+    return "push (" + std::to_string(immediate_values[0].raw_value()) + ")";
   }
 };
 
@@ -394,17 +435,18 @@ struct Return : StackMachineInstruction<Return> {
 //       stack. Execution will fall through to the following instruction.
 //
 template <typename I>
-concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Push, Return> or
-                       (std::derived_from<I, StackMachineInstruction<I>> and
-                        internal::HasValidSignature<I>));
+concept Instruction =
+    (nth::any_of<I, Call, Duplicate, DuplicateAt, Jump, JumpIf, Push, Return> or
+     (std::derived_from<I, StackMachineInstruction<I>> and
+      internal::HasValidSignature<I>));
 
 namespace internal {
 
 template <Instruction I>
 constexpr size_t ImmediateValueCount() {
-  if constexpr (nth::any_of<I, Call, Return>) {
+  if constexpr (nth::any_of<I, Call, Duplicate, Return>) {
     return 0;
-  } else if constexpr (nth::any_of<I, Jump, JumpIf, Push>) {
+  } else if constexpr (nth::any_of<I, DuplicateAt, Jump, JumpIf, Push>) {
     return 1;
   } else {
     size_t immediate_value_count =
@@ -505,7 +547,8 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
 }
 
 constexpr auto BuiltinInstructionList =
-    nth::type_sequence<Call, Jump, JumpIf, Push, Return>;
+    nth::type_sequence<Call, Duplicate, DuplicateAt, Jump, JumpIf, Push,
+                       Return>;
 
 template <Instruction... Is>
 absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const

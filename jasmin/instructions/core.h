@@ -17,28 +17,6 @@ struct Drop : StackMachineInstruction<Drop> {
   }
 };
 
-struct Duplicate : StackMachineInstruction<Duplicate> {
-  static std::string_view name() { return "duplicate"; }
-
-  static ValueStackRef execute(ValueStackRef value_stack) {
-    Value v = value_stack.peek_value();
-    return ValueStackRef::Push(std::move(value_stack), v);
-  }
-  static constexpr std::string_view debug() { return "duplicate"; }
-};
-
-struct DuplicateAt : StackMachineInstruction<DuplicateAt> {
-  static std::string_view name() { return "duplicate-at"; }
-
-  static ValueStackRef execute(ValueStackRef value_stack, size_t index) {
-    Value v = value_stack.peek_value(index);
-    return ValueStackRef::Push(std::move(value_stack), v);
-  }
-  static std::string debug(std::span<Value const, 1> immediates) {
-    return "duplicate @" + std::to_string(immediates[0].as<size_t>());
-  }
-};
-
 struct Swap : StackMachineInstruction<Swap> {
   static ValueStackRef execute(ValueStackRef value_stack) {
     value_stack.swap_with(1);
