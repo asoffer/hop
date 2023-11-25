@@ -5,14 +5,6 @@
 
 namespace jasmin {
 
-struct Push : StackMachineInstruction<Push> {
-  static std::string_view name() { return "push"; }
-
-  static constexpr ValueStackRef execute(ValueStackRef value_stack, Value v) {
-    return ValueStackRef::Push(std::move(value_stack), v);
-  }
-};
-
 struct Drop : StackMachineInstruction<Drop> {
   static std::string_view name() { return "drop"; }
 

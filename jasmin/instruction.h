@@ -131,6 +131,25 @@ concept HasValidSignature =
      (not HasValueStackRef<I> and
       ValidSignatureWithoutImmediatesImpl<I, HasFuncState>()));
 
+static void ReallocateValueStack(Value *value_stack_head, size_t,
+                                 Value const *ip,
+                                 internal::FrameBase *call_stack,
+                                 uint64_t cap_and_left) {
+  size_t capacity = value_stack_head->as<size_t>();
+  size_t bytes    = capacity * sizeof(Value);
+
+  Value *new_ptr = static_cast<Value *>(operator new(2 * bytes));
+  auto *q        = value_stack_head - (capacity - 1);
+  for (auto *p = new_ptr; p != new_ptr + bytes; ++p, ++q) { *p = *q; }
+  *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
+
+  operator delete(value_stack_head - (capacity - 1));
+
+  NTH_ATTRIBUTE(tailcall)
+  return ip->template as<internal::exec_fn_type>()(
+      new_ptr + capacity - 1, capacity, ip, call_stack, cap_and_left);
+}
+
 }  // namespace internal
 
 // A concept indicating which types constitute instruction sets understandable
@@ -144,6 +163,7 @@ concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
 struct Call;
 struct Jump;
 struct JumpIf;
+struct Push;
 struct Return;
 
 // Every instruction `Inst` executable as part of Jasmin's stack machine
@@ -213,6 +233,18 @@ struct StackMachineInstruction {
         return next_ip->as<internal::exec_fn_type>()(value_stack_head - 1,
                                                      vs_left + 1, next_ip,
                                                      call_stack, cap_and_left);
+      }
+    } else if constexpr (std::is_same_v<Inst, Push>) {
+      if (vs_left == 0) [[unlikely]] {
+        NTH_ATTRIBUTE(tailcall)
+        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
+      } else {
+        *value_stack_head = *(ip + 1);
+        NTH_ATTRIBUTE(tailcall)
+        return (ip + 2)->template as<internal::exec_fn_type>()(
+            value_stack_head + 1, vs_left - 1, (ip + 2), call_stack,
+            cap_and_left);
       }
     } else if constexpr (std::is_same_v<Inst, Return>) {
       Value const *next_ip = (call_stack--)->ip + 1;
@@ -324,6 +356,12 @@ struct JumpIf : StackMachineInstruction<JumpIf> {
   }
 };
 
+struct Push : StackMachineInstruction<Push> {
+  static constexpr std::string_view debug(std::span<Value const, 0>) {
+    return "return";
+  }
+};
+
 struct Return : StackMachineInstruction<Return> {
   static constexpr std::string_view debug(std::span<Value const, 0>) {
     return "return";
@@ -332,8 +370,7 @@ struct Return : StackMachineInstruction<Return> {
 
 // The `Instruction` concept indicates that a type `I` represents an
 // instruction which Jasmin is capable of executing. Instructions must either
-// be one of the builtin instructions `jasmin::Call`, `jasmin::Jump`,
-// `jasmin::JumpIf`, or `jasmin::Return`, or publicly inherit from
+// be one of the builtin instructions, or publicly inherit from
 // `jasmin::StackMachineInstruction<I>` and have a static member function
 // `execute` that is not part of an overload set (so that `&Inst::execute` is
 // well-formed) and this function adhere to one of the following:
@@ -357,7 +394,7 @@ struct Return : StackMachineInstruction<Return> {
 //       stack. Execution will fall through to the following instruction.
 //
 template <typename I>
-concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Return> or
+concept Instruction = (nth::any_of<I, Call, Jump, JumpIf, Push, Return> or
                        (std::derived_from<I, StackMachineInstruction<I>> and
                         internal::HasValidSignature<I>));
 
@@ -367,7 +404,7 @@ template <Instruction I>
 constexpr size_t ImmediateValueCount() {
   if constexpr (nth::any_of<I, Call, Return>) {
     return 0;
-  } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
+  } else if constexpr (nth::any_of<I, Jump, JumpIf, Push>) {
     return 1;
   } else {
     size_t immediate_value_count =
@@ -468,7 +505,7 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
 }
 
 constexpr auto BuiltinInstructionList =
-    nth::type_sequence<Call, Jump, JumpIf, Return>;
+    nth::type_sequence<Call, Jump, JumpIf, Push, Return>;
 
 template <Instruction... Is>
 absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
