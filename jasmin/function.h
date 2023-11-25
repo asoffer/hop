@@ -37,7 +37,7 @@ struct Function : internal::FunctionBase {
   // Appends an op-code for the given `Instruction I` template parameter.
   template <internal::ContainedIn<Set> I>
   constexpr nth::interval<InstructionIndex> append(auto... vs) {
-    if constexpr (not internal::HasValueStack<I>) {
+    if constexpr (not internal::HasValueStackRef<I>) {
       constexpr size_t NumberOfArgumentsProvidedToAppend = sizeof...(vs);
       constexpr size_t NumberOfImmediateValuesRequiredByInstruction =
           internal::ImmediateValueCount<I>();
@@ -49,7 +49,7 @@ struct Function : internal::FunctionBase {
       return internal::FunctionBase::append({ExecPtr<I>(), Value(vs)...});
     } else {
       constexpr size_t DropCount =
-          internal::HasValueStack<I> + internal::HasFunctionState<I>;
+          internal::HasValueStackRef<I> + internal::HasFunctionState<I>;
       constexpr auto parameters = nth::type<decltype(I::execute)>.parameters();
       return parameters.template drop<DropCount>().reduce(
           [&](auto... argument_types) {

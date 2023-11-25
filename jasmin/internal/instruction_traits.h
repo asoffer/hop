@@ -13,7 +13,7 @@ constexpr size_t ParameterCount() {
   } else if constexpr (nth::any_of<I, Call, JumpIf>) {
     return 1;
   } else {
-    if constexpr (internal::HasValueStack<I>) {
+    if constexpr (internal::HasValueStackRef<I>) {
       return I::parameter_count;
     } else {
       size_t parameters = nth::type<decltype(I::execute)>.parameters().size();
@@ -28,7 +28,7 @@ constexpr size_t ReturnCount() {
   if constexpr (nth::any_of<I, Return, Call, Jump, JumpIf>) {
     return 0;
   } else {
-    if constexpr (internal::HasValueStack<I>) {
+    if constexpr (internal::HasValueStackRef<I>) {
       return I::return_count;
     } else {
       return nth::type<decltype(I::execute)>.return_type() != nth::type<void>;

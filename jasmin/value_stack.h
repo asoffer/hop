@@ -18,44 +18,19 @@ void Ignore(ValueStack &);
 
 }  // namespace internal
 
-// A stack of `Value`s to be used as a core component in the stack machine.
-struct ValueStack {
-  // Constructs an empty `ValueStack`.
-  ValueStack()
-      : head_(static_cast<Value *>(std::malloc(16 * sizeof(Value)))),
-        left_(15) {
-    *(head_ + 15) = 16;
-  }
+struct ValueStackRef {
+  constexpr ValueStackRef(ValueStackRef const &)            = default;
+  constexpr ValueStackRef &operator=(ValueStackRef const &) = default;
 
-  // Construts a value stack with the given initializer_list elements pushed
-  // onto the stack in the same order as they appear in `list`.
-  ValueStack(std::initializer_list<Value> list) : ValueStack() {
-    for (Value v : list) { push(v); }
-  }
-
-  ValueStack(ValueStack const &v) { *this = v; }
-
-  ValueStack(ValueStack &&v)
+  constexpr ValueStackRef(ValueStackRef &&v)
       : head_(std::exchange(v.head_, nullptr)),
         left_(std::exchange(v.left_, 0)) {}
 
-  ValueStack &operator=(ValueStack const &v) {
-    Value *ptr =
-        static_cast<Value *>(std::malloc((1 + v.size()) * sizeof(Value)));
-    std::memcpy(ptr, v.begin(), v.size() * sizeof(Value));
-    head_  = ptr + v.size();
-    *head_ = v.size() + 1;
-    left_  = 0;
-    return *this;
-  }
-
-  ValueStack &operator=(ValueStack &&v) {
+  constexpr ValueStackRef &operator=(ValueStackRef &&v) {
     head_ = std::exchange(v.head_, nullptr);
     left_ = std::exchange(v.left_, 0);
     return *this;
   }
-
-  ~ValueStack() { std::free(head_ - size()); }
 
   // Returns the number of elements on the stack.
   constexpr size_t size() const { return capacity() - space_remaining() - 1; }
@@ -66,29 +41,29 @@ struct ValueStack {
     return head_ ? (head_ + space_remaining())->as<size_t>() : 1;
   }
 
-  Value *head() { return head_; }
-  Value const *head() const { return head_; }
+  constexpr Value *head() { return head_; }
+  constexpr Value const *head() const { return head_; }
 
   // Returns true if the stack has no elements and false otherwise.
   constexpr bool empty() const { return size() == 0; }
 
   // Pushes the given value `v` onto the stack.
-  void push(Value const &v) {
+  constexpr void push(Value const &v) {
     if (space_remaining() == 0) [[unlikely]] { reallocate(); }
     *head_++ = v;
     --left_;
   }
-  void push(SmallTrivialValue auto v) { push(Value(v)); }
+  constexpr void push(SmallTrivialValue auto v) { push(Value(v)); }
 
   using const_iterator = Value const *;
   using iterator       = Value *;
 
   // Returns an iterator referrencing the first entry of the `ValueStack`.
-  iterator begin() { return head_ - size(); }
-  const_iterator begin() const { return head_ - size(); }
+  constexpr iterator begin() { return head_ - size(); }
+  constexpr const_iterator begin() const { return head_ - size(); }
   // Returns an iterator referrencing one passed the end of the `ValueStack`.
-  iterator end() { return head_; }
-  const_iterator end() const { return head_; }
+  constexpr iterator end() { return head_; }
+  constexpr const_iterator end() const { return head_; }
 
   // Pop the top `Value` off the stack and return it. Behavior is undefined if
   // the stack is empty.
@@ -200,35 +175,70 @@ struct ValueStack {
     left_ += end - start;
   }
 
+  static constexpr ValueStackRef Push(ValueStackRef vsr, Value v) {
+    vsr.push(v);
+    return vsr;
+  }
+
+  static constexpr ValueStackRef EraseLast(ValueStackRef vsr, size_t count) {
+    NTH_REQUIRE((v.when(internal::harden)), count <= vsr.size())
+        .Log<"Unexpectedly invalid range to erase">();
+    return ValueStackRef(vsr.head_ - count, vsr.left_ + count);
+  }
+
+  constexpr ValueStackRef(Value *head, size_t remaining)
+      : head_(head), left_(remaining) {}
+
+ protected:
+  Value *head_;
+  uint64_t left_;
+
+ private:
+  void reallocate() {
+    size_t capacity = head_->as<size_t>();
+    size_t bytes    = capacity * sizeof(Value);
+
+    Value *new_ptr = static_cast<Value *>(operator new(2 * bytes));
+    auto *q        = head_ - (capacity - 1);
+    for (auto *p = new_ptr; p != new_ptr + bytes; ++p, ++q) { *p = *q; }
+    *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
+
+    operator delete(head_ - (capacity - 1));
+    head_ = new_ptr + capacity - 1;
+    left_ = capacity;
+  }
+};
+
+// A stack of `Value`s to be used as a core component in the stack machine.
+struct ValueStack : ValueStackRef {
+  // Constructs an empty `ValueStack`.
+  ValueStack()
+      : ValueStackRef(static_cast<Value *>(operator new(16 * sizeof(Value))),
+                      15) {
+    *(head() + 15) = 16;
+  }
+
+  ValueStack(ValueStack &&)            = default;
+  ValueStack &operator=(ValueStack &&) = default;
+
+  // Construts a value stack with the given initializer_list elements pushed
+  // onto the stack in the same order as they appear in `list`.
+  ValueStack(std::initializer_list<Value> list) : ValueStack() {
+    for (Value v : list) { push(v); }
+  }
+
+  ~ValueStack() { operator delete(head() - size()); }
+
  private:
   friend ValueStack internal::Concoct(Value *, uint64_t remaining);
   friend void internal::Ignore(ValueStack &);
 
-  ValueStack(Value *head, size_t remaining) : head_(head), left_(remaining) {}
+  ValueStack(Value *head, size_t remaining) : ValueStackRef(head, remaining) {}
 
   void ignore() {
     head_ = nullptr;
     left_ = 0;
   }
-
-  void reallocate() {
-    size_t capacity = head_->as<size_t>();
-    size_t bytes    = capacity * sizeof(Value);
-
-    Value *new_ptr = static_cast<Value *>(std::malloc(2 * bytes));
-    std::memcpy(new_ptr, head_ - (capacity - 1), bytes);
-    *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
-
-    static int n = 5;
-    if (--n == 0) std::abort();
-
-    std::free(head_ - (capacity - 1));
-    head_ = new_ptr + capacity - 1;
-    left_ = capacity;
-  }
-
-  Value *head_;
-  uint64_t left_;
 };
 
 namespace internal {

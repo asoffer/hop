@@ -65,9 +65,9 @@ using exec_fn_type = void (*)(Value *, size_t, Value const *, FrameBase *,
                               uint64_t);
 
 template <typename Inst>
-concept HasValueStack =
+concept HasValueStackRef =
     (nth::type<decltype(Inst::execute)>.parameters().head() ==
-     nth::type<ValueStack &>);
+     nth::type<ValueStackRef>);
 
 // Base class used solely to indicate that any struct inherting from it is an
 // instruction set.
@@ -84,9 +84,9 @@ constexpr bool NonReferencesConvertibleToValues(auto Seq) {
 template <typename I, bool HasFuncState>
 constexpr bool ValidSignatureWithImmediatesImpl() {
   constexpr auto signature = nth::type<decltype(I::execute)>;
-  if (signature.return_type() != nth::type<void>) { return false; }
+  if (signature.return_type() != nth::type<ValueStackRef>) { return false; }
   if (nth::type<decltype(I::execute)>.parameters().template get<0>() !=
-      nth::type<ValueStack &>) {
+      nth::type<ValueStackRef>) {
     return false;
   }
 
@@ -126,9 +126,9 @@ constexpr bool ValidSignatureWithoutImmediatesImpl() {
 template <typename I, auto Signature = nth::type<decltype(I::execute)>,
           bool HasFuncState = HasFunctionState<I>>
 concept HasValidSignature =
-    ((HasValueStack<I> and
+    ((HasValueStackRef<I> and
       ValidSignatureWithImmediatesImpl<I, HasFuncState>()) or
-     (not HasValueStack<I> and
+     (not HasValueStackRef<I> and
       ValidSignatureWithoutImmediatesImpl<I, HasFuncState>()));
 
 }  // namespace internal
@@ -153,7 +153,7 @@ struct Return;
 // overload set (so that `&Inst::execute` is well-formed) and this function
 // adhere to one of the following:
 //
-//   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
+//   (a) Returns accepts and returns a `jasmin::ValueStackRef`, then a mutable
 //       reference to `typename I::function_state` (if and only if that type
 //       syntactically valid), and then some number of arguments convertible to
 //       `Value`. If present the `typename I::function_state&` parameter is a
@@ -175,7 +175,7 @@ template <typename Inst>
 struct StackMachineInstruction {
  private:
   static constexpr bool FS = internal::HasFunctionState<Inst>;
-  static constexpr bool VS = internal::HasValueStack<Inst>;
+  static constexpr bool VS = internal::HasValueStackRef<Inst>;
 
   template <InstructionSet Set>
   static void ExecuteImpl(Value *value_stack_head, size_t vs_left,
@@ -232,31 +232,28 @@ struct StackMachineInstruction {
 #define JASMIN_INTERNAL_GET(p, Ns)                                             \
   (p + Ns)->template as<nth::type_t<parameter_types.template get<Ns>()>>()
 
-      auto parameter_types =
+      constexpr auto parameter_types =
           nth::type<decltype(Inst::execute)>.parameters().template drop<VS + FS>();
-
       if constexpr (VS) {
-        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          ValueStack vs = internal::Concoct(value_stack_head, vs_left);
+        ValueStackRef vsr = [=]<size_t... Ns>(std::index_sequence<Ns...>) {
           if constexpr (FS) {
-            Inst::execute(vs,
-                          std::get<typename Inst::function_state>(
-                              static_cast<frame_type *>(call_stack)->state),
-                          JASMIN_INTERNAL_GET(ip + 1, Ns)...);
+            return Inst::execute(
+                ValueStackRef(value_stack_head, vs_left),
+                std::get<typename Inst::function_state>(
+                    static_cast<frame_type *>(call_stack)->state),
+                JASMIN_INTERNAL_GET(ip + 1, Ns)...);
           } else {
-            Inst::execute(vs, JASMIN_INTERNAL_GET(ip + 1, Ns)...);
+            return Inst::execute(ValueStackRef(value_stack_head, vs_left),
+                                 JASMIN_INTERNAL_GET(ip + 1, Ns)...);
           }
-          vs_left          = vs.space_remaining();
-          value_stack_head = vs.end();
-          internal::Ignore(vs);
         }
         (std::make_index_sequence<parameter_types.size()>{});
 
         NTH_ATTRIBUTE(tailcall)
         return (ip + parameter_types.size() + 1)
             ->template as<internal::exec_fn_type>()(
-                value_stack_head, vs_left, (ip + parameter_types.size() + 1),
-                call_stack, cap_and_left);
+                vsr.end(), vsr.space_remaining(),
+                (ip + parameter_types.size() + 1), call_stack, cap_and_left);
       } else {
         constexpr bool ReturnsVoid =
             (nth::type<decltype(Inst::execute)>.return_type() ==
@@ -341,7 +338,7 @@ struct Return : StackMachineInstruction<Return> {
 // `execute` that is not part of an overload set (so that `&Inst::execute` is
 // well-formed) and this function adhere to one of the following:
 //
-//   (a) Returns void and accepts a `jasmin::ValueStack&`, then a mutable
+//   (a) Accepts and returns  a `jasmin::ValueStackRef`, then a mutable
 //       reference to `typename I::function_state` (if and only if that type
 //       syntactically valid), and then some number of arguments convertible
 //       to `Value`. If present the `typename I::function_state&` parameter is
@@ -376,10 +373,10 @@ constexpr size_t ImmediateValueCount() {
     size_t immediate_value_count =
         nth::type<decltype(I::execute)>.parameters().size();
     constexpr bool FS = internal::HasFunctionState<I>;
-    constexpr bool VS = internal::HasValueStack<I>;
+    constexpr bool VS = internal::HasValueStackRef<I>;
 
     if (not VS) { return 0; }
-    --immediate_value_count;  // Ignore the `ValueStack&` parameter.
+    --immediate_value_count;  // Ignore the `ValueStackRef` parameter.
     if (FS) { --immediate_value_count; }
     return immediate_value_count;
   }
