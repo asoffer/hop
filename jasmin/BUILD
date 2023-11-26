@@ -88,9 +88,7 @@ cc_test(
     srcs = ["instruction_test.cc"],
     deps = [
         ":instruction",
-        "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/debug/log:stderr_log_sink",
-        "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/test:main",
     ],
 )
 
@@ -107,6 +105,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":value",
+        "//jasmin/internal:call_stack",
         "@asoffer_nth//nth/debug",
     ],
 )

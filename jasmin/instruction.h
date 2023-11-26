@@ -66,10 +66,7 @@ constexpr size_t ImmediateValueCount() {
   } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
     return 1;
   } else {
-    return internal::InstructionFunctionType<I>()
-               .parameters()
-               .template drop<internal::HasFunctionState<I>>()
-               .size() -
+    return internal::InstructionFunctionType<I>().parameters().size() -
            (internal::HasFunctionState<I> ? 2 : 1);
   }
 }

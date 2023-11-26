@@ -5,6 +5,7 @@
 #include <memory>
 #include <tuple>
 
+#include "jasmin/internal/call_stack.h"
 #include "jasmin/value.h"
 #include "nth/debug/debug.h"
 

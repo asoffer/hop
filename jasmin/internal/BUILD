@@ -51,6 +51,7 @@ cc_test(
     srcs = ["instruction_traits_test.cc"],
     deps = [
         ":instruction_traits",
-        "@com_google_googletest//:gtest_main",
+        "//jasmin:instruction",
+        "@asoffer_nth//nth/test:main",
     ],
 )
