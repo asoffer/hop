@@ -5,8 +5,8 @@
 namespace jasmin {
 namespace {
 
-struct PushImmediateBool : jasmin::StackMachineInstruction<PushImmediateBool> {
-  static constexpr void execute(ValueStack& stack, bool b) { stack.push(b); }
+struct PushImmediateBool : jasmin::Instruction<PushImmediateBool> {
+  static constexpr bool execute(std::span<Value, 0>, bool b) { return b; }
 };
 
 using Instructions = jasmin::MakeInstructionSet<PushImmediateBool>;

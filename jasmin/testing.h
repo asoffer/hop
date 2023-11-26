@@ -4,49 +4,59 @@
 #include "jasmin/instruction.h"
 
 namespace jasmin {
-namespace internal {
 
-template <typename Inst, bool Imm, bool F>
-concept ValidInstruction = Instruction<Inst> and(HasValueStack<Inst> == Imm) and
-                           (HasFunctionState<Inst> == F);
-
-}  // namespace internal
-
-template <internal::ValidInstruction<false, false> Inst>
-void ExecuteInstruction(ValueStack &value_stack) {
-  constexpr auto signature = nth::type<decltype(Inst::execute)>;
-  signature.parameters().reduce([&](auto... ts) {
-    if constexpr (signature.return_type() == nth::type<void>) {
-      std::apply(Inst::execute, value_stack.pop_suffix<nth::type_t<ts>...>());
-    } else {
-      value_stack.call_on_suffix<&Inst::execute, nth::type_t<ts>...>();
+template <InstructionType Inst>
+requires(not internal::HasFunctionState<Inst>)  //
+    void ExecuteInstruction(ValueStack &value_stack, auto... immediates) {
+  constexpr bool consumes  = requires { &Inst::consume; };
+  constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
+  constexpr auto signature = internal::InstructionFunctionType<Inst>();
+  constexpr auto parameter_count =
+      nth::type_t<signature.parameters().template get<0>()>::extent;
+  std::span<Value, parameter_count> span(value_stack.head() - parameter_count,
+                                         parameter_count);
+  if constexpr (signature.return_type() == nth::type<void>) {
+    inst(span, immediates...);
+    if constexpr (consumes) {
+      value_stack.erase(value_stack.size() - parameter_count,
+                        value_stack.size());
     }
-  });
+  } else {
+    auto v = inst(span, immediates...);
+    if constexpr (consumes) {
+      value_stack.erase(value_stack.size() - parameter_count,
+                        value_stack.size());
+    }
+    value_stack.push(v);
+  }
 }
 
-template <internal::ValidInstruction<false, true> Inst>
-void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::function_state &fn_state) {
-  constexpr auto signature = nth::type<decltype(Inst::execute)>;
-  signature.parameters().template drop<1>().reduce([&](auto... ts) {
-    std::apply([&](auto... values) { Inst::execute(fn_state, values...); },
-               value_stack.pop_suffix<nth::type_t<ts>...>());
-  });
-}
-
-template <internal::ValidInstruction<true, false> Inst,
-          typename... ImmediateArguments>
-void ExecuteInstruction(ValueStack &value_stack,
-                        ImmediateArguments... immediate_arguments) {
-  Inst::execute(value_stack, immediate_arguments...);
-}
-
-template <internal::ValidInstruction<true, true> Inst,
-          typename... ImmediateArguments>
-void ExecuteInstruction(ValueStack &value_stack,
-                        typename Inst::function_state &fn_state,
-                        ImmediateArguments... immediate_arguments) {
-  Inst::execute(value_stack, fn_state, immediate_arguments...);
+template <InstructionType Inst>
+requires(internal::HasFunctionState<Inst>)  //
+    void ExecuteInstruction(ValueStack &value_stack,
+                            typename Inst::function_state &state,
+                            auto... immediates) {
+  constexpr bool consumes  = requires { &Inst::consume; };
+  constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
+  constexpr auto signature = internal::InstructionFunctionType<Inst>();
+  constexpr auto parameter_count =
+      nth::type_t<signature.parameters().template get<1>()>::extent;
+  std::span<Value, parameter_count> span(value_stack.head() - parameter_count,
+                                         parameter_count);
+  if constexpr (signature.return_type() == nth::type<void>) {
+    inst(state, span, immediates...);
+    if constexpr (consumes) {
+      value_stack.erase(value_stack.size() - parameter_count ,
+                        value_stack.size());
+    }
+  } else {
+    auto v = inst(state, span, immediates...);
+    if constexpr (consumes) {
+      value_stack.erase(value_stack.size() - parameter_count,
+                        value_stack.size());
+    }
+    value_stack.push(v);
+  }
 }
 
 }  // namespace jasmin

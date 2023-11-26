@@ -300,8 +300,9 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
     constexpr bool HasFunctionState = internal::HasFunctionState<Inst>;
     constexpr bool ReturnsVoid = (inst_type.return_type() == nth::type<void>);
     constexpr auto parameter_types =
-        inst_type.parameters().template drop<HasFunctionState>();
-    using span_type = nth::type_t<parameter_types.template get<0>()>;
+        inst_type.parameters().template drop<1 + HasFunctionState>();
+    using span_type =
+        nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
     constexpr size_t ValueCount = span_type::extent;
 
     if constexpr (ValueCount == 0 and not ReturnsVoid) {

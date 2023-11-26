@@ -37,8 +37,14 @@ struct Function : internal::FunctionBase {
   // Appends an op-code for the given instruction `I` template parameter.
   template <internal::ContainedIn<Set> I>
   constexpr nth::interval<InstructionIndex> append(auto... vs) {
-    // TODO: Check immediates
-    return internal::FunctionBase::append({ExecPtr<I>(), Value(vs)...});
+    constexpr size_t DropCount = internal::HasFunctionState<I> ? 2 : 1;
+    return internal::InstructionFunctionType<I>()
+        .parameters()
+        .template drop<DropCount>()
+        .reduce([&](auto... ts) {
+          return internal::FunctionBase::append(
+              {ExecPtr<I>(), Value(static_cast<nth::type_t<ts>>(vs))...});
+        });
   }
 
   // Appends an instruction followed by space for `placeholder_count` values

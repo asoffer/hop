@@ -17,7 +17,7 @@ struct Push : Instruction<Push> {
 
 struct Drop : Instruction<Drop> {
   static std::string_view name() { return "drop"; }
-  static constexpr void execute(Value) {}
+  static constexpr void consume(std::span<Value, 1>) {}
   static std::string debug(std::span<Value const, 0>) { return "drop"; }
 };
 
@@ -31,8 +31,7 @@ struct Swap : Instruction<Swap> {
 
 struct Duplicate : Instruction<Duplicate> {
   static std::string_view name() { return "duplicate"; }
-  static Value execute(std::span<Value, 1> values) {
-    return values[0]; }
+  static Value execute(std::span<Value, 1> values) { return values[0]; }
   static constexpr std::string_view debug() { return "duplicate"; }
 };
 
@@ -48,8 +47,8 @@ struct DuplicateAt : Instruction<DuplicateAt> {
 
 struct Load : Instruction<Load> {
   static std::string_view debug() { return "load"; }
-  static void consume(std::span<Value, 1> values, size_t size) {
-    Value::Load(values[0].as<std::byte const *>(), size);
+  static Value consume(std::span<Value, 1> values, size_t size) {
+    return Value::Load(values[0].as<std::byte const *>(), size);
   }
 };
 

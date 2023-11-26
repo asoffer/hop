@@ -1,33 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
-    name = "debug",
-    hdrs = ["debug.h"],
-    srcs = ["debug.cc"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":instruction",
-        ":function",
-        ":value",
-        ":value_stack",
-        "//jasmin/internal:instruction_traits",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/meta:type",
-    ],
-)
-
-cc_test(
-    name = "debug_test",
-    srcs = ["debug_test.cc"],
-    deps = [
-        ":debug",
-        ":testing",
-        "//jasmin/instructions:core",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "execute",
     hdrs = ["execute.h"],
     visibility = ["//visibility:public"],

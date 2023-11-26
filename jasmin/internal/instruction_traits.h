@@ -72,8 +72,8 @@ constexpr bool ValidSignatureWithoutFunctionStateImpl(
     nth::Type auto body_type) {
   if constexpr (body_type.return_type() == nth::type<void>) {
     return ValidParameterSequence(body_type.parameters());
-  } else if constexpr (std::convertible_to<nth::type_t<body_type>,
-                                           jasmin::Value>) {
+  } else if constexpr (std::is_convertible_v<nth::type_t<body_type>,
+                                             jasmin::Value>) {
     return ValidParameterSequence(body_type.parameters());
   } else {
     return false;
@@ -124,7 +124,17 @@ constexpr auto InstructionFunctionPointer() {
 
 template <typename I>
 constexpr auto InstructionFunctionType() {
-  return nth::type<decltype(*InstructionFunctionPointer<I>())>.without_reference();
+  if constexpr (nth::type<I> == nth::type<Call>) {
+    return nth::type<void(std::span<Value, 1>)>;
+  } else if constexpr (nth::type<I> == nth::type<Jump>) {
+    return nth::type<void(std::span<Value, 0>, ptrdiff_t)>;
+  } else if constexpr (nth::type<I> == nth::type<JumpIf>) {
+    return nth::type<void(std::span<Value, 1>, ptrdiff_t)>;
+  } else if constexpr (nth::type<I> == nth::type<Return>) {
+    return nth::type<void(std::span<Value, 0>)>;
+  } else {
+    return nth::type<decltype(*InstructionFunctionPointer<I>())>.without_reference();
+  }
 }
 
 }  // namespace internal

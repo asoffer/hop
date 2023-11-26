@@ -31,9 +31,9 @@ struct StackFrame {
 // Initializes sufficient space in the stack frame. Must be called before any
 // other stack-related instructions on the current `jasmin::Function`. Must not
 // be called more than once on any `jasmin::Function`.
-struct StackAllocate : StackMachineInstruction<StackAllocate> {
+struct StackAllocate : Instruction<StackAllocate> {
   using function_state = internal::StackFrame;
-  static constexpr void execute(ValueStack &, function_state &frame,
+  static constexpr void execute(function_state &frame, std::span<Value, 0>,
                                 size_t size_in_bytes) {
     frame.allocate_once(size_in_bytes);
   }
@@ -45,11 +45,11 @@ struct StackAllocate : StackMachineInstruction<StackAllocate> {
 
 // Returns a pointer into the stack frame associated with the current function,
 // offset by the amount `offset`.
-struct StackOffset : StackMachineInstruction<StackOffset> {
+struct StackOffset : Instruction<StackOffset> {
   using function_state = internal::StackFrame;
-  static constexpr void execute(ValueStack &value_stack, function_state &frame,
-                                size_t offset) {
-    value_stack.push(frame.data() + offset);
+  static constexpr Value execute(function_state &frame, std::span<Value, 0>,
+                                 size_t offset) {
+    return frame.data() + offset;
   }
   static std::string debug(std::span<Value const, 1> immediates) {
     return "stack-offset" + std::to_string(immediates[0].as<size_t>()) +

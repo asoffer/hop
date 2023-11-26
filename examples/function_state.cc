@@ -10,8 +10,10 @@
 // and we suggest looking at the "hello_world.cc" and "fibonacci.cc" examples
 // before this one.
 
-struct PrintCString : jasmin::StackMachineInstruction<PrintCString> {
-  static void execute(char const *cstr) { std::fputs(cstr, stdout); }
+struct PrintCString : jasmin::Instruction<PrintCString> {
+  static void consume(std::span<jasmin::Value, 1> values) {
+    std::fputs(values[0].as<char const *>(), stdout);
+  }
 };
 
 // Below we define the `PushQueue` and `PopQueue` instructions. These two
@@ -27,26 +29,28 @@ struct Queue {
   std::queue<char const *> queue;
 };
 
-struct PushQueue : jasmin::StackMachineInstruction<PushQueue> {
+struct PushQueue : jasmin::Instruction<PushQueue> {
   using function_state = Queue;
-  static void execute(jasmin::ValueStack &, function_state &state,
+  static void execute(function_state &state, std::span<jasmin::Value, 0>,
                       char const *cstr) {
     state.queue.push(cstr);
   }
 };
 
-struct PopQueue : jasmin::StackMachineInstruction<PopQueue> {
+struct PopQueue : jasmin::Instruction<PopQueue> {
   using function_state = Queue;
-  static char const *execute(function_state &state) {
+
+  static char const *execute(function_state &state,
+                             std::span<jasmin::Value, 0>) {
     char const *result = state.queue.front();
     state.queue.pop();
     return result;
   }
 };
 
-struct RotateQueue : jasmin::StackMachineInstruction<RotateQueue> {
+struct RotateQueue : jasmin::Instruction<RotateQueue> {
   using function_state = Queue;
-  static void execute(function_state &state) {
+  static void execute(function_state &state, std::span<jasmin::Value, 0>) {
     char const *top = state.queue.front();
     state.queue.pop();
     state.queue.push(top);

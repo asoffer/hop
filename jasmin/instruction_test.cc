@@ -1,6 +1,6 @@
-#include "jasmin/internal/instruction_traits.h"
-
 #include "jasmin/instruction.h"
+
+#include "jasmin/internal/instruction_traits.h"
 #include "nth/test/test.h"
 
 namespace jasmin {
@@ -36,31 +36,19 @@ NTH_TEST("immediate-value-count") {
   NTH_EXPECT(ImmediateValueCount<SomeImmediates>() == size_t{2});
 }
 
-}  // namespace
-}  // namespace jasmin
-
-#if 0
-namespace jasmin {
-namespace {
-
-bool init = [] {
-  nth::RegisterLogSink(nth::stderr_log_sink);
-  return false;
-}();
-
-struct NoOp : StackMachineInstruction<NoOp> {
-  static void execute() {}
+struct NoOp : Instruction<NoOp> {
+  static void execute(std::span<Value, 0>) {}
 };
-struct Duplicate : StackMachineInstruction<Duplicate> {
-  static void execute(ValueStack& v) { v.push(v.peek_value()); }
+struct Duplicate : Instruction<Duplicate> {
+  static Value execute(std::span<Value, 1> values) { return values[0]; }
 };
-struct PushOne : StackMachineInstruction<PushOne> {
-  static void execute(ValueStack& v) { v.push(1); }
+struct PushOne : Instruction<PushOne> {
+  static Value execute(std::span<Value, 0>) { return 1; }
 };
 
 using Set = MakeInstructionSet<NoOp, Duplicate>;
 
-template <Instruction I>
+template <InstructionType I>
 size_t CountInstructionMatch() {
   size_t count = 0;
   for (size_t i = 0; i < Set::size(); ++i) {
@@ -72,61 +60,57 @@ size_t CountInstructionMatch() {
   return count;
 }
 
-TEST(Instruction, Construction) {
-  EXPECT_EQ(CountInstructionMatch<NoOp>(), 1);
-  EXPECT_EQ(CountInstructionMatch<Duplicate>(), 1);
-  EXPECT_EQ(CountInstructionMatch<JumpIf>(), 1);
-  EXPECT_EQ(CountInstructionMatch<Jump>(), 1);
-  EXPECT_EQ(CountInstructionMatch<Call>(), 1);
-  EXPECT_EQ(CountInstructionMatch<Return>(), 1);
-  EXPECT_EQ(CountInstructionMatch<PushOne>(), 0);
+NTH_TEST("instruction/construction") {
+  NTH_EXPECT(CountInstructionMatch<NoOp>() == 1u);
+  NTH_EXPECT(CountInstructionMatch<Duplicate>() == 1u);
+  NTH_EXPECT(CountInstructionMatch<JumpIf>() == 1u);
+  NTH_EXPECT(CountInstructionMatch<Jump>() == 1u);
+  NTH_EXPECT(CountInstructionMatch<Call>() == 1u);
+  NTH_EXPECT(CountInstructionMatch<Return>() == 1u);
+  NTH_EXPECT(CountInstructionMatch<PushOne>() == 0u);
 
-  if constexpr (internal::harden) {
-    EXPECT_DEATH({ Set::InstructionFunction(Set::size()); },
-                 "Out-of-bounds op-code");
-  }
+  // TODO: Expect out-of-bounds op-code causes crash in hardened build.
 }
 
-TEST(InstructionSet, State) {
-  struct None : StackMachineInstruction<None> {
-    static int execute(int) { return 0; }
+NTH_TEST("instruction-set/state") {
+  struct None : Instruction<None> {
+    static int execute(std::span<Value, 0>, int) { return 0; }
   };
-  struct F : StackMachineInstruction<F> {
+  struct F : Instruction<F> {
     using function_state = int;
-    static int execute(function_state&, int) { return 0; }
+    static int execute(function_state&, std::span<Value, 0>, int) { return 0; }
   };
 
   using Set = MakeInstructionSet<None, F>;
-  EXPECT_EQ(internal::FunctionStateList<Set>, nth::type_sequence<int>);
-  EXPECT_EQ(nth::type<internal::FunctionState<Set>>,
-            nth::type<std::tuple<int>>);
-  EXPECT_EQ(nth::type<internal::FunctionState<MakeInstructionSet<None>>>,
-            nth::type<void>);
-  EXPECT_EQ(nth::type<internal::FunctionState<MakeInstructionSet<F>>>,
-            nth::type<std::tuple<int>>);
+  NTH_EXPECT(internal::FunctionStateList<Set> == nth::type_sequence<int>);
+  NTH_EXPECT(nth::type<internal::FunctionState<Set>> ==
+             nth::type<std::tuple<int>>);
+  NTH_EXPECT(nth::type<internal::FunctionState<MakeInstructionSet<None>>> ==
+             nth::type<void>);
+  NTH_EXPECT(nth::type<internal::FunctionState<MakeInstructionSet<F>>> ==
+             nth::type<std::tuple<int>>);
 }
 
-TEST(Instruction, OpCodeMetadata) {
-  struct None : StackMachineInstruction<None> {
-    static void execute(ValueStack&, int) {}
+NTH_TEST("instruction/opcode-metadata") {
+  struct None : Instruction<None> {
+    static void execute(std::span<Value, 0>, int) {}
   };
-  struct F : StackMachineInstruction<F> {
+  struct F : Instruction<F> {
     using function_state = int;
-    static void execute(ValueStack&, function_state&, int) {}
+    static void execute(function_state&, std::span<Value, 0>, int) {}
   };
 
   using Set = MakeInstructionSet<None, F>;
-  EXPECT_EQ(Set::OpCodeMetadataFor<None>().op_code_value, 4);
-  EXPECT_EQ(Set::OpCodeMetadataFor<None>().immediate_value_count, 1);
-  EXPECT_EQ(Set::OpCodeMetadataFor<F>().op_code_value, 5);
-  EXPECT_EQ(Set::OpCodeMetadataFor<F>().immediate_value_count, 1);
+  NTH_EXPECT(Set::OpCodeMetadataFor<None>().op_code_value == 4u);
+  NTH_EXPECT(Set::OpCodeMetadataFor<None>().immediate_value_count == 1u);
+  NTH_EXPECT(Set::OpCodeMetadataFor<F>().op_code_value == 5u);
+  NTH_EXPECT(Set::OpCodeMetadataFor<F>().immediate_value_count == 1u);
 
-  EXPECT_EQ(Set::OpCodeMetadata(None::ExecuteImpl<Set>),
-            Set::OpCodeMetadataFor<None>());
-  EXPECT_EQ(Set::OpCodeMetadata(F::ExecuteImpl<Set>),
-            Set::OpCodeMetadataFor<F>());
+  NTH_EXPECT(Set::OpCodeMetadata(None::ExecuteImpl<Set>) ==
+             Set::OpCodeMetadataFor<None>());
+  NTH_EXPECT(Set::OpCodeMetadata(F::ExecuteImpl<Set>) ==
+             Set::OpCodeMetadataFor<F>());
 }
 
 }  // namespace
 }  // namespace jasmin
-#endif
