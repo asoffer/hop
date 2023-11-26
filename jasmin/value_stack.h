@@ -13,6 +13,22 @@ struct ValueStack;
 
 namespace internal {
 
+void ReallocateValueStack(Value *value_stack_head, size_t, Value const *ip,
+                          FrameBase *call_stack, uint64_t cap_and_left) {
+  size_t capacity = value_stack_head->as<size_t>();
+  size_t bytes    = capacity * sizeof(Value);
+
+  Value *new_ptr = static_cast<Value *>(operator new(2 * bytes));
+  std::memcpy(new_ptr, value_stack_head - (capacity - 1), bytes);
+  *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
+
+  operator delete(value_stack_head - (capacity - 1));
+
+  NTH_ATTRIBUTE(tailcall)
+  return ip->template as<exec_fn_type>()(new_ptr + capacity - 1, capacity, ip,
+                                         call_stack, cap_and_left);
+}
+
 ValueStack Concoct(Value *, uint64_t remaining);
 void Ignore(ValueStack &);
 

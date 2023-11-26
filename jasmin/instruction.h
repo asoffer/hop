@@ -3,12 +3,15 @@
 
 #include <concepts>
 #include <limits>
-#include <stack>
+#include <span>
+#include <string_view>
 #include <type_traits>
 
 #include "absl/container/flat_hash_map.h"
+#include "jasmin/internal/call_stack.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
+#include "jasmin/internal/instruction_traits.h"
 #include "jasmin/value.h"
 #include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
@@ -18,360 +21,72 @@
 #include "nth/meta/type.h"
 
 namespace jasmin {
-namespace internal {
 
-inline constexpr bool Empty(uint64_t cap_and_left) {
-  return (cap_and_left >> 32) - (cap_and_left & 0xffffffff) == 2;
-}
-
-struct FrameBase {
-  Value const *ip;
+// Template from which all stack machine instructions must inherit. This
+// template is intended to be used with the curiously recurring template
+// pattern, so any instruction should be derived from `jasmin::Instruction`
+// instantiated with itself bound to the template parameter. That is,
+//
+// ```
+// struct MyInstruction : jasmin::Instruction<MyInstruction> { ... };
+// ```
+template <typename>
+struct Instruction {
+  template <typename>
+  static void ExecuteImpl(Value *, size_t, Value const *, internal::FrameBase *,
+                          uint64_t);
 };
 
-template <typename StateType>
-struct Frame : FrameBase {
-  StateType state;
-};
-
-template <>
-struct Frame<void> : FrameBase {};
-
-using exec_fn_type = void (*)(Value *, size_t, Value const *, FrameBase *,
-                              uint64_t);
-
-template <size_t N>
-void ReallocateCallStack(Value *value_stack_head, size_t capacity,
-                         Value const *ip, FrameBase *call_stack,
-                         uint64_t cap_and_left) {
-  uint32_t size = cap_and_left >> 32;
-  auto *ptr     = static_cast<FrameBase *>(operator new(N *(size << 1)));
-  auto *old_ptr = call_stack - (size - 1);
-  std::memcpy(ptr, old_ptr, N * size);
-  operator delete(old_ptr);
-
-  NTH_ATTRIBUTE(tailcall)
-  return ip->template as<exec_fn_type>()(value_stack_head, capacity, ip,
-                                         ptr + (size - 1),
-                                         cap_and_left * 2 | size);
-}
-
-void ReallocateValueStack(Value *value_stack_head, size_t, Value const *ip,
-                          FrameBase *call_stack, uint64_t cap_and_left) {
-  size_t capacity = value_stack_head->as<size_t>();
-  size_t bytes    = capacity * sizeof(Value);
-
-  Value *new_ptr = static_cast<Value *>(operator new(2 * bytes));
-  std::memcpy(new_ptr, value_stack_head - (capacity - 1), bytes);
-  *(new_ptr + (2 * capacity - 1)) = static_cast<size_t>(2 * capacity);
-
-  operator delete(value_stack_head - (capacity - 1));
-
-  NTH_ATTRIBUTE(tailcall)
-  return ip->template as<exec_fn_type>()(new_ptr + capacity - 1, capacity, ip,
-                                         call_stack, cap_and_left);
-}
-
-struct OpCodeMetadata {
-  friend bool operator==(OpCodeMetadata const &,
-                         OpCodeMetadata const &) = default;
-
-  size_t op_code_value;
-  size_t immediate_value_count;
-};
-
-template <typename Inst>
-concept HasValueStackRef =
-    (nth::type<decltype(Inst::execute)>.parameters().head() ==
-     nth::type<ValueStackRef>);
-
-// Base class used solely to indicate that any struct inherting from it is an
-// instruction set.
-struct InstructionSetBase {};
-
-constexpr bool NonReferencesConvertibleToValues(auto Seq) {
-  return (not Seq.template any<[](auto t) {
-    return std::is_reference_v<nth::type_t<t>>;
-  }>() and Seq.template all<[](auto t) {
-    return std::convertible_to<nth::type_t<t>, Value>;
-  }>());
-}
-
-template <typename I, bool HasFuncState>
-constexpr bool ValidSignatureWithImmediatesImpl() {
-  constexpr auto signature = nth::type<decltype(I::execute)>;
-  if (signature.return_type() != nth::type<ValueStackRef>) { return false; }
-  if (nth::type<decltype(I::execute)>.parameters().template get<0>() !=
-      nth::type<ValueStackRef>) {
-    return false;
-  }
-
-  if constexpr (HasFuncState) {
-    return nth::type<decltype(I::execute)>.parameters().template get<1>() ==
-               nth::type<typename I::function_state &> and
-           NonReferencesConvertibleToValues(
-               nth::type<decltype(I::execute)>.parameters().template drop<2>());
-  } else {
-    return NonReferencesConvertibleToValues(
-        nth::type<decltype(I::execute)>.parameters().template drop<1>());
-  }
-}
-
-template <typename I, bool HasFuncState>
-constexpr bool ValidSignatureWithoutImmediatesImpl() {
-  constexpr auto signature   = nth::type<decltype(I::execute)>;
-  constexpr auto return_type = signature.return_type();
-  if (return_type != nth::type<void> and
-      not std::convertible_to<nth::type_t<return_type>, Value>) {
-    return false;
-  }
-
-  if constexpr (HasFuncState) {
-    return nth::type<decltype(I::execute)>.parameters().template get<0>() ==
-               nth::type<typename I::function_state &> and
-           NonReferencesConvertibleToValues(
-               nth::type<decltype(I::execute)>.parameters().template drop<1>());
-  } else {
-    return NonReferencesConvertibleToValues(
-        nth::type<decltype(I::execute)>.parameters());
-  }
-}
-
-// Implementation detail. A concept capturing that the `execute` static member
-// function of the instruction adheres to one of the supported signatures.
-template <typename I, auto Signature = nth::type<decltype(I::execute)>,
-          bool HasFuncState = HasFunctionState<I>>
-concept HasValidSignature =
-    ((HasValueStackRef<I> and
-      ValidSignatureWithImmediatesImpl<I, HasFuncState>()) or
-     (not HasValueStackRef<I> and
-      ValidSignatureWithoutImmediatesImpl<I, HasFuncState>()));
-
-}  // namespace internal
+// Every instruction `Inst` executable as part of Jasmin's stack machine
+// interpreter must publicly inherit from `jasmin::Instruction<Inst>`. Moreover,
+// other than the builtin-instructions forward-declared above, they must also
+// have a static member function named either `execute` or `consume` (but not
+// both). This function must not be part of an overload set so that either
+// `&Inst::execute` or `&Inst::consume` is well-formed). The function must
+// accept as its first parameter a reference to `typename Inst::function_state`,
+// if this type is well-formed. It must then accept a `std::span<jasmin::Value,
+// N>` for some non-negative integer value of `N`, followed by any number of
+// values whose type is convertible to `jasmin::Value`. The function`s return
+// type must either be `void`, or be convertible to `jasmin::Value`.
+template <typename I>
+concept InstructionType = (std::derived_from<I, Instruction<I>> and
+                           (internal::BuiltinInstruction<I>() or
+                            internal::UserDefinedInstruction<I>));
 
 // A concept indicating which types constitute instruction sets understandable
 // by Jasmin's interpreter.
-template <typename T>
-concept InstructionSet = std::derived_from<T, internal::InstructionSetBase>;
+template <typename S>
+concept InstructionSetType = std::derived_from<S, internal::InstructionSetBase>;
 
-// Forward declarations for instructions that need special treatement in
-// Jasmin's interpreter and are built-in to every instruction set. Definitions
-// appear below.
-struct Call;
-struct Duplicate;
-struct DuplicateAt;
-struct Jump;
-struct JumpIf;
-struct Push;
-struct Return;
-
-// Every instruction `Inst` executable as part of Jasmin's stack machine
-// interpreter must publicly inherit from `StackMachineInstruction<Inst>`.
-// Moreover, other than the builtin-instructions forward-declared above, they
-// must also have a static member function `execute` that is not part of an
-// overload set (so that `&Inst::execute` is well-formed) and this function
-// adhere to one of the following:
-//
-//   (a) Returns accepts and returns a `jasmin::ValueStackRef`, then a mutable
-//       reference to `typename I::function_state` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible to
-//       `Value`. If present the `typename I::function_state&` parameter is a
-//       reference to state shared during a function's execution. The arguments
-//       are intperpreted as the immediate values for the instruction. The void
-//       return type indicates that execution should fall through to the
-//       following instruction.
-//
-//   (b) Accepts a mutable reference to `typename I::function_state` (if and
-//       only if that type syntactically valid), and then some number of
-//       arguments convertible to `Value`. The function may return `void` or
-//       another type convertible to `Value`. If present the `typename
-//       I::function_state&` parameter is a reference to state shared during a
-//       function's execution. The arguments are to be popped from the value
-//       stack, and the returned value, if any, will be pushed onto the value
-//       stack. Execution will fall through to the following instruction.
-//
-template <typename Inst>
-struct StackMachineInstruction {
- private:
-  static constexpr bool FS = internal::HasFunctionState<Inst>;
-  static constexpr bool VS = internal::HasValueStackRef<Inst>;
-
-  template <InstructionSet Set>
-  static void ExecuteImpl(Value *value_stack_head, size_t vs_left,
-                          Value const *ip, internal::FrameBase *call_stack,
-                          uint64_t cap_and_left) {
-    using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
-    if constexpr (std::is_same_v<Inst, Call>) {
-      if ((cap_and_left & 0xffffffff) == 0) [[unlikely]] {
-        return internal::ReallocateCallStack<sizeof(frame_type)>(
-            value_stack_head, vs_left, ip, call_stack, cap_and_left);
-      } else {
-        (++call_stack)->ip   = ip;
-        Value const *next_ip = (value_stack_head - 1)
-                                   ->as<internal::FunctionBase const *>()
-                                   ->entry();
-        NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(
-            value_stack_head - 1, vs_left + 1, next_ip, call_stack,
-            cap_and_left - 1);
-      }
-    } else if constexpr (std::is_same_v<Inst, Duplicate>) {
-      if (vs_left == 0) [[unlikely]] {
-        NTH_ATTRIBUTE(tailcall)
-        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
-      } else {
-        *value_stack_head = *(value_stack_head - 1);
-        NTH_ATTRIBUTE(tailcall)
-        return (ip + 1)->template as<internal::exec_fn_type>()(
-            value_stack_head + 1, vs_left - 1, (ip + 1), call_stack,
-            cap_and_left);
-      }
-    } else if constexpr (std::is_same_v<Inst, DuplicateAt>) {
-      if (vs_left == 0) [[unlikely]] {
-        NTH_ATTRIBUTE(tailcall)
-        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
-      } else {
-        *value_stack_head = *(value_stack_head - (ip + 1)->as<size_t>());
-        NTH_ATTRIBUTE(tailcall)
-        return (ip + 2)->template as<internal::exec_fn_type>()(
-            value_stack_head + 1, vs_left - 1, (ip + 2), call_stack,
-            cap_and_left);
-      }
-
-    } else if constexpr (std::is_same_v<Inst, Jump>) {
-      Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
-      NTH_ATTRIBUTE(tailcall)
-      return next_ip->as<internal::exec_fn_type>()(
-          value_stack_head, vs_left, next_ip, call_stack, cap_and_left);
-    } else if constexpr (std::is_same_v<Inst, JumpIf>) {
-      if ((value_stack_head - 1)->as<bool>()) {
-        Value const *next_ip = ip + (ip + 1)->as<ptrdiff_t>();
-        NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(value_stack_head - 1,
-                                                     vs_left + 1, next_ip,
-                                                     call_stack, cap_and_left);
-      } else {
-        Value const *next_ip = ip + 2;
-        NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(value_stack_head - 1,
-                                                     vs_left + 1, next_ip,
-                                                     call_stack, cap_and_left);
-      }
-    } else if constexpr (std::is_same_v<Inst, Push>) {
-      if (vs_left == 0) [[unlikely]] {
-        NTH_ATTRIBUTE(tailcall)
-        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
-      } else {
-        *value_stack_head = *(ip + 1);
-        NTH_ATTRIBUTE(tailcall)
-        return (ip + 2)->template as<internal::exec_fn_type>()(
-            value_stack_head + 1, vs_left - 1, (ip + 2), call_stack,
-            cap_and_left);
-      }
-    } else if constexpr (std::is_same_v<Inst, Return>) {
-      Value const *next_ip = (call_stack--)->ip + 1;
-      ++cap_and_left;
-      if (internal::Empty(cap_and_left)) [[unlikely]] {
-        const_cast<Value &>(*call_stack->ip) = vs_left;
-        --call_stack;
-        const_cast<Value &>(*call_stack->ip) = value_stack_head;
-        std::free(call_stack);
-        return;
-      } else {
-        NTH_ATTRIBUTE(tailcall)
-        return next_ip->as<internal::exec_fn_type>()(
-            value_stack_head, vs_left, next_ip, call_stack, cap_and_left);
-      }
-    } else {
-#define JASMIN_INTERNAL_GET(p, Ns)                                             \
-  (p + Ns)->template as<nth::type_t<parameter_types.template get<Ns>()>>()
-
-      constexpr auto parameter_types =
-          nth::type<decltype(Inst::execute)>.parameters().template drop<VS + FS>();
-      if constexpr (VS) {
-        ValueStackRef vsr = [=]<size_t... Ns>(std::index_sequence<Ns...>) {
-          if constexpr (FS) {
-            return Inst::execute(
-                ValueStackRef(value_stack_head, vs_left),
-                std::get<typename Inst::function_state>(
-                    static_cast<frame_type *>(call_stack)->state),
-                JASMIN_INTERNAL_GET(ip + 1, Ns)...);
-          } else {
-            return Inst::execute(ValueStackRef(value_stack_head, vs_left),
-                                 JASMIN_INTERNAL_GET(ip + 1, Ns)...);
-          }
-        }
-        (std::make_index_sequence<parameter_types.size()>{});
-
-        NTH_ATTRIBUTE(tailcall)
-        return (ip + parameter_types.size() + 1)
-            ->template as<internal::exec_fn_type>()(
-                vsr.end(), vsr.space_remaining(),
-                (ip + parameter_types.size() + 1), call_stack, cap_and_left);
-      } else {
-        constexpr bool ReturnsVoid =
-            (nth::type<decltype(Inst::execute)>.return_type() ==
-             nth::type<void>);
-
-        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          auto *p = value_stack_head - parameter_types.size();
-          if constexpr (ReturnsVoid) {
-            if constexpr (FS) {
-              Inst::execute(std::get<typename Inst::function_state>(
-                                static_cast<frame_type *>(call_stack)->state),
-                            JASMIN_INTERNAL_GET(p, Ns)...);
-            } else {
-              Inst::execute(JASMIN_INTERNAL_GET(p, Ns)...);
-            }
-          } else {
-            if constexpr (FS) {
-              *p = Inst::execute(
-                  std::get<typename Inst::function_state>(
-                      static_cast<frame_type *>(call_stack)->state),
-                  JASMIN_INTERNAL_GET(p, Ns)...);
-            } else {
-              *p = Inst::execute(JASMIN_INTERNAL_GET(p, Ns)...);
-            }
-          }
-        }
-        (std::make_index_sequence<parameter_types.size()>{});
-#undef JASMIN_INTERNAL_GET
-
-        constexpr uint32_t ReductionAmount =
-            parameter_types.size() - not ReturnsVoid;
-
-        NTH_ATTRIBUTE(tailcall)
-        return (ip + 1)->as<internal::exec_fn_type>()(
-            value_stack_head - ReductionAmount, vs_left + ReductionAmount,
-            ip + 1, call_stack, cap_and_left);
-      }
-    }
+// Returns the number of immediate values passed to the instruction `I`.
+template <typename I>
+constexpr size_t ImmediateValueCount() {
+  if constexpr (nth::any_of<I, Call, Return>) {
+    return 0;
+  } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
+    return 1;
+  } else {
+    return internal::InstructionFunctionType<I>()
+               .parameters()
+               .template drop<internal::HasFunctionState<I>>()
+               .size() -
+           (internal::HasFunctionState<I> ? 2 : 1);
   }
-};
+}
 
-// Built-in instructions to every instruction-set.
-struct Call : StackMachineInstruction<Call> {
+// `Call` is a built-in instructions, available automatically in every
+// instruction set. It pops the top value off the stack, interprets it as a
+// function pointer, and begins execution at that function's entry point.
+struct Call : Instruction<Call> {
   static constexpr std::string_view debug(std::span<Value const, 0>) {
     return "call";
-  }
+  }  // namespace jasmin
 };
 
-struct Duplicate : StackMachineInstruction<Duplicate> {
-  static constexpr std::string_view debug(std::span<Value const, 0>) {
-    return "duplicate";
-  }
-};
-
-struct DuplicateAt : StackMachineInstruction<DuplicateAt> {
-  static constexpr std::string debug(
-      std::span<Value const, 1> immediate_values) {
-    return "duplicate at " + std::to_string(immediate_values[0].as<size_t>());
-  }
-};
-
-struct Jump : StackMachineInstruction<Jump> {
+// `Jump` is a built-in instructions, available automatically in every
+// instruction set. It accepts a single `std::ptrdiff_t` immediate value,
+// increments the instruction pointer by that amount and resumes execution.
+struct Jump : Instruction<Jump> {
   static std::string debug(std::span<Value const, 1> immediate_values) {
     ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
     if (n < 0) {
@@ -382,7 +97,12 @@ struct Jump : StackMachineInstruction<Jump> {
   }
 };
 
-struct JumpIf : StackMachineInstruction<JumpIf> {
+// `JumpIf` is a built-in instructions, available automatically in every
+// instruction set. It accepts a single `std::ptrdiff_t` immediate value. It
+// pops the top value off the stack and interprets it as a `bool`. If that bool
+// is false, execution proceeds normally. Otherwise, the instruction pointer is
+// incremented by the immediate value and execution resumes.
+struct JumpIf : Instruction<JumpIf> {
   static std::string debug(std::span<Value const, 1> immediate_values) {
     ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
     if (n < 0) {
@@ -393,77 +113,29 @@ struct JumpIf : StackMachineInstruction<JumpIf> {
   }
 };
 
-struct Push : StackMachineInstruction<Push> {
-  static constexpr std::string debug(
-      std::span<Value const, 1> immediate_values) {
-    return "push (" + std::to_string(immediate_values[0].raw_value()) + ")";
-  }
-};
-
-struct Return : StackMachineInstruction<Return> {
+// `Return` is a built-in instructions, available automatically in every
+// instruction set. It returns control back to the calling function at the
+// instruction pointer immediately following the `Call` instruction that invoked
+// this function.
+struct Return : Instruction<Return> {
   static constexpr std::string_view debug(std::span<Value const, 0>) {
     return "return";
   }
 };
 
-// The `Instruction` concept indicates that a type `I` represents an
-// instruction which Jasmin is capable of executing. Instructions must either
-// be one of the builtin instructions, or publicly inherit from
-// `jasmin::StackMachineInstruction<I>` and have a static member function
-// `execute` that is not part of an overload set (so that `&Inst::execute` is
-// well-formed) and this function adhere to one of the following:
-//
-//   (a) Accepts and returns  a `jasmin::ValueStackRef`, then a mutable
-//       reference to `typename I::function_state` (if and only if that type
-//       syntactically valid), and then some number of arguments convertible
-//       to `Value`. If present the `typename I::function_state&` parameter is
-//       a reference to state shared during a function's execution. The
-//       arguments are intperpreted as the immediate values for the
-//       instruction. The void return type indicates that execution should
-//       fall through to the following instruction.
-//
-//   (b) Accepts a mutable reference to `typename I::function_state` (if and
-//       only if that type is syntactically valid), and then some number of
-//       arguments convertible to `Value`. The function may return `void` or
-//       another type convertible to `Value`. If present the `typename
-//       I::function_state&` parameter is a reference to state shared during a
-//       function's execution. The arguments are to be popped from the value
-//       stack, and the returned value, if any, will be pushed onto the value
-//       stack. Execution will fall through to the following instruction.
-//
-template <typename I>
-concept Instruction =
-    (nth::any_of<I, Call, Duplicate, DuplicateAt, Jump, JumpIf, Push, Return> or
-     (std::derived_from<I, StackMachineInstruction<I>> and
-      internal::HasValidSignature<I>));
-
 namespace internal {
 
-template <Instruction I>
-constexpr size_t ImmediateValueCount() {
-  if constexpr (nth::any_of<I, Call, Duplicate, Return>) {
-    return 0;
-  } else if constexpr (nth::any_of<I, DuplicateAt, Jump, JumpIf, Push>) {
-    return 1;
-  } else {
-    size_t immediate_value_count =
-        nth::type<decltype(I::execute)>.parameters().size();
-    constexpr bool FS = internal::HasFunctionState<I>;
-    constexpr bool VS = internal::HasValueStackRef<I>;
+struct OpCodeMetadata {
+  friend bool operator==(OpCodeMetadata const &,
+                         OpCodeMetadata const &) = default;
 
-    if (not VS) { return 0; }
-    --immediate_value_count;  // Ignore the `ValueStackRef` parameter.
-    if (FS) { --immediate_value_count; }
-    return immediate_value_count;
-  }
-}
-
-template <typename I>
-concept InstructionOrInstructionSet = Instruction<I> or InstructionSet<I>;
+  size_t op_code_value;
+  size_t immediate_value_count;
+};
 
 // Constructs an InstructionSet type from a list of instructions. Does no
 // checking to validate that `Is` do not contain repeats.
-template <Instruction... Is>
+template <InstructionType... Is>
 struct MakeInstructionSet : InstructionSetBase {
   using self_type                    = MakeInstructionSet;
   static constexpr auto instructions = nth::type_sequence<Is...>;
@@ -492,7 +164,7 @@ struct MakeInstructionSet : InstructionSetBase {
   template <nth::any_of<Is...> I>
   static constexpr internal::OpCodeMetadata OpCodeMetadataFor() {
     return {.op_code_value         = OpCodeFor<I>(),
-            .immediate_value_count = internal::ImmediateValueCount<I>()};
+            .immediate_value_count = ImmediateValueCount<I>()};
   }
 
   static auto InstructionFunction(uint64_t op_code) {
@@ -531,7 +203,7 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
     if constexpr (processed.reduce(
                       [&](auto... vs) { return ((vs == head) or ...); })) {
       return FlattenInstructionList(tail, processed);
-    } else if constexpr (Instruction<nth::type_t<head>>) {
+    } else if constexpr (InstructionType<nth::type_t<head>>) {
       // TODO: Is this a bug in Clang? `tail` does not work but
       // `decltype(tail){}` does.
       return FlattenInstructionList(decltype(tail){},
@@ -544,10 +216,9 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
 }
 
 constexpr auto BuiltinInstructionList =
-    nth::type_sequence<Call, Duplicate, DuplicateAt, Jump, JumpIf, Push,
-                       Return>;
+    nth::type_sequence<Call, Jump, JumpIf, Return>;
 
-template <Instruction... Is>
+template <InstructionType... Is>
 absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
     MakeInstructionSet<Is...>::Metadata = [] {
       absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> result;
@@ -556,9 +227,14 @@ absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
        ...);
       return result;
     }();
+
+template <typename I>
+concept InstructionOrInstructionSet =
+    InstructionType<I> or InstructionSetType<I>;
+
 }  // namespace internal
 
-template <internal::InstructionOrInstructionSet... Is>
+template <typename... Is>
 using MakeInstructionSet = nth::type_t<
     internal::FlattenInstructionList(
         /*unprocessed=*/nth::type_sequence<Is...>,
@@ -566,6 +242,131 @@ using MakeInstructionSet = nth::type_t<
         .reduce([](auto... vs) {
           return nth::type<internal::MakeInstructionSet<nth::type_t<vs>...>>;
         })>;
+
+// Implementation details.
+
+template <typename Inst>
+template <typename Set>
+void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
+                                    Value const *ip,
+                                    internal::FrameBase *call_stack,
+                                    uint64_t cap_and_left) {
+  using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
+  constexpr auto inst_type = nth::type<Inst>;
+  if constexpr (inst_type == nth::type<Call>) {
+    if ((cap_and_left & 0xffffffff) == 0) [[unlikely]] {
+      return internal::ReallocateCallStack<sizeof(frame_type)>(
+          value_stack_head, vs_left, ip, call_stack, cap_and_left);
+    } else {
+      --value_stack_head;
+      (++call_stack)->ip = ip;
+      ip = value_stack_head->as<internal::FunctionBase const *>()->entry();
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
+                                              call_stack, cap_and_left - 1);
+    }
+  } else if constexpr (inst_type == nth::type<Jump>) {
+    ip += (ip + 1)->as<ptrdiff_t>();
+    NTH_ATTRIBUTE(tailcall)
+    return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
+                                            call_stack, cap_and_left);
+  } else if constexpr (inst_type == nth::type<JumpIf>) {
+    --value_stack_head;
+    if (value_stack_head->as<bool>()) {
+      ip += (ip + 1)->as<ptrdiff_t>();
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
+                                              call_stack, cap_and_left);
+    } else {
+      ip += 2;
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
+                                              call_stack, cap_and_left);
+    }
+  } else if constexpr (inst_type == nth::type<Return>) {
+    ip = (call_stack--)->ip + 1;
+    ++cap_and_left;
+    if (internal::EmptyCallStack(cap_and_left)) [[unlikely]] {
+      const_cast<Value &>(*call_stack->ip) = vs_left;
+      --call_stack;
+      const_cast<Value &>(*call_stack->ip) = value_stack_head;
+      operator delete(call_stack);
+      return;
+    } else {
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
+    }
+  } else {
+    constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
+    constexpr auto inst_type = internal::InstructionFunctionType<Inst>();
+    constexpr bool HasFunctionState = internal::HasFunctionState<Inst>;
+    constexpr bool ReturnsVoid = (inst_type.return_type() == nth::type<void>);
+    constexpr auto parameter_types =
+        inst_type.parameters().template drop<HasFunctionState>();
+    using span_type = nth::type_t<parameter_types.template get<0>()>;
+    constexpr size_t ValueCount = span_type::extent;
+
+    if constexpr (ValueCount == 0 and not ReturnsVoid) {
+      if (vs_left == 0) [[unlikely]] {
+        NTH_ATTRIBUTE(tailcall)
+        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
+      }
+    }
+
+#define JASMIN_INTERNAL_GET(p, Ns)                                             \
+  (p + Ns)->template as<nth::type_t<parameter_types.template get<Ns>()>>()
+
+    if constexpr (HasFunctionState) {
+      auto &fn_state = std::get<typename Inst::function_state>(
+          static_cast<frame_type *>(call_stack)->state);
+
+      [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+        if constexpr (ReturnsVoid) {
+          inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+        } else {
+          *(value_stack_head -
+            (requires { &Inst::consume; } ? ValueCount : 0)) =
+              inst(fn_state,
+                   span_type(value_stack_head - ValueCount, ValueCount),
+                   JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+        }
+      }
+      (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+    } else {
+      [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+        if constexpr (ReturnsVoid) {
+          inst(span_type(value_stack_head - ValueCount, ValueCount),
+               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+        } else {
+          *(value_stack_head -
+            (requires { &Inst::consume; } ? ValueCount : 0)) =
+              inst(span_type(value_stack_head - ValueCount, ValueCount),
+                   JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+        }
+      }
+      (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+    }
+#undef JASMIN_INTERNAL_GET
+
+    if constexpr (not ReturnsVoid) {
+      ++value_stack_head;
+      --vs_left;
+    }
+
+    if constexpr (requires { &Inst::consume; }) {
+      value_stack_head -= ValueCount;
+      vs_left += ValueCount;
+    }
+
+    ip += ImmediateValueCount<Inst>() + 1;
+    NTH_ATTRIBUTE(tailcall)
+    return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
+                                            call_stack, cap_and_left);
+  }
+}
 
 }  // namespace jasmin
 

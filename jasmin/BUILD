@@ -71,8 +71,10 @@ cc_library(
     deps = [
         ":value",
         ":value_stack",
+        "//jasmin/internal:call_stack",
         "//jasmin/internal:function_base",
         "//jasmin/internal:function_state",
+        "//jasmin/internal:instruction_traits",
         "@asoffer_nth//nth/base:attributes",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",

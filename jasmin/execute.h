@@ -14,7 +14,7 @@ namespace jasmin {
 
 // Executes the given function `f` with an initial stack of values given by the
 // object referenced by `value_stack`. `value_stack` is modified in place.
-template <InstructionSet Set>
+template <InstructionSetType Set>
 void Execute(Function<Set> const &f, ValueStack &value_stack) {
   Value head = value_stack.end();
   Value left = value_stack.space_remaining();
@@ -44,7 +44,7 @@ void Execute(Function<Set> const &f, ValueStack &value_stack) {
 // `std::decay_t<decltype(return_values)...>`. However, in debug and hardened
 // builds (see `//jasmin/configuration` for details) the behavior is defined to
 // report an error message to `stderr` and abort program execution.
-template <InstructionSet Set>
+template <InstructionSetType Set>
 void Execute(Function<Set> const &f, std::initializer_list<Value> arguments,
              SmallTrivialValue auto &...return_values) {
   NTH_REQUIRE((v.when(internal::harden)),

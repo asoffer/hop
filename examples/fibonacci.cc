@@ -46,8 +46,10 @@ auto FibonacciWithSubtract() {
 }
 
 template <std::integral T, T N>
-struct DecrementBy : jasmin::StackMachineInstruction<DecrementBy<T, N>> {
-  static constexpr T execute(T x) { return x - N; }
+struct DecrementBy : jasmin::Instruction<DecrementBy<T, N>> {
+  static constexpr T consume(std::span<jasmin::Value, 1> values) {
+    return values[0].as<T>() - N;
+  }
 };
 
 auto FibonacciWithHardCodedDecrements() {

@@ -90,7 +90,7 @@ auto MakePair() {
       });
 }
 
-template <InstructionSet Set>
+template <InstructionSetType Set>
 inline std::array DebugInstructionTable = [] {
   std::array a = Set::instructions.reduce([](auto... ts) {
     return std::array{MakePair<typename Set::self_type, nth::type_t<ts>>()...};
@@ -105,7 +105,7 @@ inline std::array DebugInstructionTable = [] {
 
 }  // namespace internal
 
-template <int&..., InstructionSet Set>
+template <int&..., InstructionSetType Set>
 std::string DumpFunction(Function<Set> const&f) {
   using instruction_type =
       decltype(&Call::template ExecuteImpl<typename Set::self_type>);

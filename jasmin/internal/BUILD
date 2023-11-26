@@ -1,6 +1,14 @@
 package(default_visibility = ["//jasmin:__subpackages__"])
 
 cc_library(
+    name = "call_stack",
+    hdrs = ["call_stack.h"],
+    deps = [
+        "//jasmin:value",
+    ],
+)
+
+cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     deps = [
@@ -31,7 +39,9 @@ cc_library(
     hdrs = ["instruction_traits.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//jasmin:instruction",
+        ":function_state",
+        "//jasmin:value",
+        "@asoffer_nth//nth/meta:concepts",
         "@asoffer_nth//nth/meta:type",
     ],
 )
