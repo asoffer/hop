@@ -22,7 +22,7 @@ void Execute(Function<Set> const &f, ValueStack &value_stack) {
 
   using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
   frame_type *call_stack =
-      static_cast<frame_type *>(std::malloc(sizeof(frame_type) * 8));
+      static_cast<frame_type *>(operator new(sizeof(frame_type) * 8));
   Value const *ip = f.entry();
   // These aren't actually instruction pointers, but we're using them during
   // execution to store information about the ValueStack so it can be

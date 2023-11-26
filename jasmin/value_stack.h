@@ -41,7 +41,7 @@ struct ValueStack {
   ValueStack()
       : head_(static_cast<Value *>(operator new(16 * sizeof(Value)))),
         left_(15) {
-    *(head() + 15) = 16;
+    *(head() + 15) = size_t{16};
   }
 
   // Construts a value stack with the given initializer_list elements pushed
