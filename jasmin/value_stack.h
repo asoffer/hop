@@ -35,15 +35,31 @@ void Ignore(ValueStack &);
 
 }  // namespace internal
 
-struct ValueStackRef {
-  constexpr ValueStackRef(ValueStackRef const &)            = default;
-  constexpr ValueStackRef &operator=(ValueStackRef const &) = default;
+// A stack of `Value`s to be used as a core component in the stack machine.
+struct ValueStack {
+  // Constructs an empty `ValueStack`.
+  ValueStack()
+      : head_(static_cast<Value *>(operator new(16 * sizeof(Value)))),
+        left_(15) {
+    *(head() + 15) = 16;
+  }
 
-  constexpr ValueStackRef(ValueStackRef &&v)
+  // Construts a value stack with the given initializer_list elements pushed
+  // onto the stack in the same order as they appear in `list`.
+  ValueStack(std::initializer_list<Value> list) : ValueStack() {
+    for (Value v : list) { push(v); }
+  }
+
+  ~ValueStack() { operator delete(head() - size()); }
+
+  ValueStack(ValueStack const &)            = default;
+  ValueStack &operator=(ValueStack const &) = default;
+
+  constexpr ValueStack(ValueStack &&v)
       : head_(std::exchange(v.head_, nullptr)),
         left_(std::exchange(v.left_, 0)) {}
 
-  constexpr ValueStackRef &operator=(ValueStackRef &&v) {
+  constexpr ValueStack &operator=(ValueStack &&v) {
     head_ = std::exchange(v.head_, nullptr);
     left_ = std::exchange(v.left_, 0);
     return *this;
@@ -115,66 +131,6 @@ struct ValueStackRef {
     return peek_value(count_back).as<T>();
   }
 
-  // Swaps the top of the stack with the element `n` entries from the top of the
-  // stack. Behavior is undefined if `n` is zero, or if `n` is larger than the
-  // number of elements in the stack.
-  void swap_with(size_t n) {
-    NTH_REQUIRE((v.when(internal::harden)), n != size_t{0})
-        .Log<"Unexpectedly attempting to swap an element with itself">();
-    NTH_REQUIRE((v.when(internal::harden)), size() > n)
-        .Log<"Unexpectedly too few elements in ValueStack">();
-    auto *p = head_ - 1;
-    std::swap(*p, *(p - n));
-  }
-
-  // Pops the last `sizeof...(Ts)` elements off the stack and returns a
-  // `std:tuple<Ts...>` consisting of the values popped from the stack such that
-  // the elements in the tuple are in the same order as they were in the stack.
-  // In other words, the last entry in the tuple was at the top of the stack.
-  // Behavior is undefined if the stack has fewer that `sizeof...(Ts)` elements
-  // or if any of the stored elements do not match their assocaited type in
-  // `Ts...`.
-  template <SmallTrivialValue... Ts>
-  std::tuple<Ts...> pop_suffix() {
-    NTH_REQUIRE((v.when(internal::harden)), size() >= sizeof...(Ts))
-        .Log<"Unexpectedly too few elements in ValueStack">();
-    head_ -= sizeof...(Ts);
-    left_ += sizeof...(Ts);
-    auto *p = head_;
-    return std::tuple<Ts...>{(p++)->template as<Ts>()...};
-  }
-
-  template <auto F, typename... Ts, typename... Args>
-  requires std::invocable<decltype(F), Args..., Ts...>
-  void call_on_suffix(Args &&...args) {
-    if constexpr (std::is_void_v<
-                      std::invoke_result_t<decltype(F), Args..., Ts...>>) {
-      if constexpr (sizeof...(Ts) == 0) {
-        F(std::forward<Args>(args)...);
-      } else {
-        auto *p = head_ - sizeof...(Ts);
-        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          F(std::forward<Args>(args)..., (p + Ns)->template as<Ts>()...);
-        }
-        (std::make_index_sequence<sizeof...(Ts)>{});
-        head_ -= sizeof...(Ts);
-        left_ += sizeof...(Ts);
-      }
-    } else {
-      if constexpr (sizeof...(Ts) == 0) {
-        push(F(std::forward<Args>(args)...));
-      } else {
-        auto *p = head_ - sizeof...(Ts);
-        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          *p = F(std::forward<Args>(args)..., (p + Ns)->template as<Ts>()...);
-        }
-        (std::make_index_sequence<sizeof...(Ts)>{});
-        head_ -= (sizeof...(Ts) - 1);
-        left_ += (sizeof...(Ts) - 1);
-      }
-    }
-  }
-
   // Erase elements from the stack starting at position `start` up to but not
   // including position `end`. If `start == end` no elements are removed. Note
   // that positions are measured from the bottom, rather than the top, of the
@@ -192,25 +148,12 @@ struct ValueStackRef {
     left_ += end - start;
   }
 
-  static constexpr ValueStackRef Push(ValueStackRef vsr, Value v) {
-    vsr.push(v);
-    return vsr;
-  }
-
-  static constexpr ValueStackRef EraseLast(ValueStackRef vsr, size_t count) {
-    NTH_REQUIRE((v.when(internal::harden)), count <= vsr.size())
-        .Log<"Unexpectedly invalid range to erase">();
-    return ValueStackRef(vsr.head_ - count, vsr.left_ + count);
-  }
-
-  constexpr ValueStackRef(Value *head, size_t remaining)
-      : head_(head), left_(remaining) {}
-
- protected:
-  Value *head_;
-  uint64_t left_;
-
  private:
+  friend ValueStack internal::Concoct(Value *, uint64_t remaining);
+  friend void internal::Ignore(ValueStack &);
+
+  ValueStack(Value *head, size_t remaining) : head_(head), left_(remaining) {}
+
   void reallocate() {
     size_t capacity = head_->as<size_t>();
     size_t bytes    = capacity * sizeof(Value);
@@ -224,38 +167,14 @@ struct ValueStackRef {
     head_ = new_ptr + capacity - 1;
     left_ = capacity;
   }
-};
-
-// A stack of `Value`s to be used as a core component in the stack machine.
-struct ValueStack : ValueStackRef {
-  // Constructs an empty `ValueStack`.
-  ValueStack()
-      : ValueStackRef(static_cast<Value *>(operator new(16 * sizeof(Value))),
-                      15) {
-    *(head() + 15) = 16;
-  }
-
-  ValueStack(ValueStack &&)            = default;
-  ValueStack &operator=(ValueStack &&) = default;
-
-  // Construts a value stack with the given initializer_list elements pushed
-  // onto the stack in the same order as they appear in `list`.
-  ValueStack(std::initializer_list<Value> list) : ValueStack() {
-    for (Value v : list) { push(v); }
-  }
-
-  ~ValueStack() { operator delete(head() - size()); }
-
- private:
-  friend ValueStack internal::Concoct(Value *, uint64_t remaining);
-  friend void internal::Ignore(ValueStack &);
-
-  ValueStack(Value *head, size_t remaining) : ValueStackRef(head, remaining) {}
 
   void ignore() {
     head_ = nullptr;
     left_ = 0;
   }
+
+  Value *head_;
+  uint64_t left_;
 };
 
 namespace internal {

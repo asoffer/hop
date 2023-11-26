@@ -87,55 +87,6 @@ TEST(ValueStack, PushPop) {
   }
 }
 
-TEST(ValueStack, SwapWith) {
-  ValueStack value_stack;
-
-  if constexpr (internal::harden) {
-    EXPECT_DEATH({ value_stack.swap_with(1); }, "too few elements");
-  }
-  value_stack.push(1);
-  if constexpr (internal::harden) {
-    EXPECT_DEATH({ value_stack.swap_with(0); }, "with itself");
-    EXPECT_DEATH({ value_stack.swap_with(1); }, "too few elements");
-  }
-
-  value_stack.push(true);
-  value_stack.swap_with(1);
-  EXPECT_EQ(value_stack.peek<int>(), 1);
-
-  value_stack.swap_with(1);
-  EXPECT_TRUE(value_stack.peek<bool>());
-
-  value_stack.push(3.14);
-  value_stack.swap_with(2);
-  EXPECT_EQ(value_stack.peek<int>(), 1);
-
-  value_stack.swap_with(2);
-  EXPECT_EQ(value_stack.peek<double>(), 3.14);
-}
-
-TEST(ValueStack, PopSuffix) {
-  {
-    ValueStack value_stack{1, true, 3.14};
-    EXPECT_EQ(value_stack.pop_suffix(), std::tuple());
-  }
-  {
-    ValueStack value_stack{1, true, 3.14};
-    EXPECT_EQ((value_stack.pop_suffix<bool, double>()), std::tuple(true, 3.14));
-  }
-  if constexpr (internal::debug) {
-    ValueStack value_stack{1, true, 3.14};
-    EXPECT_DEATH({ (value_stack.pop_suffix<bool, int>()); },
-                 "Value type mismatch");
-  }
-
-  if constexpr (internal::harden) {
-    ValueStack value_stack{1, true, 3.14};
-    EXPECT_DEATH({ (value_stack.pop_suffix<int, int, bool, double>()); },
-                 "too few elements");
-  }
-}
-
 TEST(ValueStack, Erase) {
   {
     ValueStack value_stack{1, true, 3.14};
