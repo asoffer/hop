@@ -32,12 +32,14 @@ auto FibonacciRecursive() {
   func.append<jasmin::Push>(uint64_t{1});
   func.append<jasmin::Subtract<uint64_t>>();
   func.append<jasmin::Push>(&func);
-  func.append<jasmin::Call>();
+  func.append<jasmin::Call>(
+      jasmin::Call::Specification{.parameters = 1, .returns = 1});
   func.append<jasmin::Swap>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::Subtract<uint64_t>>();
   func.append<jasmin::Push>(&func);
-  func.append<jasmin::Call>();
+  func.append<jasmin::Call>(
+      jasmin::Call::Specification{.parameters = 1, .returns = 1});
   func.append<jasmin::Add<uint64_t>>();
   nth::interval<jasmin::InstructionIndex> ret = func.append<jasmin::Return>();
   func.set_value(jump, 0, ret.lower_bound() - jump.lower_bound());

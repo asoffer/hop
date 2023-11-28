@@ -21,13 +21,6 @@ concept ContainedIn = Set::instructions.template contains<nth::type<I>>();
 // InstructionSet template parameter).
 template <InstructionSetType Set>
 struct Function : internal::FunctionBase {
- private:
-  template <InstructionType I>
-  static Value ExecPtr() {
-    return &I::template ExecuteImpl<typename Set::self_type>;
-  }
-
- public:
   // Constructs an empty `Function` given a `parameter_count` representing
   // the number of parameters to the function, and a `return_count`
   // representing the number of return values for the function.
@@ -43,7 +36,8 @@ struct Function : internal::FunctionBase {
         .template drop<DropCount>()
         .reduce([&](auto... ts) {
           return internal::FunctionBase::append(
-              {ExecPtr<I>(), Value(static_cast<nth::type_t<ts>>(vs))...});
+              {&I::template ExecuteImpl<Set>,
+               Value(static_cast<nth::type_t<ts>>(vs))...});
         });
   }
 
@@ -53,7 +47,7 @@ struct Function : internal::FunctionBase {
   // `nth::interval<InstructionIndex>`.
   template <internal::ContainedIn<Set> I>
   constexpr nth::interval<InstructionIndex> append_with_placeholders() {
-    return internal::FunctionBase::append(ExecPtr<I>(),
+    return internal::FunctionBase::append(&I::template ExecuteImpl<Set>,
                                           ImmediateValueCount<I>());
   }
 };

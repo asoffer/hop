@@ -17,6 +17,11 @@ struct Return;
 
 namespace internal {
 
+struct CallSpec {
+  uint32_t parameters;
+  uint32_t returns;
+};
+
 // Base class used solely to indicate that any struct inherting from it is an
 // instruction set.
 struct InstructionSetBase {};
@@ -125,7 +130,7 @@ constexpr auto InstructionFunctionPointer() {
 template <typename I>
 constexpr auto InstructionFunctionType() {
   if constexpr (nth::type<I> == nth::type<Call>) {
-    return nth::type<void(std::span<Value, 1>)>;
+    return nth::type<void(std::span<Value, 1>, CallSpec)>;
   } else if constexpr (nth::type<I> == nth::type<Jump>) {
     return nth::type<void(std::span<Value, 0>, ptrdiff_t)>;
   } else if constexpr (nth::type<I> == nth::type<JumpIf>) {

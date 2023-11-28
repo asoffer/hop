@@ -4,10 +4,10 @@
 #include <concepts>
 #include <limits>
 #include <span>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
-#include "absl/container/flat_hash_map.h"
 #include "jasmin/internal/call_stack.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
@@ -60,24 +60,40 @@ concept InstructionSetType = std::derived_from<S, internal::InstructionSetBase>;
 
 // Returns the number of immediate values passed to the instruction `I`.
 template <typename I>
-constexpr size_t ImmediateValueCount() {
-  if constexpr (nth::any_of<I, Call, Return>) {
-    return 0;
-  } else if constexpr (nth::any_of<I, Jump, JumpIf>) {
-    return 1;
-  } else {
-    return internal::InstructionFunctionType<I>().parameters().size() -
-           (internal::HasFunctionState<I> ? 2 : 1);
-  }
-}
+constexpr size_t ImmediateValueCount();
+
+// Returns the number of parameters passed from the stack to the instruction
+// `I`.
+template <typename I>
+constexpr size_t ParameterCount();
+
+// Return `true` if the instruction consumes its input (i.e., is defined via
+// `consume`) and `false` otherwise (i.e., is defined via `execute`).
+template <typename I>
+constexpr bool ConsumesInput();
+
+// Return `true` if the instruction returns a value and `false` otherwise.
+template <typename I>
+constexpr bool ReturnsValue();
+
+// Returns a `std::string_view` representing the name of the instruction. This
+// name should not be considered or even unique amongst instructions and should
+// no be relied upon for anything other than debugging.
+template <typename I>
+constexpr std::string InstructionName();
 
 // `Call` is a built-in instructions, available automatically in every
 // instruction set. It pops the top value off the stack, interprets it as a
 // function pointer, and begins execution at that function's entry point.
 struct Call : Instruction<Call> {
-  static constexpr std::string_view debug(std::span<Value const, 0>) {
-    return "call";
-  }  // namespace jasmin
+  using Specification = internal::CallSpec;
+
+  static std::string debug(std::span<Value const, 1> immediate_values) {
+    return "call " +
+           std::to_string(immediate_values[0].as<Specification>().parameters) +
+           " -> " +
+           std::to_string(immediate_values[0].as<Specification>().returns);
+  }
 };
 
 // `Jump` is a built-in instructions, available automatically in every
@@ -122,69 +138,11 @@ struct Return : Instruction<Return> {
 
 namespace internal {
 
-struct OpCodeMetadata {
-  friend bool operator==(OpCodeMetadata const &,
-                         OpCodeMetadata const &) = default;
-
-  size_t op_code_value;
-  size_t immediate_value_count;
-};
-
 // Constructs an InstructionSet type from a list of instructions. Does no
 // checking to validate that `Is` do not contain repeats.
 template <InstructionType... Is>
 struct MakeInstructionSet : InstructionSetBase {
-  using self_type                    = MakeInstructionSet;
   static constexpr auto instructions = nth::type_sequence<Is...>;
-
-  // Returns the number of instructions in the instruction set.
-  static constexpr size_t size() { return sizeof...(Is); }
-
-  // Returns the `internal::OpCodeMetadata` struct corresponding to the
-  // op-code as specified in the byte-code.
-  static internal::OpCodeMetadata OpCodeMetadata(Value v) {
-    auto iter = Metadata.find(v.as<exec_fn_type>());
-    NTH_REQUIRE((v.when(internal::harden)), iter != Metadata.end());
-    return iter->second;
-  }
-
-  // Returns a `uint64_t` indicating the op-code for the given template
-  // parameter instruction `I`.
-  template <nth::any_of<Is...> I>
-  static constexpr uint64_t OpCodeFor() {
-    constexpr size_t value = OpCodeForImpl<I>();
-    return value;
-  }
-
-  // Returns a `uint64_t` indicating the op-code for the given template
-  // parameter instruction `I`.
-  template <nth::any_of<Is...> I>
-  static constexpr internal::OpCodeMetadata OpCodeMetadataFor() {
-    return {.op_code_value         = OpCodeFor<I>(),
-            .immediate_value_count = ImmediateValueCount<I>()};
-  }
-
-  static auto InstructionFunction(uint64_t op_code) {
-    NTH_REQUIRE(op_code < sizeof...(Is)).Log<"Out-of-bounds op-code.">();
-    return table[op_code];
-  }
-
- private:
-  static constexpr exec_fn_type table[sizeof...(Is)] = {
-      &Is::template ExecuteImpl<MakeInstructionSet>...};
-
-  static absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
-      Metadata;
-
-  template <nth::any_of<Is...> I>
-  static constexpr uint64_t OpCodeForImpl() {
-    // Because the fold-expression below unconditionally adds one to `i` on
-    // its first evaluation, we start `i` at its maximum value and allow it to
-    // wrap around.
-    uint64_t i = std::numeric_limits<uint64_t>::max();
-    static_cast<void>(((++i, std::is_same_v<I, Is>) or ...));
-    return i;
-  }
 };
 
 // Given a list of `Instruction`s or `InstructionSet`s,
@@ -212,30 +170,13 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
   }
 }
 
-constexpr auto BuiltinInstructionList =
-    nth::type_sequence<Call, Jump, JumpIf, Return>;
-
-template <InstructionType... Is>
-absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> const
-    MakeInstructionSet<Is...>::Metadata = [] {
-      absl::flat_hash_map<exec_fn_type, internal::OpCodeMetadata> result;
-      (result.emplace(&Is::template ExecuteImpl<self_type>,
-                      OpCodeMetadataFor<Is>()),
-       ...);
-      return result;
-    }();
-
-template <typename I>
-concept InstructionOrInstructionSet =
-    InstructionType<I> or InstructionSetType<I>;
-
 }  // namespace internal
 
 template <typename... Is>
 using MakeInstructionSet = nth::type_t<
     internal::FlattenInstructionList(
         /*unprocessed=*/nth::type_sequence<Is...>,
-        /*processed=*/internal::BuiltinInstructionList)
+        /*processed=*/nth::type_sequence<Call, Jump, JumpIf, Return>)
         .reduce([](auto... vs) {
           return nth::type<internal::MakeInstructionSet<nth::type_t<vs>...>>;
         })>;
@@ -281,7 +222,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
                                               call_stack, cap_and_left);
     }
   } else if constexpr (inst_type == nth::type<Return>) {
-    ip = (call_stack--)->ip + 1;
+    ip = (call_stack--)->ip + 2;
     ++cap_and_left;
     if (internal::EmptyCallStack(cap_and_left)) [[unlikely]] {
       const_cast<Value &>(*call_stack->ip) = vs_left;
@@ -325,11 +266,9 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
           inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
         } else {
-          *(value_stack_head -
-            (requires { &Inst::consume; } ? ValueCount : 0)) =
-              inst(fn_state,
-                   span_type(value_stack_head - ValueCount, ValueCount),
-                   JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) = inst(
+              fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+              JASMIN_INTERNAL_GET((ip + 1), Ns)...);
         }
       }
       (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
@@ -339,8 +278,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
           inst(span_type(value_stack_head - ValueCount, ValueCount),
                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
         } else {
-          *(value_stack_head -
-            (requires { &Inst::consume; } ? ValueCount : 0)) =
+          *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
               inst(span_type(value_stack_head - ValueCount, ValueCount),
                    JASMIN_INTERNAL_GET((ip + 1), Ns)...);
         }
@@ -354,7 +292,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       --vs_left;
     }
 
-    if constexpr (requires { &Inst::consume; }) {
+    if constexpr (ConsumesInput<Inst>()) {
       value_stack_head -= ValueCount;
       vs_left += ValueCount;
     }
@@ -364,6 +302,52 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
     return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
                                             call_stack, cap_and_left);
   }
+}
+
+template <typename I>
+constexpr size_t ImmediateValueCount() {
+  if constexpr (nth::any_of<I, Return>) {
+    return 0;
+  } else if constexpr (nth::any_of<I, Call, Jump, JumpIf>) {
+    return 1;
+  } else {
+    return internal::InstructionFunctionType<I>().parameters().size() -
+           (internal::HasFunctionState<I> ? 2 : 1);
+  }
+}
+
+template <typename I>
+constexpr size_t ParameterCount() {
+  if constexpr (nth::any_of<I, Jump, Return>) {
+    return 0;
+  } else if constexpr (nth::any_of<I, Call, JumpIf>) {
+    return 1;
+  } else {
+    return nth::type_t<
+        internal::InstructionFunctionType<I>()
+            .parameters()
+            .template get<internal::HasFunctionState<I>>()>::extent;
+  }
+}
+
+template <typename I>
+constexpr bool ConsumesInput() {
+  if constexpr (nth::any_of<I, JumpIf>) {
+    return false;
+  } else {
+    return requires { &I::consume; };
+  }
+}
+
+template <typename I>
+constexpr bool ReturnsValue() {
+  return internal::InstructionFunctionType<I>().return_type() !=
+         nth::type<void>;
+}
+
+template <typename I>
+constexpr std::string InstructionName() {
+  return std::string(nth::type<I>.name());
 }
 
 }  // namespace jasmin

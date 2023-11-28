@@ -14,8 +14,9 @@ struct ValueStack;
 
 namespace internal {
 
-void ReallocateValueStack(Value *value_stack_head, size_t, Value const *ip,
-                          FrameBase *call_stack, uint64_t cap_and_left) {
+inline void ReallocateValueStack(Value *value_stack_head, size_t,
+                                 Value const *ip, FrameBase *call_stack,
+                                 uint64_t cap_and_left) {
   size_t capacity = value_stack_head->as<size_t>();
   size_t bytes    = capacity * sizeof(Value);
 
