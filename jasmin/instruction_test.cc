@@ -36,5 +36,16 @@ NTH_TEST("immediate-value-count") {
   NTH_EXPECT(ImmediateValueCount<SomeImmediates>() == size_t{2});
 }
 
+NTH_TEST("consumes-input") {
+  NTH_EXPECT(not ConsumesInput<Return>());
+  NTH_EXPECT(ConsumesInput<Call>());
+  NTH_EXPECT(not ConsumesInput<Jump>());
+  NTH_EXPECT(ConsumesInput<JumpIf>());
+  NTH_EXPECT(not ConsumesInput<Count>());
+  NTH_EXPECT(not ConsumesInput<NoImmediates>());
+  NTH_EXPECT(not ConsumesInput<NoImmediatesOrValues>());
+  NTH_EXPECT(not ConsumesInput<SomeImmediates>());
+}
+
 }  // namespace
 }  // namespace jasmin

@@ -332,8 +332,8 @@ constexpr size_t ParameterCount() {
 
 template <typename I>
 constexpr bool ConsumesInput() {
-  if constexpr (nth::any_of<I, JumpIf>) {
-    return false;
+  if constexpr (nth::any_of<I, JumpIf, Call>) {
+    return true;
   } else {
     return requires { &I::consume; };
   }
