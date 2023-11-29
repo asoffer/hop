@@ -80,7 +80,7 @@ constexpr bool ReturnsValue();
 // name should not be considered or even unique amongst instructions and should
 // no be relied upon for anything other than debugging.
 template <typename I>
-constexpr std::string InstructionName();
+std::string InstructionName();
 
 // `Call` is a built-in instructions, available automatically in every
 // instruction set. It pops the top value off the stack, interprets it as a
@@ -346,7 +346,7 @@ constexpr bool ReturnsValue() {
 }
 
 template <typename I>
-constexpr std::string InstructionName() {
+std::string InstructionName() {
   return std::string(nth::type<I>.name());
 }
 
