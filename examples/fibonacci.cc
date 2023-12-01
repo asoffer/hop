@@ -47,12 +47,13 @@ auto FibonacciRecursive() {
 }
 
 struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
-  static void execute(std::span<jasmin::Value, 3> values) {
-    auto& n = values[0];
-    auto& a = values[1];
-    auto& b = values[2];
-    n       = static_cast<uint64_t>(n.as<uint64_t>() - 1);
-    a       = std::exchange(b, a.as<uint64_t>() + b.as<uint64_t>());
+  static std::array<jasmin::Value, 3> consume(
+      std::span<jasmin::Value, 3> values) {
+    auto n = values[0];
+    auto a = values[1];
+    auto b = values[2];
+    return {static_cast<uint64_t>(n.as<uint64_t>() - 1), b,
+            a.as<uint64_t>() + b.as<uint64_t>()};
   }
 };
 

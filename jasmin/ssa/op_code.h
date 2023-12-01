@@ -16,17 +16,17 @@ struct OpCodeMetadata {
   std::string name;
   size_t immediate_value_count;
   size_t parameter_count;
-  bool returns;
+  size_t return_count;
   bool consumes_input;
 };
 
 template <InstructionType I>
-constexpr OpCodeMetadata OpCodeMetadataFor() {
+OpCodeMetadata OpCodeMetadataFor() {
   return {
       .name                  = InstructionName<I>(),
       .immediate_value_count = ImmediateValueCount<I>(),
       .parameter_count       = ParameterCount<I>(),
-      .returns               = ReturnsValue<I>(),
+      .return_count          = ReturnCount<I>(),
       .consumes_input        = ConsumesInput<I>(),
   };
 }

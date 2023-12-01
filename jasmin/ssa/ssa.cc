@@ -77,7 +77,7 @@ struct BasicBlockRegisterStack {
       }
     }
 
-    if (metadata.returns) {
+    for (size_t i = 0; i < metadata.return_count; ++i) {
       SsaValue r = NewRegister();
       registers_.push_back(r);
       parameters.push_back(r);
@@ -146,7 +146,7 @@ struct StackToSsaConverter {
         immediate_bits = (uint64_t{1} << metadata.immediate_value_count) - 1;
         output_count =
             (not metadata.consumes_input) * metadata.parameter_count +
-            metadata.returns;
+            metadata.return_count;
       }
       block.append(SsaInstruction(inst, output_count, immediate_bits,
                                   std::move(parameters)));

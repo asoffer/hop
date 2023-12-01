@@ -259,7 +259,7 @@ struct SsaBasicBlock {
   void append(SsaInstruction i) { instructions_.push_back(std::move(i)); }
   void remove_back() { instructions_.pop_back(); }
 
-  constexpr void set_parameters(std::vector<SsaValue> parameters) {
+  void set_parameters(std::vector<SsaValue> parameters) {
     parameters_ = std::move(parameters);
   }
   void set_branch(SsaBranch branch) { branch_ = std::move(branch); }

@@ -25,6 +25,12 @@ struct SomeImmediates : Instruction<SomeImmediates> {
   static void execute(std::span<Value, 0>, int, bool) {}
 };
 
+struct ReturnsMultiple: Instruction<ReturnsMultiple> {
+  static std::array<Value, 2> consume() { return {1, 2}; }
+};
+
+
+
 NTH_TEST("immediate-value-count") {
   NTH_EXPECT(ImmediateValueCount<Return>() == size_t{0});
   NTH_EXPECT(ImmediateValueCount<Call>() == size_t{1});
@@ -45,6 +51,17 @@ NTH_TEST("consumes-input") {
   NTH_EXPECT(not ConsumesInput<NoImmediates>());
   NTH_EXPECT(not ConsumesInput<NoImmediatesOrValues>());
   NTH_EXPECT(not ConsumesInput<SomeImmediates>());
+}
+
+NTH_TEST("return-count") {
+  NTH_EXPECT(ReturnCount<Return>() == size_t{0});
+  NTH_EXPECT(ReturnCount<Jump>() == size_t{0});
+  NTH_EXPECT(ReturnCount<JumpIf>() == size_t{0});
+  NTH_EXPECT(ReturnCount<Count>() == size_t{1});
+  NTH_EXPECT(ReturnCount<NoImmediates>() == size_t{1});
+  NTH_EXPECT(ReturnCount<NoImmediatesOrValues>() == size_t{0});
+  NTH_EXPECT(ReturnCount<SomeImmediates>() == size_t{0});
+  NTH_EXPECT(ReturnCount<ReturnsMultiple>() == size_t{2});
 }
 
 }  // namespace

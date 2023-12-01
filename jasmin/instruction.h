@@ -72,9 +72,9 @@ constexpr size_t ParameterCount();
 template <typename I>
 constexpr bool ConsumesInput();
 
-// Return `true` if the instruction returns a value and `false` otherwise.
+// Returns the number of return values produced by the instruction.
 template <typename I>
-constexpr bool ReturnsValue();
+constexpr size_t ReturnCount();
 
 // Returns a `std::string_view` representing the name of the instruction. This
 // name should not be considered or even unique amongst instructions and should
@@ -239,15 +239,16 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
     constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
     constexpr auto inst_type = internal::InstructionFunctionType<Inst>();
     constexpr bool HasFunctionState = internal::HasFunctionState<Inst>;
-    constexpr bool ReturnsVoid = (inst_type.return_type() == nth::type<void>);
+    constexpr size_t RetCount       = ReturnCount<Inst>();
     constexpr auto parameter_types =
         inst_type.parameters().template drop<1 + HasFunctionState>();
     using span_type =
         nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
     constexpr size_t ValueCount = span_type::extent;
 
-    if constexpr (ValueCount == 0 and not ReturnsVoid) {
-      if (vs_left == 0) [[unlikely]] {
+    if constexpr ((ConsumesInput<Inst>() ? ValueCount : 0) > RetCount) {
+      static_assert(ValueCount != std::dynamic_extent);
+      if (vs_left < (ValueCount - RetCount)) [[unlikely]] {
         NTH_ATTRIBUTE(tailcall)
         return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
                                               call_stack, cap_and_left);
@@ -262,40 +263,47 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
           static_cast<frame_type *>(call_stack)->state);
 
       [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-        if constexpr (ReturnsVoid) {
+        if constexpr (RetCount == 0) {
           inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-        } else {
+        } else if constexpr (RetCount == 1) {
           *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) = inst(
               fn_state, span_type(value_stack_head - ValueCount, ValueCount),
               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+        } else {
+          std::array result = inst(
+              fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+              JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          std::memcpy(
+              value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
+              &result, sizeof(result));
         }
       }
       (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
     } else {
       [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-        if constexpr (ReturnsVoid) {
+        if constexpr (RetCount == 0) {
           inst(span_type(value_stack_head - ValueCount, ValueCount),
                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-        } else {
+        } else if constexpr (RetCount == 1) {
           *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
               inst(span_type(value_stack_head - ValueCount, ValueCount),
                    JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+        } else {
+          std::array result =
+              inst(span_type(value_stack_head - ValueCount, ValueCount),
+                   JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          std::memcpy(
+              value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
+              &result, sizeof(result));
         }
       }
       (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
     }
 #undef JASMIN_INTERNAL_GET
 
-    if constexpr (not ReturnsVoid) {
-      ++value_stack_head;
-      --vs_left;
-    }
-
-    if constexpr (ConsumesInput<Inst>()) {
-      value_stack_head -= ValueCount;
-      vs_left += ValueCount;
-    }
+    value_stack_head += RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
+    vs_left -= RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
 
     ip += ImmediateValueCount<Inst>() + 1;
     NTH_ATTRIBUTE(tailcall)
@@ -340,9 +348,23 @@ constexpr bool ConsumesInput() {
 }
 
 template <typename I>
-constexpr bool ReturnsValue() {
-  return internal::InstructionFunctionType<I>().return_type() !=
-         nth::type<void>;
+constexpr size_t ReturnCount() {
+  constexpr auto ret_type =
+      internal::InstructionFunctionType<I>().return_type();
+  if constexpr (ret_type == nth::type<void>) {
+    return 0;
+  } else if constexpr (std::convertible_to<nth::type_t<ret_type>, Value>) {
+    return 1;
+  } else {
+    constexpr size_t N = sizeof(nth::type_t<ret_type>) / sizeof(Value);
+    static_assert(internal::InstructionFunctionType<I>().return_type() ==
+                  nth::type<std::array<Value, N>>);
+    static_assert(N > 1,
+                  "Instructions returning a `std::array` must return more than "
+                  "one value. If you wish to return only one value, return a "
+                  "`jasmin::Value` directly.");
+    return N;
+  }
 }
 
 template <typename I>
