@@ -40,6 +40,19 @@ struct Function : internal::FunctionBase {
                Value(static_cast<nth::type_t<ts>>(vs))...});
         });
   }
+  template <internal::ContainedIn<Set> I>
+  constexpr nth::interval<InstructionIndex> append(InstructionSpecification spec, auto... vs) {
+    constexpr size_t DropCount = internal::HasFunctionState<I> ? 3 : 2;
+    return internal::InstructionFunctionType<I>()
+        .parameters()
+        .template drop<DropCount>()
+        .reduce([&](auto... ts) {
+          return internal::FunctionBase::append(
+              {&I::template ExecuteImpl<Set>, spec,
+               Value(static_cast<nth::type_t<ts>>(vs))...});
+        });
+  }
+
 
   // Appends an instruction followed by space for `placeholder_count` values
   // which are left uninitialized. They may be initialized later via calls to

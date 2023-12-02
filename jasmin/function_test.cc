@@ -9,7 +9,12 @@ struct PushImmediateBool : jasmin::Instruction<PushImmediateBool> {
   static constexpr bool execute(std::span<Value, 0>, bool b) { return b; }
 };
 
-using Instructions = jasmin::MakeInstructionSet<PushImmediateBool>;
+struct ImmediateDetermined : jasmin::Instruction<ImmediateDetermined> {
+  static constexpr void execute(std::span<Value>, std::span<Value>, int) {}
+};
+
+using Instructions =
+    jasmin::MakeInstructionSet<PushImmediateBool, ImmediateDetermined>;
 
 TEST(Function, AppendIncorrectType) {
   bool converted = false;
@@ -29,6 +34,13 @@ TEST(Function, AppendIncorrectType) {
   EXPECT_FALSE(converted);
   // `c` Should be cast to `bool` in call to `append`.
   func.append<PushImmediateBool>(c);
+
+  func.append<ImmediateDetermined>(
+      {
+          .parameters = 0,
+          .returns    = 0,
+      },
+      1);
   EXPECT_TRUE(converted);
 }
 
