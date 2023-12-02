@@ -122,4 +122,23 @@ TEST(Instruction, Store) {
   EXPECT_EQ(n8, 8);
 }
 
+TEST(Instruction, Rotate) {
+  jasmin::ValueStack value_stack;
+  for (size_t i = 0; i < 10; ++i) { value_stack.push(i); }
+  jasmin::ExecuteInstruction<jasmin::Rotate>(
+      value_stack,
+      jasmin::InstructionSpecification{.parameters = 4, .returns = 0}, 1);
+  ASSERT_EQ(value_stack.size(), 10);
+  EXPECT_EQ(value_stack.peek<size_t>(0), 6);
+  EXPECT_EQ(value_stack.peek<size_t>(1), 9);
+  EXPECT_EQ(value_stack.peek<size_t>(2), 8);
+  EXPECT_EQ(value_stack.peek<size_t>(3), 7);
+  EXPECT_EQ(value_stack.peek<size_t>(4), 5);
+  EXPECT_EQ(value_stack.peek<size_t>(5), 4);
+  EXPECT_EQ(value_stack.peek<size_t>(6), 3);
+  EXPECT_EQ(value_stack.peek<size_t>(7), 2);
+  EXPECT_EQ(value_stack.peek<size_t>(8), 1);
+  EXPECT_EQ(value_stack.peek<size_t>(9), 0);
+}
+
 }  // namespace

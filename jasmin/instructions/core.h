@@ -29,6 +29,20 @@ struct Swap : Instruction<Swap> {
   static constexpr std::string_view debug() { return "swap"; }
 };
 
+struct Rotate : Instruction<Rotate> {
+  static std::string_view name() { return "rotate"; }
+
+  static constexpr void execute(std::span<Value> in,
+                                [[maybe_unused]] std::span<Value> out,
+                                size_t amount) {
+    std::rotate(in.begin(), in.begin() + amount, in.end());
+  }
+
+  static std::string debug(std::span<Value const, 1> immediates) {
+    return "rotate " + std::to_string(immediates[0].as<size_t>());
+  }
+};
+
 struct Duplicate : Instruction<Duplicate> {
   static std::string_view name() { return "duplicate"; }
   static Value execute(std::span<Value, 1> values) { return values[0]; }

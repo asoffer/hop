@@ -15,12 +15,12 @@ struct Jump;
 struct JumpIf;
 struct Return;
 
-namespace internal {
-
-struct CallSpec {
+struct InstructionSpecification {
   uint32_t parameters;
   uint32_t returns;
 };
+
+namespace internal {
 
 // Base class used solely to indicate that any struct inherting from it is an
 // instruction set.
@@ -41,14 +41,31 @@ constexpr bool HasExactlyOneOfConsumeOrExecute() {
       requires { &I::consume; } or requires { &I::execute; });
 }
 
+constexpr bool ImmediateValueDetermined(nth::Sequence auto seq) {
+  if constexpr (seq.size() < 2) {
+    return false;
+  } else {
+    using input_type  = nth::type_t<seq.template get<0>()>;
+    using output_type = nth::type_t<seq.template get<1>()>;
+    if constexpr (not requires {
+                    input_type::extent;
+                    output_type::extent;
+                  }) {
+      return false;
+    } else {
+      return seq.template drop<2>().template all<[](auto t) {
+        return std::is_convertible_v<nth::type_t<t>, Value>;
+      }>();
+    }
+  }
+}
+
 constexpr bool ValidParameterSequence(nth::Sequence auto seq) {
   if constexpr (seq.empty()) {
     return false;
   } else {
     using span_type = nth::type_t<seq.template get<0>()>;
-    if constexpr (requires {
-                    { span_type::extent } -> std::same_as<size_t const>;
-                  }) {
+    if constexpr (not requires { span_type::extent; }) {
       return false;
     } else if constexpr (seq.template get<0>() !=
                          nth::type<std::span<Value, span_type::extent>>) {
@@ -64,8 +81,16 @@ constexpr bool ValidParameterSequence(nth::Sequence auto seq) {
 constexpr bool ValidSignatureWithFunctionStateImpl(
     nth::Type auto body_type, nth::Type auto /*function_state_type*/) {
   if constexpr (body_type.return_type() == nth::type<void>) {
-    return ValidParameterSequence(body_type.parameters().template drop<1>());
-  } else if constexpr (std::convertible_to<nth::type_t<body_type>,
+    return ImmediateValueDetermined(
+               body_type.parameters().template drop<1>()) or
+           ValidParameterSequence(body_type.parameters().template drop<1>());
+  } else if constexpr (body_type.return_type() ==
+                       nth::type<
+                           std::array<Value, body_type.return_type().size() /
+                                                 sizeof(Value)>>) {
+    return body_type.return_type().size() > sizeof(Value) and
+           ValidParameterSequence(body_type.parameters().template drop<1>());
+  } else if constexpr (std::convertible_to<nth::type_t<body_type.return_type()>,
                                            jasmin::Value>) {
     return ValidParameterSequence(body_type.parameters().template drop<1>());
   } else {
@@ -76,9 +101,17 @@ constexpr bool ValidSignatureWithFunctionStateImpl(
 constexpr bool ValidSignatureWithoutFunctionStateImpl(
     nth::Type auto body_type) {
   if constexpr (body_type.return_type() == nth::type<void>) {
-    return ValidParameterSequence(body_type.parameters());
-  } else if constexpr (std::is_convertible_v<nth::type_t<body_type>,
-                                             jasmin::Value>) {
+    return ImmediateValueDetermined(body_type.parameters()) or
+           ValidParameterSequence(body_type.parameters());
+  } else if constexpr (body_type.return_type() ==
+                       nth::type<
+                           std::array<Value, body_type.return_type().size() /
+                                                 sizeof(Value)>>) {
+    return body_type.return_type().size() > sizeof(Value) and
+           ValidParameterSequence(body_type.parameters());
+  } else if constexpr (std::is_convertible_v<
+                           nth::type_t<body_type.return_type()>,
+                           jasmin::Value>) {
     return ValidParameterSequence(body_type.parameters());
   } else {
     return false;
@@ -130,7 +163,7 @@ constexpr auto InstructionFunctionPointer() {
 template <typename I>
 constexpr auto InstructionFunctionType() {
   if constexpr (nth::type<I> == nth::type<Call>) {
-    return nth::type<void(std::span<Value, 1>, CallSpec)>;
+    return nth::type<void(std::span<Value, 1>, InstructionSpecification)>;
   } else if constexpr (nth::type<I> == nth::type<Jump>) {
     return nth::type<void(std::span<Value, 0>, ptrdiff_t)>;
   } else if constexpr (nth::type<I> == nth::type<JumpIf>) {

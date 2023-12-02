@@ -40,7 +40,7 @@ struct BasicBlockRegisterStack {
                                    size_t& first)
       : next_(first), registers_(registers) {}
 
-  std::vector<SsaValue> AssignCall(Call::Specification spec) {
+  std::vector<SsaValue> AssignCall(InstructionSpecification spec) {
     std::vector<SsaValue> parameters;
     parameters.push_back(registers_.back());
     registers_.pop_back();
@@ -129,10 +129,10 @@ struct StackToSsaConverter {
       std::vector<SsaValue> parameters;
       if (inst == builtins_[BuiltinCall]) {
         parameters =
-            bb_reg_stack.AssignCall(instructions[1].as<Call::Specification>());
+            bb_reg_stack.AssignCall(instructions[1].as<InstructionSpecification>());
         instructions   = instructions.subspan(2);
         immediate_bits = 0;
-        output_count   = instructions[1].as<Call::Specification>().returns;
+        output_count   = instructions[1].as<InstructionSpecification>().returns;
       } else if (inst == builtins_[BuiltinReturn]) {
         bb_reg_stack.EnsureStackSize(returns_);
         immediate_bits = 0;

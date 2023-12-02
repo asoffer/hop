@@ -50,6 +50,51 @@ struct FunctionStateReturnsConsume {
 };
 static_assert(UserDefinedInstruction<FunctionStateReturnsConsume>);
 
+struct ReturnsMultiple {
+  static std::array<Value, 3> execute(std::span<Value, 0>);
+};
+static_assert(UserDefinedInstruction<ReturnsMultiple>);
+
+struct ReturnsMultipleConsume {
+  static std::array<Value, 3> consume(std::span<Value, 0>);
+};
+static_assert(UserDefinedInstruction<ReturnsMultipleConsume>);
+
+struct FunctionStateReturnsMultiple {
+  using function_state = int;
+  static std::array<Value, 3> execute(function_state&, std::span<Value, 0>);
+};
+static_assert(UserDefinedInstruction<FunctionStateReturnsMultiple>);
+
+struct FunctionStateReturnsMultipleConsume {
+  using function_state = int;
+  static std::array<Value, 3> consume(function_state&, std::span<Value, 0>);
+};
+static_assert(UserDefinedInstruction<FunctionStateReturnsMultipleConsume>);
+
+struct ReturnsSingletonArray {
+  static std::array<Value, 1> execute(std::span<Value, 0>);
+};
+static_assert(not UserDefinedInstruction<ReturnsSingletonArray>);
+
+struct ReturnsSingletonArrayConsume {
+  static std::array<Value, 1> consume(std::span<Value, 0>);
+};
+static_assert(not UserDefinedInstruction<ReturnsSingletonArrayConsume>);
+
+struct FunctionStateReturnsSingletonArray {
+  using function_state = int;
+  static std::array<Value, 1> execute(function_state&, std::span<Value, 0>);
+};
+static_assert(not UserDefinedInstruction<FunctionStateReturnsSingletonArray>);
+
+struct FunctionStateReturnsSingletonArrayConsume {
+  using function_state = int;
+  static std::array<Value, 1> consume(function_state&, std::span<Value, 0>);
+};
+static_assert(
+    not UserDefinedInstruction<FunctionStateReturnsSingletonArrayConsume>);
+
 struct ReturnsAndAcceptsValues {
   static bool execute(std::span<Value, 2>);
 };
@@ -96,6 +141,64 @@ struct FunctionStateReturnsAndAcceptsValuesAndImmediatesConsume {
   static bool consume(function_state&, std::span<Value, 2>, int, char);
 };
 static_assert(UserDefinedInstruction<FunctionStateReturnsAndAcceptsValuesAndImmediatesConsume>);
+
+struct TooBig {
+  Value v[2];
+};
+
+struct ReturnsNotConvertibleAndAcceptsValuesAndImmediates {
+  static TooBig execute(std::span<Value, 2>, int, char);
+};
+static_assert(not UserDefinedInstruction<
+              ReturnsNotConvertibleAndAcceptsValuesAndImmediates>);
+
+struct ReturnsNotConvertibleAndAcceptsValuesAndImmediatesConsume {
+  static TooBig consume(std::span<Value, 2>, int, char);
+};
+static_assert(not UserDefinedInstruction<
+              ReturnsNotConvertibleAndAcceptsValuesAndImmediatesConsume>);
+
+struct FunctionStateReturnsNotConvertibleAndAcceptsValuesAndImmediates {
+  using function_state = int;
+  static TooBig execute(function_state&, std::span<Value, 2>, int, char);
+};
+static_assert(not UserDefinedInstruction<
+              FunctionStateReturnsNotConvertibleAndAcceptsValuesAndImmediates>);
+
+struct FunctionStateReturnsNotConvertibleAndAcceptsValuesAndImmediatesConsume {
+  using function_state = int;
+  static TooBig consume(function_state&, std::span<Value, 2>, int, char);
+};
+static_assert(
+    not UserDefinedInstruction<
+        FunctionStateReturnsNotConvertibleAndAcceptsValuesAndImmediatesConsume>);
+
+struct ExecuteDynamic : Instruction<ExecuteDynamic> {
+  static void execute(std::span<Value>, std::span<Value>);
+};
+static_assert(UserDefinedInstruction<ExecuteDynamic>);
+
+struct ConsumeDynamic : Instruction<ConsumeDynamic> {
+  static void consume(std::span<Value>, std::span<Value>);
+};
+static_assert(UserDefinedInstruction<ConsumeDynamic>);
+
+struct DynamicMustReturnVoid : Instruction<DynamicMustReturnVoid> {
+  static bool consume(std::span<Value>, std::span<Value>);
+};
+static_assert(not UserDefinedInstruction<DynamicMustReturnVoid>);
+
+struct ExecuteDynamicWithImmediates
+    : Instruction<ExecuteDynamicWithImmediates> {
+  static void execute(std::span<Value>, std::span<Value>, int);
+};
+static_assert(UserDefinedInstruction<ExecuteDynamicWithImmediates>);
+
+struct ConsumeDynamicWithImmediates
+    : Instruction<ConsumeDynamicWithImmediates> {
+  static void consume(std::span<Value>, std::span<Value>, int);
+};
+static_assert(UserDefinedInstruction<ConsumeDynamicWithImmediates>);
 
 }  // namespace
 }  // namespace jasmin::internal

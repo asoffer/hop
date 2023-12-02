@@ -41,13 +41,62 @@ struct Instruction {
 // interpreter must publicly inherit from `jasmin::Instruction<Inst>`. Moreover,
 // other than the builtin-instructions forward-declared above, they must also
 // have a static member function named either `execute` or `consume` (but not
-// both). This function must not be part of an overload set so that either
-// `&Inst::execute` or `&Inst::consume` is well-formed). The function must
-// accept as its first parameter a reference to `typename Inst::function_state`,
-// if this type is well-formed. It must then accept a `std::span<jasmin::Value,
-// N>` for some non-negative integer value of `N`, followed by any number of
-// values whose type is convertible to `jasmin::Value`. The function`s return
-// type must either be `void`, or be convertible to `jasmin::Value`.
+// both) with the following properties. This function must not be part of an
+// overload set so that either `&Inst::execute` or `&Inst::consume` is
+// well-formed). A function named `execute` can view some of all of the stack,
+// its return value(s) get appended to the stack. A function named `consume` can
+// view some of the stack. After execution, the portion of the stack that it can
+// view is popped and its return value(s) get appended to the stack.
+//
+// For the function parameters, there are two formats in which they may be
+// provided. Intsructions may either have the number of arguments and returns
+// statically determinable by the instruction, or may have this value determined
+// by immediate values.
+//
+// INSTRUCTION-DETERMINED SIGNATURES:
+//   If `typename Inst::function_state` is well-formed, the first parameter to
+//   the function must be a reference to this type.
+//
+//   If the function is named `consume`, it must then accept a
+//   `std::span<jasmin::Value, N>` for some `N != std::dynamic_extent`, followed
+//   by any number of parameters whose types are convertible to `jasmin::Value`.
+//   The value `N` is the number of values consumed by the instruction. The
+//   following parameters are the immediate values to the function. Functions
+//   named consume will have their arguments popped from the stack after
+//   execution.
+//
+//   If the function is named `execute`, it must then accept a type which is
+//   some instantiation of `std::span where the `element_type` is
+//   `jasmin::Value` (equivalently, `std::span<jasmin::Value, N>` for any value
+//   of `N`, including `std:dynamic_extent`). This span represents the number of
+//   stack arguments viewed by the instruction. A span of dynamic extent can
+//   view the entire stack. After this parameter, any number of parameters to
+//   the function may follow, provided each of them is convertible to
+//   `jasmin::Value`. These parameters represent the immediate values to the
+//   instruction.
+//
+//   The instruction functions `consume` or `execute` may return `void`,
+//   indicating no value should be pushed onto the stack, a type convertible to
+//   `jasmin::Value`, indicating that the returned value should be pushed onto
+//   the stack, or `std:array<jasmin::Value, N>` for some `N > 1`, indicating
+//   that all the returned should be pushed onto the stack.
+//
+// IMMEDIATE-VALUE-DETERMINED SIGNATURES:
+//   If `typename Inst::function_state` is well-formed, the first parameter to
+//   the function must be a reference to this type. The function signature must
+//   then accept two `std::span<Value>` parameters followed by any number of
+//   parameters, each convertible to `jasmin::Value`. The first span represents
+//   the viewable arguments on the stack. The second span represents the
+//   locations of return values. The following parameters represent immediate
+//   values to the instruction. This function must return `void`.
+//
+//   When appending an instruction, immediate-value-determined signatures must
+//   pass also pass as a first argument to `append` (before any other immediate
+//   values) a `jasmin::InstructionSpecification`. Indicating how many
+//   parameters and return values are present. Jasmin guarantees that the sizes
+//   of the spans provided to the corresponding `consume` or `execute` functions
+//   will match this specification.
+//
 template <typename I>
 concept InstructionType = (std::derived_from<I, Instruction<I>> and
                            (internal::BuiltinInstruction<I>() or
@@ -86,13 +135,13 @@ std::string InstructionName();
 // instruction set. It pops the top value off the stack, interprets it as a
 // function pointer, and begins execution at that function's entry point.
 struct Call : Instruction<Call> {
-  using Specification = internal::CallSpec;
-
   static std::string debug(std::span<Value const, 1> immediate_values) {
     return "call " +
-           std::to_string(immediate_values[0].as<Specification>().parameters) +
+           std::to_string(
+               immediate_values[0].as<InstructionSpecification>().parameters) +
            " -> " +
-           std::to_string(immediate_values[0].as<Specification>().returns);
+           std::to_string(
+               immediate_values[0].as<InstructionSpecification>().returns);
   }
 };
 
@@ -240,75 +289,115 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
     constexpr auto inst_type = internal::InstructionFunctionType<Inst>();
     constexpr bool HasFunctionState = internal::HasFunctionState<Inst>;
     constexpr size_t RetCount       = ReturnCount<Inst>();
-    constexpr auto parameter_types =
-        inst_type.parameters().template drop<1 + HasFunctionState>();
-    using span_type =
-        nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
-    constexpr size_t ValueCount = span_type::extent;
-
-    if constexpr ((ConsumesInput<Inst>() ? ValueCount : 0) > RetCount) {
-      static_assert(ValueCount != std::dynamic_extent);
-      if (vs_left < (ValueCount - RetCount)) [[unlikely]] {
+    if constexpr (internal::ImmediateValueDetermined(
+                      inst_type.parameters()
+                          .template drop<HasFunctionState>())) {
+      auto [ins, outs] = (ip + 1)->as<InstructionSpecification>();
+      // If we consume, we still need a place to move the inputs during
+      // execution. If not, we might need extra space to push return values. In
+      // either, we use the stack so the allocation check doesn't have to be
+      // guarded by `ConsumesInput`.
+      if (vs_left < outs) [[unlikely]] {
         NTH_ATTRIBUTE(tailcall)
         return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
                                               call_stack, cap_and_left);
       }
-    }
+
+      if constexpr (ConsumesInput<Inst>()) {
+        std::memmove(value_stack_head - ins, value_stack_head - ins + outs,
+                     sizeof(Value) * ins);
+      }
 
 #define JASMIN_INTERNAL_GET(p, Ns)                                             \
   (p + Ns)->template as<nth::type_t<parameter_types.template get<Ns>()>>()
 
-    if constexpr (HasFunctionState) {
-      auto &fn_state = std::get<typename Inst::function_state>(
-          static_cast<frame_type *>(call_stack)->state);
+      constexpr auto parameter_types =
+          inst_type.parameters().template drop<2 + HasFunctionState>();
+      [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+        if constexpr (HasFunctionState) {
+          auto &fn_state = std::get<typename Inst::function_state>(
+              static_cast<frame_type *>(call_stack)->state);
 
-      [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-        if constexpr (RetCount == 0) {
-          inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+          inst(fn_state, std::span(value_stack_head - ins + outs, ins),
+               std::span(value_stack_head - ins, outs),
                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-        } else if constexpr (RetCount == 1) {
-          *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) = inst(
-              fn_state, span_type(value_stack_head - ValueCount, ValueCount),
-              JASMIN_INTERNAL_GET((ip + 1), Ns)...);
         } else {
-          std::array result = inst(
-              fn_state, span_type(value_stack_head - ValueCount, ValueCount),
-              JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-          std::memcpy(
-              value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
-              &result, sizeof(result));
+          inst(std::span(value_stack_head - ins + outs, ins),
+               std::span(value_stack_head - ins, outs),
+               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
         }
       }
       (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+
     } else {
-      [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-        if constexpr (RetCount == 0) {
-          inst(span_type(value_stack_head - ValueCount, ValueCount),
-               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-        } else if constexpr (RetCount == 1) {
-          *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
-              inst(span_type(value_stack_head - ValueCount, ValueCount),
-                   JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-        } else {
-          std::array result =
-              inst(span_type(value_stack_head - ValueCount, ValueCount),
-                   JASMIN_INTERNAL_GET((ip + 1), Ns)...);
-          std::memcpy(
-              value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
-              &result, sizeof(result));
+      constexpr auto parameter_types =
+          inst_type.parameters().template drop<1 + HasFunctionState>();
+      using span_type =
+          nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
+      constexpr size_t ValueCount = span_type::extent;
+
+      if constexpr ((ConsumesInput<Inst>() ? ValueCount : 0) > RetCount) {
+        static_assert(ValueCount != std::dynamic_extent);
+        if (vs_left < (ValueCount - RetCount)) [[unlikely]] {
+          NTH_ATTRIBUTE(tailcall)
+          return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
+                                                call_stack, cap_and_left);
         }
       }
-      (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
-    }
+
+      if constexpr (HasFunctionState) {
+        auto &fn_state = std::get<typename Inst::function_state>(
+            static_cast<frame_type *>(call_stack)->state);
+
+        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+          if constexpr (RetCount == 0) {
+            inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+                 JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          } else if constexpr (RetCount == 1) {
+            *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
+                inst(fn_state,
+                     span_type(value_stack_head - ValueCount, ValueCount),
+                     JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          } else {
+            std::array result = inst(
+                fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+            std::memcpy(
+                value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
+                &result, sizeof(result));
+          }
+        }
+        (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+      } else {
+        [&]<size_t... Ns>(std::index_sequence<Ns...>) {
+          if constexpr (RetCount == 0) {
+            inst(span_type(value_stack_head - ValueCount, ValueCount),
+                 JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          } else if constexpr (RetCount == 1) {
+            *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
+                inst(span_type(value_stack_head - ValueCount, ValueCount),
+                     JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+          } else {
+            std::array result =
+                inst(span_type(value_stack_head - ValueCount, ValueCount),
+                     JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+            std::memcpy(
+                value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
+                &result, sizeof(result));
+          }
+        }
+        (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+      }
 #undef JASMIN_INTERNAL_GET
 
-    value_stack_head += RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
-    vs_left -= RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
+      value_stack_head += RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
+      vs_left -= RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
 
-    ip += ImmediateValueCount<Inst>() + 1;
-    NTH_ATTRIBUTE(tailcall)
-    return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
-                                            call_stack, cap_and_left);
+      ip += ImmediateValueCount<Inst>() + 1;
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
+    }
   }
 }
 

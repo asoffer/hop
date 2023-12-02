@@ -29,8 +29,6 @@ struct ReturnsMultiple: Instruction<ReturnsMultiple> {
   static std::array<Value, 2> consume() { return {1, 2}; }
 };
 
-
-
 NTH_TEST("immediate-value-count") {
   NTH_EXPECT(ImmediateValueCount<Return>() == size_t{0});
   NTH_EXPECT(ImmediateValueCount<Call>() == size_t{1});
