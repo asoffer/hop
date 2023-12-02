@@ -1,5 +1,5 @@
 # Jasmin
-[![CI badge](https://github.com/asoffer/jasmin/workflows/CI/badge.svg)](https://github.com/asoffer/jasmin/actions?query=workflow%3ACI)
+[![CI](https://github.com/asoffer/jasmin/actions/workflows/ci.yml/badge.svg)](https://github.com/asoffer/jasmin/actions/workflows/ci.yml)
 
 ## Introduction
 
