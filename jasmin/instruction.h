@@ -320,14 +320,18 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
 
           inst(fn_state, std::span(value_stack_head - ins + outs, ins),
                std::span(value_stack_head - ins, outs),
-               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+               JASMIN_INTERNAL_GET((ip + 2), Ns)...);
         } else {
           inst(std::span(value_stack_head - ins + outs, ins),
                std::span(value_stack_head - ins, outs),
-               JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+               JASMIN_INTERNAL_GET((ip + 2), Ns)...);
         }
       }
-      (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+      (std::make_index_sequence<ImmediateValueCount<Inst>() - 1>{});
+      // Note: We subtract one above because we do not need to pass the
+      // `InstructionSpecification`. We don't want this reflected in the return
+      // of `ImmediateValueCount` since it is technically still an immediate
+      // value.
 
     } else {
       constexpr auto parameter_types =
@@ -390,8 +394,14 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       }
 #undef JASMIN_INTERNAL_GET
 
-      value_stack_head += RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
-      vs_left -= RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
+      constexpr ptrdiff_t UpdateAmount =
+          RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
+      if constexpr (UpdateAmount < 0) {
+        value_stack_head -= -UpdateAmount;
+      } else {
+        value_stack_head += UpdateAmount;
+      }
+      vs_left -= UpdateAmount;
 
       ip += ImmediateValueCount<Inst>() + 1;
       NTH_ATTRIBUTE(tailcall)
