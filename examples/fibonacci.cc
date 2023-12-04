@@ -65,7 +65,8 @@ auto FibonacciDynamicProgramming() {
   jasmin::Function<Instructions> func(1, 1);
   func.append<jasmin::Push>(uint64_t{1});
   func.append<jasmin::Push>(uint64_t{0});
-  auto loop_start = func.append<jasmin::DuplicateAt>(2);
+  auto loop_start = func.append<jasmin::DuplicateAt>(
+      jasmin::InstructionSpecification{.parameters = 2, .returns = 1});
   func.append<jasmin::Push>(uint64_t{0});
   func.append<jasmin::Equal<uint64_t>>();
   nth::interval<jasmin::InstructionIndex> jump =

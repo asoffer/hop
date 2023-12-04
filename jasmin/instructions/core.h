@@ -51,8 +51,8 @@ struct Duplicate : Instruction<Duplicate> {
 
 struct DuplicateAt : Instruction<DuplicateAt> {
   static std::string_view name() { return "duplicate-at"; }
-  static Value execute(std::span<Value> values, size_t index) {
-    return values[values.size() - 1 - index];
+  static void execute(std::span<Value> in, std::span<Value> out) {
+    out.front() = in.front();
   }
   static std::string debug(std::span<Value const, 1> immediates) {
     return "duplicate @" + std::to_string(immediates[0].as<size_t>());

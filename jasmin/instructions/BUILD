@@ -14,6 +14,7 @@ cc_test(
     deps = [
         ":bool",
         "//jasmin:testing",
+        "@asoffer_nth//nth/container:stack",
         "@com_google_googletest//:gtest_main",
     ]
 )
@@ -32,6 +33,7 @@ cc_test(
     deps = [
         ":core",
         "//jasmin:testing",
+        "@asoffer_nth//nth/container:stack",
         "@com_google_googletest//:gtest_main",
     ]
 )
@@ -50,6 +52,7 @@ cc_test(
     deps = [
         ":arithmetic",
         "//jasmin:testing",
+        "@asoffer_nth//nth/container:stack",
         "@com_google_googletest//:gtest_main",
     ]
 )
@@ -68,6 +71,7 @@ cc_test(
     deps = [
         ":compare",
         "//jasmin:testing",
+        "@asoffer_nth//nth/container:stack",
         "@com_google_googletest//:gtest_main",
     ]
 )
@@ -77,7 +81,7 @@ cc_library(
     hdrs = ["stack.h"],
     deps = [
         "//jasmin:instruction",
-        "//jasmin:value_stack",
+        "//jasmin:value",
         "@asoffer_nth//nth/debug",
     ],
 )

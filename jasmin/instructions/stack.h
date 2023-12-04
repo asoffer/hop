@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "jasmin/instruction.h"
-#include "jasmin/value_stack.h"
+#include "jasmin/value.h"
 #include "nth/debug/debug.h"
 
 namespace jasmin {

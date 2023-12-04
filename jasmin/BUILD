@@ -8,7 +8,7 @@ cc_library(
         ":function",
         ":instruction",
         ":value",
-        ":value_stack",
+        "@asoffer_nth//nth/container:stack",
         "@asoffer_nth//nth/debug",
     ],
 )
@@ -43,12 +43,12 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":value",
-        ":value_stack",
         "//jasmin/internal:call_stack",
         "//jasmin/internal:function_base",
         "//jasmin/internal:function_state",
         "//jasmin/internal:instruction_traits",
         "@asoffer_nth//nth/base:attributes",
+        "@asoffer_nth//nth/container:stack",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
@@ -69,28 +69,6 @@ cc_library(
     hdrs = ["instruction_index.h"],
     visibility = ["//visibility:public"],
     deps = [],
-)
-
-cc_library(
-    name = "value_stack",
-    hdrs = ["value_stack.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":value",
-        "//jasmin/internal:call_stack",
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_test(
-    name = "value_stack_test",
-    srcs = ["value_stack_test.cc"],
-    deps = [
-        ":value_stack",
-        "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/debug/log:stderr_log_sink",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(
@@ -122,6 +100,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":instruction",
-        ":value_stack",
+        ":value",
+        "@asoffer_nth//nth/container:stack",
     ],
 )

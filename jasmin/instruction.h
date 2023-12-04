@@ -13,8 +13,8 @@
 #include "jasmin/internal/function_state.h"
 #include "jasmin/internal/instruction_traits.h"
 #include "jasmin/value.h"
-#include "jasmin/value_stack.h"
 #include "nth/base/attributes.h"
+#include "nth/container/stack.h"
 #include "nth/debug/debug.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/sequence.h"
@@ -187,6 +187,24 @@ struct Return : Instruction<Return> {
 
 namespace internal {
 
+inline void ReallocateValueStack(Value *value_stack_head, size_t capacity_left,
+                                 Value const *ip, FrameBase *call_stack,
+                                 uint64_t cap_and_left) {
+  {
+    // Scope is necessary to ensure destruction of `v` occurs before the
+    // tail-call, even though the destruction will be a no-op due to the
+    // move+release.
+    auto v =
+        nth::stack<Value>::reconstitute_from(value_stack_head, capacity_left);
+    v.reallocate();
+    std::tie(value_stack_head, capacity_left) = std::move(v).release();
+  }
+
+  NTH_ATTRIBUTE(tailcall)
+  return ip->template as<exec_fn_type>()(value_stack_head, capacity_left, ip,
+                                         call_stack, cap_and_left);
+}
+
 // Constructs an InstructionSet type from a list of instructions. Does no
 // checking to validate that `Is` do not contain repeats.
 template <InstructionType... Is>
@@ -340,9 +358,10 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
           nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
       constexpr size_t ValueCount = span_type::extent;
 
-      if constexpr ((ConsumesInput<Inst>() ? ValueCount : 0) > RetCount) {
+      if constexpr ((ConsumesInput<Inst>() ? ValueCount : 0) < RetCount) {
         static_assert(ValueCount != std::dynamic_extent);
-        if (vs_left < (ValueCount - RetCount)) [[unlikely]] {
+        if (vs_left + (ConsumesInput<Inst>() ? ValueCount : 0) < RetCount)
+            [[unlikely]] {
           NTH_ATTRIBUTE(tailcall)
           return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
                                                 call_stack, cap_and_left);
