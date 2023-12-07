@@ -35,6 +35,7 @@ cc_toolchain_config(
         "-Wpedantic",
         "-Wuninitialized",
         "-Wno-gcc-compat",
+        "-Wno-sign-compare",
     ]
 )
 
@@ -62,5 +63,6 @@ cc_toolchain_config(
         "-Wpedantic",
         "-Wuninitialized",
         "-Wno-gcc-compat",
+        "-Wno-sign-compare",
     ]
 )

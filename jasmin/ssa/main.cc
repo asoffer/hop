@@ -1,6 +1,6 @@
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/compare.h"
-#include "jasmin/instructions/core.h"
+#include "jasmin/instructions/common.h"
 #include "jasmin/ssa/ssa.h"
 #include "nth/container/interval.h"
 #include "nth/debug/debug.h"

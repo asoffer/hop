@@ -1,8 +1,8 @@
 #include "jasmin/instructions/compare.h"
 
-#include "gtest/gtest.h"
 #include "jasmin/testing.h"
 #include "nth/container/stack.h"
+#include "nth/test/test.h"
 
 namespace {
 
@@ -17,176 +17,176 @@ struct S {
   int value;
 };
 
-TEST(Equal, Primitive) {
+NTH_TEST("Equal/Primitive") {
   nth::stack<jasmin::Value> value_stack;
   value_stack.push(3);
   value_stack.push(5);
 
   jasmin::ExecuteInstruction<jasmin::Equal<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
 
   value_stack.push(4);
   value_stack.push(4);
   jasmin::ExecuteInstruction<jasmin::Equal<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
 }
 
-TEST(Equal, UserDefined) {
+NTH_TEST("Equal/UserDefined") {
   nth::stack<jasmin::Value> value_stack;
 
   value_stack.push(S{.value = 3});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::Equal<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
 
   value_stack.push(S{.value = 4});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::Equal<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
 }
 
-TEST(LessThan, Primitive) {
+NTH_TEST("LessThan/Primitive") {
   nth::stack<jasmin::Value> value_stack;
   value_stack.push(3);
   value_stack.push(5);
 
   jasmin::ExecuteInstruction<jasmin::LessThan<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
 
   value_stack.push(4);
   value_stack.push(4);
   jasmin::ExecuteInstruction<jasmin::LessThan<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
 }
 
-TEST(LessThan, UserDefined) {
+NTH_TEST("LessThan/UserDefined") {
   nth::stack<jasmin::Value> value_stack;
 
   value_stack.push(S{.value = 3});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::LessThan<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
 
   value_stack.push(S{.value = 4});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::LessThan<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
 }
 
-TEST(AppendEqual, Primitive) {
+NTH_TEST("AppendEqual/Primitive") {
   nth::stack<jasmin::Value> value_stack;
   value_stack.push(3);
   value_stack.push(5);
 
   jasmin::ExecuteInstruction<jasmin::AppendEqual<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 5);
+  NTH_EXPECT(value_stack.top().as<int>() == 5);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 3);
+  NTH_EXPECT(value_stack.top().as<int>() == 3);
   value_stack.pop();
 
   value_stack.push(4);
   value_stack.push(4);
   jasmin::ExecuteInstruction<jasmin::AppendEqual<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 4);
+  NTH_EXPECT(value_stack.top().as<int>() == 4);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 4);
+  NTH_EXPECT(value_stack.top().as<int>() == 4);
 }
 
-TEST(AppendEqual, UserDefined) {
+NTH_TEST("AppendEqual/UserDefined") {
   nth::stack<jasmin::Value> value_stack;
 
   value_stack.push(S{.value = 3});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::AppendEqual<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 5);
+  NTH_EXPECT(value_stack.top().as<S>().value == 5);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 3);
+  NTH_EXPECT(value_stack.top().as<S>().value == 3);
   value_stack.pop();
 
   value_stack.push(S{.value = 4});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::AppendEqual<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 5);
+  NTH_EXPECT(value_stack.top().as<S>().value == 5);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 4);
+  NTH_EXPECT(value_stack.top().as<S>().value == 4);
 }
 
-TEST(AppendLessThan, Primitive) {
+NTH_TEST("AppendLessThan/Primitive") {
   nth::stack<jasmin::Value> value_stack;
   value_stack.push(3);
   value_stack.push(5);
 
   jasmin::ExecuteInstruction<jasmin::AppendLessThan<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 5);
+  NTH_EXPECT(value_stack.top().as<int>() == 5);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 3);
+  NTH_EXPECT(value_stack.top().as<int>() == 3);
   value_stack.pop();
 
   value_stack.push(4);
   value_stack.push(4);
   jasmin::ExecuteInstruction<jasmin::AppendLessThan<int>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 4);
+  NTH_EXPECT(value_stack.top().as<int>() == 4);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<int>(), 4);
+  NTH_EXPECT(value_stack.top().as<int>() == 4);
 }
 
-TEST(AppendLessThan, UserDefined) {
+NTH_TEST("AppendLessThan/UserDefined") {
   nth::stack<jasmin::Value> value_stack;
 
   value_stack.push(S{.value = 3});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::AppendLessThan<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 5);
+  NTH_EXPECT(value_stack.top().as<S>().value == 5);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 3);
+  NTH_EXPECT(value_stack.top().as<S>().value == 3);
   value_stack.pop();
 
   value_stack.push(S{.value = 4});
   value_stack.push(S{.value = 5});
   jasmin::ExecuteInstruction<jasmin::AppendLessThan<S>>(value_stack);
-  ASSERT_EQ(value_stack.size(), 3);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 3);
+  NTH_EXPECT(not value_stack.top().as<bool>());
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 5);
+  NTH_EXPECT(value_stack.top().as<S>().value == 5);
   value_stack.pop();
-  EXPECT_EQ(value_stack.top().as<S>().value, 4);
+  NTH_EXPECT(value_stack.top().as<S>().value == 4);
 }
 
 }  // namespace

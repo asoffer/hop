@@ -8,11 +8,12 @@
 #include <string_view>
 #include <type_traits>
 
+#include "jasmin/core/internal/function_base.h"
 #include "jasmin/core/internal/function_state.h"
 #include "jasmin/core/internal/instruction_traits.h"
 #include "jasmin/core/value.h"
-#include "jasmin/core/internal/function_base.h"
 #include "nth/base/attributes.h"
+#include "nth/base/pack.h"
 #include "nth/container/stack.h"
 #include "nth/debug/debug.h"
 #include "nth/meta/concepts.h"
@@ -251,8 +252,9 @@ constexpr auto FlattenInstructionList(nth::Sequence auto unprocessed,
   } else {
     constexpr auto head = unprocessed.head();
     constexpr auto tail = unprocessed.tail();
-    if constexpr (processed.reduce(
-                      [&](auto... vs) { return ((vs == head) or ...); })) {
+    if constexpr (processed.reduce([&](auto... vs) {
+                    return NTH_PACK((any), vs == head);
+                  })) {
       return FlattenInstructionList(tail, processed);
     } else if constexpr (InstructionType<nth::type_t<head>>) {
       // TODO: Is this a bug in Clang? `tail` does not work but
@@ -289,6 +291,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
   constexpr auto inst_type = nth::type<Inst>;
   if constexpr (inst_type == nth::type<Call>) {
     if (cs_left == 0) [[unlikely]] {
+      NTH_ATTRIBUTE(tailcall)
       return internal::ReallocateCallStack<frame_type>(
           value_stack_head, vs_left, ip, call_stack, cs_left);
     } else {
@@ -387,6 +390,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
         vs_left -= outs;
       }
       ip += 1 + ImmediateValueCount<Inst>();
+      NTH_ATTRIBUTE(tailcall)
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
                                               call_stack, cs_left);
     } else {

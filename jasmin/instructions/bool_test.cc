@@ -1,40 +1,40 @@
 #include "jasmin/instructions/bool.h"
 
-#include "gtest/gtest.h"
+#include "nth/test/test.h"
 #include "jasmin/testing.h"
 #include "nth/container/stack.h"
 
 namespace {
 
-TEST(Instruction, Not) {
+NTH_TEST("instruction/Not") {
   nth::stack<jasmin::Value> value_stack;
 
   value_stack.push(true);
   jasmin::ExecuteInstruction<jasmin::Not>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_FALSE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(not value_stack.top().as<bool>());
 
   jasmin::ExecuteInstruction<jasmin::Not>(value_stack);
-  ASSERT_EQ(value_stack.size(), 1);
-  EXPECT_TRUE(value_stack.top().as<bool>());
+  NTH_ASSERT(value_stack.size() == 1);
+  NTH_EXPECT(value_stack.top().as<bool>());
 }
 
-TEST(Instruction, Xor) {
+NTH_TEST("instruction/Xor") {
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::Xor>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::Xor>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
 
   {
@@ -42,35 +42,35 @@ TEST(Instruction, Xor) {
     value_stack.push(false);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::Xor>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(false);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::Xor>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
 }
 
-TEST(Instruction, And) {
+NTH_TEST("instruction/And") {
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::And>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::And>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
 
   {
@@ -78,35 +78,35 @@ TEST(Instruction, And) {
     value_stack.push(false);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::And>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(false);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::And>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
 }
 
-TEST(Instruction, Or) {
+NTH_TEST("instruction/Or") {
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::Or>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::Or>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
 
   {
@@ -114,35 +114,35 @@ TEST(Instruction, Or) {
     value_stack.push(false);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::Or>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(false);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::Or>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
 }
 
-TEST(Instruction, Nand) {
+NTH_TEST("instruction/Nand") {
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::Nand>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_FALSE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(not value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(true);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::Nand>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
 
   {
@@ -150,16 +150,16 @@ TEST(Instruction, Nand) {
     value_stack.push(false);
     value_stack.push(true);
     jasmin::ExecuteInstruction<jasmin::Nand>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
   {
     nth::stack<jasmin::Value> value_stack;
     value_stack.push(false);
     value_stack.push(false);
     jasmin::ExecuteInstruction<jasmin::Nand>(value_stack);
-    ASSERT_EQ(value_stack.size(), 1);
-    EXPECT_TRUE(value_stack.top().as<bool>());
+    NTH_ASSERT(value_stack.size() == 1);
+    NTH_EXPECT(value_stack.top().as<bool>());
   }
 }
 

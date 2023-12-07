@@ -34,7 +34,7 @@ cc_binary(
         ":ssa",
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",
-        "//jasmin/instructions:core",
+        "//jasmin/instructions:common",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/debug/log:stderr_log_sink",
     ],

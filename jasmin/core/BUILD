@@ -49,6 +49,7 @@ cc_library(
         "//jasmin/core/internal:function_state",
         "//jasmin/core/internal:instruction_traits",
         "@asoffer_nth//nth/base:attributes",
+        "@asoffer_nth//nth/base:pack",
         "@asoffer_nth//nth/container:stack",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",

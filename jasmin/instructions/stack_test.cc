@@ -1,32 +1,32 @@
 #include "jasmin/instructions/stack.h"
 
-#include "gtest/gtest.h"
 #include "jasmin/testing.h"
 #include "nth/container/stack.h"
+#include "nth/test/test.h"
 
 namespace {
 
-TEST(Instruction, StackAllocate) {
+NTH_TEST("instruction/StackAllocate") {
   nth::stack<jasmin::Value> value_stack;
 
   jasmin::internal::StackFrame frame;
 
-  ASSERT_EQ(frame.data(), nullptr);
+  NTH_ASSERT(frame.data() == nullptr);
   jasmin::ExecuteInstruction<jasmin::StackAllocate>(value_stack, frame, 10);
-  EXPECT_EQ(value_stack.size(), 0);
-  EXPECT_NE(frame.data(), nullptr);
+  NTH_EXPECT(value_stack.size() == 0);
+  NTH_EXPECT(frame.data() != nullptr);
 }
 
-TEST(Instruction, StackOffset) {
+NTH_TEST("instruction/StackOffset") {
   nth::stack<jasmin::Value> value_stack;
 
   jasmin::internal::StackFrame frame;
 
-  ASSERT_EQ(frame.data(), nullptr);
+  NTH_ASSERT(frame.data() == nullptr);
   jasmin::ExecuteInstruction<jasmin::StackAllocate>(value_stack, frame, 10);
   jasmin::ExecuteInstruction<jasmin::StackOffset>(value_stack, frame, 3);
-  EXPECT_EQ(value_stack.size(), 1);
-  EXPECT_EQ(value_stack.top().as<std::byte*>(), frame.data() + 3);
+  NTH_EXPECT(value_stack.size() == 1);
+  NTH_EXPECT(value_stack.top().as<std::byte*>() == frame.data() + 3);
 }
 
 }  // namespace

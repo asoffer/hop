@@ -15,7 +15,7 @@ cc_test(
         ":bool",
         "//jasmin:testing",
         "@asoffer_nth//nth/container:stack",
-        "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/test:main",
     ]
 )
 
@@ -34,7 +34,7 @@ cc_test(
         ":common",
         "//jasmin:testing",
         "@asoffer_nth//nth/container:stack",
-        "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/test:main",
     ]
 )
 
@@ -53,7 +53,7 @@ cc_test(
         ":arithmetic",
         "//jasmin:testing",
         "@asoffer_nth//nth/container:stack",
-        "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/test:main",
     ]
 )
 
@@ -72,7 +72,7 @@ cc_test(
         ":compare",
         "//jasmin:testing",
         "@asoffer_nth//nth/container:stack",
-        "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/test:main",
     ]
 )
 
@@ -92,6 +92,6 @@ cc_test(
     deps = [
         ":stack",
         "//jasmin:testing",
-        "@com_google_googletest//:gtest_main",
+        "@asoffer_nth//nth/test:main",
     ]
 )
