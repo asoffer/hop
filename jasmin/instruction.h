@@ -321,9 +321,15 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
                                               call_stack, cap_and_left);
       }
 
+      Value *input;
+      Value *output;
       if constexpr (ConsumesInput<Inst>()) {
-        std::memmove(value_stack_head - ins, value_stack_head - ins + outs,
-                     sizeof(Value) * ins);
+        input  = value_stack_head - ins;
+        output = value_stack_head - ins + outs;
+        std::memmove(output, input, sizeof(Value) * ins);
+      } else {
+        input  = value_stack_head - ins;
+        output = value_stack_head;
       }
 
 #define JASMIN_INTERNAL_GET(p, Ns)                                             \
@@ -336,12 +342,10 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
           auto &fn_state = std::get<typename Inst::function_state>(
               static_cast<frame_type *>(call_stack)->state);
 
-          inst(fn_state, std::span(value_stack_head - ins + outs, ins),
-               std::span(value_stack_head - ins, outs),
+          inst(fn_state, std::span(input, ins), std::span(output, outs),
                JASMIN_INTERNAL_GET((ip + 2), Ns)...);
         } else {
-          inst(std::span(value_stack_head - ins + outs, ins),
-               std::span(value_stack_head - ins, outs),
+          inst(std::span(input, ins), std::span(output, outs),
                JASMIN_INTERNAL_GET((ip + 2), Ns)...);
         }
       }
@@ -351,6 +355,16 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       // of `ImmediateValueCount` since it is technically still an immediate
       // value.
 
+      if constexpr (ConsumesInput<Inst>()) {
+        value_stack_head += (outs - ins);
+        vs_left -= (outs - ins);
+      } else {
+        value_stack_head += outs;
+        vs_left -= outs;
+      }
+      ip += 1 + ImmediateValueCount<Inst>();
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
+                                              call_stack, cap_and_left);
     } else {
       constexpr auto parameter_types =
           inst_type.parameters().template drop<1 + HasFunctionState>();
