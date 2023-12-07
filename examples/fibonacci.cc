@@ -4,8 +4,8 @@
 
 #include "jasmin/core/execute.h"
 #include "jasmin/instructions/arithmetic.h"
+#include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
-#include "jasmin/instructions/core.h"
 #include "nth/container/interval.h"
 
 // This file defines two implementations of functions that compute fibonacci

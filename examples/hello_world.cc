@@ -3,7 +3,7 @@
 
 #include "jasmin/core/execute.h"
 #include "jasmin/instructions/compare.h"
-#include "jasmin/instructions/core.h"
+#include "jasmin/instructions/common.h"
 #include "nth/container/interval.h"
 
 // This file provides two relatively simple examples of defining

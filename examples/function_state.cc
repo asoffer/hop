@@ -3,7 +3,7 @@
 #include <queue>
 
 #include "jasmin/core/execute.h"
-#include "jasmin/instructions/core.h"
+#include "jasmin/instructions/common.h"
 
 // This file provides an example of a Jasmin function that hold mutable state
 // associated with each invoked function. This example is slightly more advanced

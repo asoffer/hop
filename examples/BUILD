@@ -8,7 +8,7 @@ cc_binary(
         "//jasmin/core:instruction_index",
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",
-        "//jasmin/instructions:core",
+        "//jasmin/instructions:common",
         "@asoffer_nth//nth/container:interval",
     ],
 )
@@ -18,7 +18,7 @@ cc_binary(
     srcs = ["function_state.cc"],
     deps = [
         "//jasmin/core:execute",
-        "//jasmin/instructions:core",
+        "//jasmin/instructions:common",
     ],
 )
 
@@ -29,7 +29,7 @@ cc_binary(
         "//jasmin/core:execute",
         "//jasmin/core:instruction_index",
         "//jasmin/instructions:compare",
-        "//jasmin/instructions:core",
+        "//jasmin/instructions:common",
         "@asoffer_nth//nth/container:interval",
     ],
 )

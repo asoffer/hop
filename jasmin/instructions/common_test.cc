@@ -1,4 +1,4 @@
-#include "jasmin/instructions/core.h"
+#include "jasmin/instructions/common.h"
 
 #include "gtest/gtest.h"
 #include "jasmin/testing.h"

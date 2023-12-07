@@ -1,5 +1,5 @@
-#ifndef JASMIN_INSTRUCTIONS_CORE_H
-#define JASMIN_INSTRUCTIONS_CORE_H
+#ifndef JASMIN_INSTRUCTIONS_COMMON_H
+#define JASMIN_INSTRUCTIONS_COMMON_H
 
 #include "jasmin/core/instruction.h"
 
@@ -75,4 +75,4 @@ struct Store : Instruction<Store> {
 
 }  // namespace jasmin
 
-#endif  // JASMIN_INSTRUCTIONS_CORE_H
+#endif  // JASMIN_INSTRUCTIONS_COMMON_H

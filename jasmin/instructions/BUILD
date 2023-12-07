@@ -20,18 +20,18 @@ cc_test(
 )
 
 cc_library(
-    name = "core",
-    hdrs = ["core.h"],
+    name = "common",
+    hdrs = ["common.h"],
     deps = [
         "//jasmin/core:instruction",
     ],
 )
 
 cc_test(
-    name = "core_test",
-    srcs = ["core_test.cc"],
+    name = "common_test",
+    srcs = ["common_test.cc"],
     deps = [
-        ":core",
+        ":common",
         "//jasmin:testing",
         "@asoffer_nth//nth/container:stack",
         "@com_google_googletest//:gtest_main",
