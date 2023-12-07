@@ -43,7 +43,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":value",
-        "//jasmin/internal:call_stack",
         "//jasmin/internal:function_base",
         "//jasmin/internal:function_state",
         "//jasmin/internal:instruction_traits",
@@ -100,6 +99,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":instruction",
+        ":execute",
+        ":function",
         ":value",
         "@asoffer_nth//nth/container:stack",
     ],

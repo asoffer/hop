@@ -1,14 +1,6 @@
 package(default_visibility = ["//jasmin:__subpackages__"])
 
 cc_library(
-    name = "call_stack",
-    hdrs = ["call_stack.h"],
-    deps = [
-        "//jasmin:value",
-    ],
-)
-
-cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     deps = [

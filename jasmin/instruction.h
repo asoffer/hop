@@ -8,7 +8,6 @@
 #include <string_view>
 #include <type_traits>
 
-#include "jasmin/internal/call_stack.h"
 #include "jasmin/internal/function_base.h"
 #include "jasmin/internal/function_state.h"
 #include "jasmin/internal/instruction_traits.h"
@@ -21,6 +20,13 @@
 #include "nth/meta/type.h"
 
 namespace jasmin {
+namespace internal {
+
+struct FrameBase {
+  Value const *ip;
+};
+
+}  // namespace internal
 
 // Template from which all stack machine instructions must inherit. This
 // template is intended to be used with the curiously recurring template
@@ -187,6 +193,17 @@ struct Return : Instruction<Return> {
 
 namespace internal {
 
+template <typename StateType>
+struct Frame : FrameBase {
+  StateType state;
+};
+
+template <>
+struct Frame<void> : FrameBase {};
+
+using exec_fn_type = void (*)(Value *, size_t, Value const *, FrameBase *,
+                              uint64_t);
+
 inline void ReallocateValueStack(Value *value_stack_head, size_t capacity_left,
                                  Value const *ip, FrameBase *call_stack,
                                  uint64_t cap_and_left) {
@@ -203,6 +220,25 @@ inline void ReallocateValueStack(Value *value_stack_head, size_t capacity_left,
   NTH_ATTRIBUTE(tailcall)
   return ip->template as<exec_fn_type>()(value_stack_head, capacity_left, ip,
                                          call_stack, cap_and_left);
+}
+
+template <typename FrameType>
+inline void ReallocateCallStack(Value *value_stack_head, size_t capacity_left,
+                                Value const *ip, FrameBase *cs_head,
+                                uint64_t cs_left) {
+  {
+    // Scope is necessary to ensure destruction of `c` occurs before the
+    // tail-call, even though the destruction will be a no-op due to the
+    // move+release.
+    auto c = nth::stack<FrameType>::reconstitute_from(
+        static_cast<FrameType *>(cs_head), cs_left);
+    c.reallocate();
+    std::tie(cs_head, cs_left) = std::move(c).release();
+  }
+
+  NTH_ATTRIBUTE(tailcall)
+  return ip->template as<exec_fn_type>()(value_stack_head, capacity_left, ip,
+                                         cs_head, cs_left);
 }
 
 // Constructs an InstructionSet type from a list of instructions. Does no
@@ -255,53 +291,48 @@ template <typename Set>
 void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
                                     Value const *ip,
                                     internal::FrameBase *call_stack,
-                                    uint64_t cap_and_left) {
+                                    uint64_t cs_left) {
   using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
   constexpr auto inst_type = nth::type<Inst>;
   if constexpr (inst_type == nth::type<Call>) {
-    if ((cap_and_left & 0xffffffff) == 0) [[unlikely]] {
-      return internal::ReallocateCallStack<sizeof(frame_type)>(
-          value_stack_head, vs_left, ip, call_stack, cap_and_left);
+    if (cs_left == 0) [[unlikely]] {
+      return internal::ReallocateCallStack<frame_type>(
+          value_stack_head, vs_left, ip, call_stack, cs_left);
     } else {
       --value_stack_head;
-      (++call_stack)->ip = ip;
+      auto *p    = new (static_cast<frame_type *>(call_stack)) frame_type;
+      p->ip      = ip;
+      call_stack = p + 1;
       ip = value_stack_head->as<internal::FunctionBase const *>()->entry();
       NTH_ATTRIBUTE(tailcall)
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
-                                              call_stack, cap_and_left - 1);
+                                              call_stack, cs_left - 1);
     }
   } else if constexpr (inst_type == nth::type<Jump>) {
     ip += (ip + 1)->as<ptrdiff_t>();
     NTH_ATTRIBUTE(tailcall)
     return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
-                                            call_stack, cap_and_left);
+                                            call_stack, cs_left);
   } else if constexpr (inst_type == nth::type<JumpIf>) {
     --value_stack_head;
     if (value_stack_head->as<bool>()) {
       ip += (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
-                                              call_stack, cap_and_left);
+                                              call_stack, cs_left);
     } else {
       ip += 2;
       NTH_ATTRIBUTE(tailcall)
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
-                                              call_stack, cap_and_left);
+                                              call_stack, cs_left);
     }
   } else if constexpr (inst_type == nth::type<Return>) {
-    ip = (call_stack--)->ip + 2;
-    ++cap_and_left;
-    if (internal::EmptyCallStack(cap_and_left)) [[unlikely]] {
-      const_cast<Value &>(*call_stack->ip) = vs_left;
-      --call_stack;
-      const_cast<Value &>(*call_stack->ip) = value_stack_head;
-      operator delete(call_stack);
-      return;
-    } else {
-      NTH_ATTRIBUTE(tailcall)
-      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
-    }
+    call_stack = static_cast<frame_type *>(call_stack) - 1;
+    ip         = call_stack->ip + 2;
+    static_cast<frame_type *>(call_stack)->~frame_type();
+    NTH_ATTRIBUTE(tailcall)
+    return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
+                                            call_stack, cs_left + 1);
   } else {
     constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
     constexpr auto inst_type = internal::InstructionFunctionType<Inst>();
@@ -318,7 +349,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       if (vs_left < outs) [[unlikely]] {
         NTH_ATTRIBUTE(tailcall)
         return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
+                                              call_stack, cs_left);
       }
 
       Value *input;
@@ -340,7 +371,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       [&]<size_t... Ns>(std::index_sequence<Ns...>) {
         if constexpr (HasFunctionState) {
           auto &fn_state = std::get<typename Inst::function_state>(
-              static_cast<frame_type *>(call_stack)->state);
+              (static_cast<frame_type *>(call_stack) - 1)->state);
 
           inst(fn_state, std::span(input, ins), std::span(output, outs),
                JASMIN_INTERNAL_GET((ip + 2), Ns)...);
@@ -364,7 +395,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       }
       ip += 1 + ImmediateValueCount<Inst>();
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
+                                              call_stack, cs_left);
     } else {
       constexpr auto parameter_types =
           inst_type.parameters().template drop<1 + HasFunctionState>();
@@ -378,13 +409,13 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
             [[unlikely]] {
           NTH_ATTRIBUTE(tailcall)
           return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
-                                                call_stack, cap_and_left);
+                                                call_stack, cs_left);
         }
       }
 
       if constexpr (HasFunctionState) {
         auto &fn_state = std::get<typename Inst::function_state>(
-            static_cast<frame_type *>(call_stack)->state);
+            (static_cast<frame_type *>(call_stack) - 1)->state);
 
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
           if constexpr (RetCount == 0) {
@@ -439,7 +470,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       ip += ImmediateValueCount<Inst>() + 1;
       NTH_ATTRIBUTE(tailcall)
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
-                                              call_stack, cap_and_left);
+                                              call_stack, cs_left);
     }
   }
 }

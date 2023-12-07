@@ -11,39 +11,45 @@
 #include "nth/debug/debug.h"
 
 namespace jasmin {
+namespace internal {
+
+inline Value Pop(nth::stack<Value> &stack) {
+  Value v = stack.top();
+  stack.pop();
+  return v;
+}
+
+template <typename StateType>
+void FinishExecution(Value *value_stack_head, size_t vs_left, Value const *ip,
+                     FrameBase *call_stack, uint64_t cs_remaining) {
+  *(ip + 1)->as<Value **>() = value_stack_head;
+  *(ip + 2)->as<size_t *>() = vs_left;
+  nth::stack<Frame<StateType>>::reconstitute_from(
+      static_cast<Frame<StateType> *>(call_stack), cs_remaining);
+}
+
+}  // namespace internal
 
 // Executes the given function `f` with an initial stack of values given by the
 // object referenced by `value_stack`. `value_stack` is modified in place.
 template <InstructionSetType Set>
 void Execute(Function<Set> const &f, nth::stack<Value> &value_stack) {
+  using frame_type = internal::Frame<internal::FunctionState<Set>>;
+  nth::stack<frame_type> call_stack;
+  call_stack.emplace();
+
   auto [top, remaining] = std::move(value_stack).release();
-  Value head            = top;
-  Value left            = remaining;
+  Value landing_pad[5]  = {
+       Value::Uninitialized(), Value::Uninitialized(),
+       &internal::FinishExecution<internal::FunctionState<Set>>, &top,
+       &remaining};
+  call_stack.top().ip = &landing_pad[0];
 
-  using frame_type = internal::Frame<typename internal::FunctionState<Set>>;
-  frame_type *call_stack =
-      static_cast<frame_type *>(operator new(sizeof(frame_type) * 8));
-  Value const *ip = f.entry();
-  // These aren't actually instruction pointers, but we're using them during
-  // execution to store information about the `nth::stack<Value>` so it can be
-  // reconstituted after the fact.
-  call_stack[0].ip = &head;
-  call_stack[1].ip = &left;
-  call_stack[2].ip = ip;
-
-  ip->as<internal::exec_fn_type>()(top, remaining, ip, &call_stack[2],
-                                   0x00000008'00000005);
-  value_stack = nth::stack<Value>::reconstitute_from(head.as<Value *>(),
-                                                     left.as<size_t>());
+  Value const *ip             = f.entry();
+  auto [cs_top, cs_remaining] = std::move(call_stack).release();
+  ip->as<internal::exec_fn_type>()(top, remaining, ip, cs_top, cs_remaining);
+  value_stack = nth::stack<Value>::reconstitute_from(top, remaining);
 }
-
-namespace internal {
-inline Value Pop(nth::stack<Value> & stack) {
-  Value v = stack.top();
-  stack.pop();
-  return v;
-}
-}  // namespace internal
 
 // Interprets the given function `f` with arguments provided in the
 // initializer-list `arguments`. Return values are written to the passed-in
