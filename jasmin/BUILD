@@ -8,6 +8,7 @@ cc_library(
         ":function",
         ":instruction",
         ":value",
+        "@asoffer_nth//nth/base:pack",
         "@asoffer_nth//nth/container:stack",
         "@asoffer_nth//nth/debug",
     ],
@@ -86,9 +87,7 @@ cc_test(
     srcs = ["value_test.cc"],
     deps = [
         ":value",
-        "@com_google_googletest//:gtest_main",
-        "@asoffer_nth//nth/debug/log",
-        "@asoffer_nth//nth/debug/log:stderr_log_sink",
+        "@asoffer_nth//nth/test:main",
     ],
 )
 

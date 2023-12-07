@@ -10,6 +10,9 @@ cc_library(
 cc_library(
     name = "debug",
     hdrs = ["debug.h"],
+    deps = [
+      "@asoffer_nth//nth/meta:type",
+    ],
 )
 
 cc_library(

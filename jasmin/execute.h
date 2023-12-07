@@ -7,6 +7,7 @@
 #include "jasmin/function.h"
 #include "jasmin/instruction.h"
 #include "jasmin/value.h"
+#include "nth/base/pack.h"
 #include "nth/container/stack.h"
 #include "nth/debug/debug.h"
 
@@ -61,7 +62,7 @@ void Execute(Function<Set> const &f, nth::stack<Value> &value_stack) {
 // report an error message to `stderr` and abort program execution.
 template <InstructionSetType Set>
 void Execute(Function<Set> const &f, std::initializer_list<Value> arguments,
-             SmallTrivialValue auto &...return_values) {
+             std::convertible_to<Value> auto &...return_values) {
   NTH_REQUIRE((v.when(internal::harden)),
               arguments.size() == f.parameter_count())
       .Log<"Argument/parameter count mismatch.">();
@@ -69,14 +70,11 @@ void Execute(Function<Set> const &f, std::initializer_list<Value> arguments,
               sizeof...(return_values) == f.return_count())
       .Log<"Return value count mismatch.">();
   nth::stack<Value> value_stack(arguments);
-  int dummy;
 
   Execute(f, value_stack);
-  static_cast<void>(
-      (dummy = ... =
-           (return_values = internal::Pop(value_stack)
-                                .as<std::decay_t<decltype(return_values)>>(),
-            0)));
+  NTH_PACK((each_reverse),
+           return_values = internal::Pop(value_stack)
+                               .as<std::decay_t<decltype(return_values)>>());
 }
 
 }  // namespace jasmin
