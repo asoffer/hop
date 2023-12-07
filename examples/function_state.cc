@@ -2,7 +2,7 @@
 #include <iostream>
 #include <queue>
 
-#include "jasmin/execute.h"
+#include "jasmin/core/execute.h"
 #include "jasmin/instructions/core.h"
 
 // This file provides an example of a Jasmin function that hold mutable state

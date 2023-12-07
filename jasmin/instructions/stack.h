@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <memory>
 
-#include "jasmin/instruction.h"
-#include "jasmin/value.h"
+#include "jasmin/core/instruction.h"
+#include "jasmin/core/value.h"
 #include "nth/debug/debug.h"
 
 namespace jasmin {

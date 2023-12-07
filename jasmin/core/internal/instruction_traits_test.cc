@@ -1,6 +1,6 @@
-#include "jasmin/internal/instruction_traits.h"
+#include "jasmin/core/internal/instruction_traits.h"
 
-#include "jasmin/instruction.h"
+#include "jasmin/core/instruction.h"
 #include "nth/test/test.h"
 
 namespace jasmin::internal {
@@ -140,7 +140,8 @@ struct FunctionStateReturnsAndAcceptsValuesAndImmediatesConsume {
   using function_state = int;
   static bool consume(function_state&, std::span<Value, 2>, int, char);
 };
-static_assert(UserDefinedInstruction<FunctionStateReturnsAndAcceptsValuesAndImmediatesConsume>);
+static_assert(UserDefinedInstruction<
+              FunctionStateReturnsAndAcceptsValuesAndImmediatesConsume>);
 
 struct TooBig {
   Value v[2];

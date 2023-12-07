@@ -1,6 +1,6 @@
-#include "jasmin/function.h"
+#include "jasmin/core/function.h"
 
-#include "gtest/gtest.h"
+#include "nth/test/test.h"
 
 namespace jasmin {
 namespace {
@@ -16,7 +16,7 @@ struct ImmediateDetermined : jasmin::Instruction<ImmediateDetermined> {
 using Instructions =
     jasmin::MakeInstructionSet<PushImmediateBool, ImmediateDetermined>;
 
-TEST(Function, AppendIncorrectType) {
+NTH_TEST("function/append-incorrect-type") {
   bool converted = false;
 
   struct Converter {
@@ -31,17 +31,12 @@ TEST(Function, AppendIncorrectType) {
   jasmin::Function<Instructions> func(0, 1);
 
   Converter c(&converted);
-  EXPECT_FALSE(converted);
+  NTH_EXPECT(not converted);
   // `c` Should be cast to `bool` in call to `append`.
   func.append<PushImmediateBool>(c);
 
-  func.append<ImmediateDetermined>(
-      {
-          .parameters = 0,
-          .returns    = 0,
-      },
-      1);
-  EXPECT_TRUE(converted);
+  func.append<ImmediateDetermined>({.parameters = 0, .returns = 0}, 1);
+  NTH_EXPECT(converted);
 }
 
 }  // namespace

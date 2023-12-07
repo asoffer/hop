@@ -1,12 +1,12 @@
-#ifndef JASMIN_EXECUTE_H
-#define JASMIN_EXECUTE_H
+#ifndef JASMIN_CORE_EXECUTE_H
+#define JASMIN_CORE_EXECUTE_H
 
 #include <initializer_list>
 #include <type_traits>
 
-#include "jasmin/function.h"
-#include "jasmin/instruction.h"
-#include "jasmin/value.h"
+#include "jasmin/core/function.h"
+#include "jasmin/core/instruction.h"
+#include "jasmin/core/value.h"
 #include "nth/base/pack.h"
 #include "nth/container/stack.h"
 #include "nth/debug/debug.h"
@@ -79,4 +79,4 @@ void Execute(Function<Set> const &f, std::initializer_list<Value> arguments,
 
 }  // namespace jasmin
 
-#endif  // JASMIN_EXECUTE_H
+#endif  // JASMIN_CORE_EXECUTE_H

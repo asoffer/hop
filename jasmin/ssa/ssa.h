@@ -5,10 +5,10 @@
 #include <string_view>
 #include <vector>
 
-#include "jasmin/function.h"
-#include "jasmin/instruction.h"
+#include "jasmin/core/function.h"
+#include "jasmin/core/instruction.h"
 #include "jasmin/ssa/op_code.h"
-#include "jasmin/value.h"
+#include "jasmin/core/value.h"
 #include "nth/debug/debug.h"
 #include "nth/io/string_printer.h"
 #include "nth/strings/interpolate.h"

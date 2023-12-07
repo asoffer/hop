@@ -1,15 +1,18 @@
-#ifndef JASMIN_INTERNAL_FUNCTION_BASE_H
-#define JASMIN_INTERNAL_FUNCTION_BASE_H
+#ifndef JASMIN_CORE_INTERNAL_FUNCTION_BASE_H
+#define JASMIN_CORE_INTERNAL_FUNCTION_BASE_H
 
 #include <span>
 #include <vector>
 
-#include "jasmin/instruction_index.h"
-#include "jasmin/value.h"
+#include "jasmin/core/value.h"
+#include "jasmin/core/instruction_index.h"
 #include "nth/container/interval.h"
 #include "nth/debug/debug.h"
 
 namespace jasmin::internal {
+struct FrameBase {
+  Value const *ip;
+};
 
 // `FunctionBase` is the base class for any function-type defined via Jasmin's
 // infrastructure. Op-codes are only meaningful in the presence of an
@@ -20,14 +23,14 @@ namespace jasmin::internal {
 struct FunctionBase {
   // Constructs a `FunctionBase` representing a function that accepts
   // `parameter_count` parameters and returns `return_count` values.
-  explicit FunctionBase(uint8_t parameter_count, uint8_t return_count)
+  explicit FunctionBase(uint32_t parameter_count, uint32_t return_count)
       : parameter_count_(parameter_count), return_count_(return_count) {}
 
   // Returns the number of parameters this function accepts.
-  constexpr uint8_t parameter_count() const { return parameter_count_; }
+  constexpr uint32_t parameter_count() const { return parameter_count_; }
 
   // Returns the number of values this function returns.
-  constexpr uint8_t return_count() const { return return_count_; }
+  constexpr uint32_t return_count() const { return return_count_; }
 
   // Returns a pointer to the first instruction in this function.
   constexpr Value const *entry() const { return instructions_.data(); }
@@ -85,10 +88,10 @@ struct FunctionBase {
 
  private:
   std::vector<Value> instructions_;
-  uint8_t parameter_count_;
-  uint8_t return_count_;
+  uint32_t parameter_count_;
+  uint32_t return_count_;
 };
 
 }  // namespace jasmin::internal
 
-#endif  // JASMIN_internal_H
+#endif  // JASMIN_CORE_INTERNAL_FUNCTION_BASE_H

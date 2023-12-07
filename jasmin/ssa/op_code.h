@@ -5,7 +5,7 @@
 #include <string>
 
 #include "absl/container/flat_hash_map.h"
-#include "jasmin/instruction.h"
+#include "jasmin/core/instruction.h"
 #include "nth/debug/debug.h"
 #include "nth/meta/sequence.h"
 #include "nth/meta/type.h"

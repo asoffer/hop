@@ -1,6 +1,6 @@
-#include "jasmin/instruction.h"
+#include "jasmin/core/instruction.h"
 
-#include "jasmin/internal/instruction_traits.h"
+#include "jasmin/core/internal/instruction_traits.h"
 #include "nth/test/test.h"
 
 namespace jasmin {

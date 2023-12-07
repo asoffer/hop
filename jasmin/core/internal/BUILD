@@ -1,11 +1,11 @@
-package(default_visibility = ["//jasmin:__subpackages__"])
+package(default_visibility = ["//jasmin/core:__subpackages__"])
 
 cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     deps = [
-        "//jasmin:instruction_index",
-        "//jasmin:value",
+        "//jasmin/core:instruction_index",
+        "//jasmin/core:value",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/container:interval",
     ],
@@ -15,8 +15,8 @@ cc_test(
     name = "function_base_test",
     srcs = ["function_base_test.cc"],
     deps = [
-      ":function_base",
-      "@com_google_googletest//:gtest_main",
+        ":function_base",
+        "@asoffer_nth//nth/test:main",
     ],
 )
 
@@ -29,10 +29,9 @@ cc_library(
 cc_library(
     name = "instruction_traits",
     hdrs = ["instruction_traits.h"],
-    visibility = ["//visibility:public"],
     deps = [
         ":function_state",
-        "//jasmin:value",
+        "//jasmin/core:value",
         "@asoffer_nth//nth/meta:concepts",
         "@asoffer_nth//nth/meta:type",
     ],
@@ -43,7 +42,7 @@ cc_test(
     srcs = ["instruction_traits_test.cc"],
     deps = [
         ":instruction_traits",
-        "//jasmin:instruction",
+        "//jasmin/core:instruction",
         "@asoffer_nth//nth/test:main",
     ],
 )

@@ -1,7 +1,7 @@
 #ifndef JASMIN_INSTRUCTIONS_BOOL_H
 #define JASMIN_INSTRUCTIONS_BOOL_H
 
-#include "jasmin/instruction.h"
+#include "jasmin/core/instruction.h"
 
 namespace jasmin {
 

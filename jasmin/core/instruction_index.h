@@ -1,5 +1,5 @@
-#ifndef JASMIN_INSTRUCTION_INDEX_H
-#define JASMIN_INSTRUCTION_INDEX_H
+#ifndef JASMIN_CORE_INSTRUCTION_INDEX_H
+#define JASMIN_CORE_INSTRUCTION_INDEX_H
 
 #include <cstddef>
 
@@ -47,4 +47,4 @@ struct InstructionIndex {
 
 }  // namespace jasmin
 
-#endif  // JASMIN_INSTRUCTION_INDEX_H
+#endif  // JASMIN_CORE_INSTRUCTION_INDEX_H

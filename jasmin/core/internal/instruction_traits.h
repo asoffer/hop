@@ -1,8 +1,8 @@
-#ifndef JASMIN_INTERNAL_INSTRUCTION_TRAITS_H
-#define JASMIN_INTERNAL_INSTRUCTION_TRAITS_H
+#ifndef JASMIN_CORE_INTERNAL_INSTRUCTION_TRAITS_H
+#define JASMIN_CORE_INTERNAL_INSTRUCTION_TRAITS_H
 
-#include "jasmin/internal/function_state.h"
-#include "jasmin/value.h"
+#include "jasmin/core/internal/function_state.h"
+#include "jasmin/core/value.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/type.h"
 
@@ -178,4 +178,4 @@ constexpr auto InstructionFunctionType() {
 }  // namespace internal
 }  // namespace jasmin
 
-#endif  // JASMIN_INTERNAL_INSTRUCTION_TRAITS_H
+#endif  // JASMIN_CORE_INTERNAL_INSTRUCTION_TRAITS_H

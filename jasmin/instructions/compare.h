@@ -3,7 +3,7 @@
 
 #include <concepts>
 
-#include "jasmin/instruction.h"
+#include "jasmin/core/instruction.h"
 
 namespace jasmin {
 

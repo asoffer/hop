@@ -1,9 +1,9 @@
 #ifndef JASMIN_TESTING_H
 #define JASMIN_TESTING_H
 
-#include "jasmin/execute.h"
-#include "jasmin/function.h"
-#include "jasmin/instruction.h"
+#include "jasmin/core/execute.h"
+#include "jasmin/core/function.h"
+#include "jasmin/core/instruction.h"
 #include "nth/container/stack.h"
 
 namespace jasmin {

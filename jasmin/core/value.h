@@ -1,5 +1,5 @@
-#ifndef JASMIN_VALUE_H
-#define JASMIN_VALUE_H
+#ifndef JASMIN_CORE_VALUE_H
+#define JASMIN_CORE_VALUE_H
 
 #include <concepts>
 #include <cstdint>
@@ -137,4 +137,4 @@ inline Value::Value()
 
 }  // namespace jasmin
 
-#endif  // JASMIN_VALUE_H
+#endif  // JASMIN_CORE_VALUE_H

@@ -1,5 +1,5 @@
-#ifndef JASMIN_INSTRUCTION_H
-#define JASMIN_INSTRUCTION_H
+#ifndef JASMIN_CORE_INSTRUCTION_H
+#define JASMIN_CORE_INSTRUCTION_H
 
 #include <concepts>
 #include <limits>
@@ -8,10 +8,10 @@
 #include <string_view>
 #include <type_traits>
 
-#include "jasmin/internal/function_base.h"
-#include "jasmin/internal/function_state.h"
-#include "jasmin/internal/instruction_traits.h"
-#include "jasmin/value.h"
+#include "jasmin/core/internal/function_state.h"
+#include "jasmin/core/internal/instruction_traits.h"
+#include "jasmin/core/value.h"
+#include "jasmin/core/internal/function_base.h"
 #include "nth/base/attributes.h"
 #include "nth/container/stack.h"
 #include "nth/debug/debug.h"
@@ -20,13 +20,6 @@
 #include "nth/meta/type.h"
 
 namespace jasmin {
-namespace internal {
-
-struct FrameBase {
-  Value const *ip;
-};
-
-}  // namespace internal
 
 // Template from which all stack machine instructions must inherit. This
 // template is intended to be used with the curiously recurring template
@@ -363,7 +356,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
         output = value_stack_head;
       }
 
-#define JASMIN_INTERNAL_GET(p, Ns)                                             \
+#define JASMIN_CORE_INTERNAL_GET(p, Ns)                                        \
   (p + Ns)->template as<nth::type_t<parameter_types.template get<Ns>()>>()
 
       constexpr auto parameter_types =
@@ -374,10 +367,10 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
               (static_cast<frame_type *>(call_stack) - 1)->state);
 
           inst(fn_state, std::span(input, ins), std::span(output, outs),
-               JASMIN_INTERNAL_GET((ip + 2), Ns)...);
+               JASMIN_CORE_INTERNAL_GET((ip + 2), Ns)...);
         } else {
           inst(std::span(input, ins), std::span(output, outs),
-               JASMIN_INTERNAL_GET((ip + 2), Ns)...);
+               JASMIN_CORE_INTERNAL_GET((ip + 2), Ns)...);
         }
       }
       (std::make_index_sequence<ImmediateValueCount<Inst>() - 1>{});
@@ -420,16 +413,16 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
           if constexpr (RetCount == 0) {
             inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
-                 JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+                 JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else if constexpr (RetCount == 1) {
             *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
                 inst(fn_state,
                      span_type(value_stack_head - ValueCount, ValueCount),
-                     JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+                     JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
             std::array result = inst(
                 fn_state, span_type(value_stack_head - ValueCount, ValueCount),
-                JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+                JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
             std::memcpy(
                 value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
                 &result, sizeof(result));
@@ -440,15 +433,15 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
           if constexpr (RetCount == 0) {
             inst(span_type(value_stack_head - ValueCount, ValueCount),
-                 JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+                 JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else if constexpr (RetCount == 1) {
             *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
                 inst(span_type(value_stack_head - ValueCount, ValueCount),
-                     JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+                     JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
             std::array result =
                 inst(span_type(value_stack_head - ValueCount, ValueCount),
-                     JASMIN_INTERNAL_GET((ip + 1), Ns)...);
+                     JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
             std::memcpy(
                 value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
                 &result, sizeof(result));
@@ -456,7 +449,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
         }
         (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
       }
-#undef JASMIN_INTERNAL_GET
+#undef JASMIN_CORE_INTERNAL_GET
 
       constexpr ptrdiff_t UpdateAmount =
           RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
@@ -537,4 +530,4 @@ std::string InstructionName() {
 
 }  // namespace jasmin
 
-#endif  // JASMIN_INSTRUCTION_H
+#endif  // JASMIN_CORE_INSTRUCTION_H

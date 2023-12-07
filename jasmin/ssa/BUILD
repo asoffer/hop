@@ -4,7 +4,7 @@ cc_library(
     name = "op_code",
     hdrs = ["op_code.h"],
     deps = [
-        "//jasmin:instruction",
+        "//jasmin/core:instruction",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/meta:sequence",
         "@asoffer_nth//nth/meta:type",
@@ -19,8 +19,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":op_code",
-        "//jasmin:instruction",
-        "//jasmin:function",
+        "//jasmin/core:instruction",
+        "//jasmin/core:function",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/strings:interpolate",
         "@com_google_absl//absl/synchronization",

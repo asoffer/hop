@@ -4,7 +4,7 @@ cc_library(
     name = "bool",
     hdrs = ["bool.h"],
     deps = [
-        "//jasmin:instruction",
+        "//jasmin/core:instruction",
     ],
 )
 
@@ -23,7 +23,7 @@ cc_library(
     name = "core",
     hdrs = ["core.h"],
     deps = [
-        "//jasmin:instruction",
+        "//jasmin/core:instruction",
     ],
 )
 
@@ -42,7 +42,7 @@ cc_library(
     name = "arithmetic",
     hdrs = ["arithmetic.h"],
     deps = [
-        "//jasmin:instruction",
+        "//jasmin/core:instruction",
     ],
 )
 
@@ -61,7 +61,7 @@ cc_library(
     name = "compare",
     hdrs = ["compare.h"],
     deps = [
-        "//jasmin:instruction",
+        "//jasmin/core:instruction",
     ],
 )
 
@@ -80,8 +80,8 @@ cc_library(
     name = "stack",
     hdrs = ["stack.h"],
     deps = [
-        "//jasmin:instruction",
-        "//jasmin:value",
+        "//jasmin/core:instruction",
+        "//jasmin/core:value",
         "@asoffer_nth//nth/debug",
     ],
 )
