@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "jasmin/core/execute.h"
+#include "jasmin/core/program.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
@@ -18,11 +19,13 @@
 // point out that Jasmin allows users to fully control the instruction set they
 // are working with.
 
-auto FibonacciRecursive() {
-  using Instructions = jasmin::MakeInstructionSet<
-      jasmin::Duplicate, jasmin::Swap, jasmin::Push, jasmin::LessThan<uint64_t>,
-      jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>>;
-  jasmin::Function<Instructions> func(1, 1);
+using RecursiveInstructions = jasmin::MakeInstructionSet<
+    jasmin::Duplicate, jasmin::Swap, jasmin::Push, jasmin::LessThan<uint64_t>,
+    jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>>;
+
+jasmin::Program<RecursiveInstructions> FibonacciRecursive() {
+  jasmin::Program<RecursiveInstructions> p;
+  auto& func = p.declare("fib", 1, 1);
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push>(uint64_t{2});
   func.append<jasmin::LessThan<uint64_t>>();
@@ -43,7 +46,7 @@ auto FibonacciRecursive() {
   func.append<jasmin::Add<uint64_t>>();
   nth::interval<jasmin::InstructionIndex> ret = func.append<jasmin::Return>();
   func.set_value(jump, 0, ret.lower_bound() - jump.lower_bound());
-  return func;
+  return p;
 }
 
 struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
@@ -57,12 +60,14 @@ struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
   }
 };
 
-auto FibonacciDynamicProgramming() {
-  using Instructions =
-      jasmin::MakeInstructionSet<jasmin::DuplicateAt, jasmin::Push,
-                                 jasmin::Equal<uint64_t>, UpdateFibonacci>;
+using DynamicInstructions =
+    jasmin::MakeInstructionSet<jasmin::DuplicateAt, jasmin::Push,
+                               jasmin::Equal<uint64_t>, UpdateFibonacci>;
 
-  jasmin::Function<Instructions> func(1, 1);
+jasmin::Program<DynamicInstructions>
+FibonacciDynamicProgramming() {
+  jasmin::Program<DynamicInstructions> p;
+  auto& func = p.declare("fib", 1, 1);
   func.append<jasmin::Push>(uint64_t{1});
   func.append<jasmin::Push>(uint64_t{0});
   auto loop_start = func.append<jasmin::DuplicateAt>(
@@ -79,7 +84,7 @@ auto FibonacciDynamicProgramming() {
   func.set_value(loop_end, 0,
                  loop_start.lower_bound() - loop_end.lower_bound());
   func.set_value(jump, 0, ret.lower_bound() - jump.lower_bound());
-  return func;
+  return p;
 }
 
 int main(int argc, char const* argv[]) {
@@ -99,9 +104,11 @@ int main(int argc, char const* argv[]) {
   uint64_t input = std::atoi(argv[2]);
   uint64_t result;
   if (std::strcmp(argv[1], "recursive") == 0) {
-    jasmin::Execute(FibonacciRecursive(), {input}, result);
+    auto program = FibonacciRecursive();
+    jasmin::Execute(program.function("fib"), {input}, result);
   } else if (std::strcmp(argv[1], "dynamic") == 0) {
-    jasmin::Execute(FibonacciDynamicProgramming(), {input}, result);
+    auto program = FibonacciDynamicProgramming();
+    jasmin::Execute(program.function("fib"), {input}, result);
   } else {
     std::fputs("Choose an implementation: \"recursive\" or \"dynamic\".",
                stderr);

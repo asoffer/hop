@@ -1,11 +1,24 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
+    name = "debugger",
+    srcs = ["debugger.cc"],
+    deps = [
+        "//jasmin/core:debugger",
+        "//jasmin/core:execute",
+        "//jasmin/core:function",
+        "//jasmin/core:program",
+        "//jasmin/instructions:common",
+    ],
+)
+
+cc_binary(
     name = "fibonacci",
     srcs = ["fibonacci.cc"],
     deps = [
         "//jasmin/core:execute",
         "//jasmin/core:instruction_index",
+        "//jasmin/core:program",
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",
         "//jasmin/instructions:common",

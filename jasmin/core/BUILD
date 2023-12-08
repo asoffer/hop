@@ -1,6 +1,21 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
+    name = "debugger",
+    hdrs = ["debugger.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":function",
+        ":instruction",
+        ":program",
+        ":value",
+        "@asoffer_nth//nth/base:attributes",
+        "@asoffer_nth//nth/debug",
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
+)
+
+cc_library(
     name = "execute",
     hdrs = ["execute.h"],
     visibility = ["//visibility:public"],
@@ -71,6 +86,19 @@ cc_library(
     hdrs = ["instruction_index.h"],
     visibility = ["//visibility:public"],
     deps = [],
+)
+
+cc_library(
+    name = "program",
+    hdrs = ["program.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":function",
+        ":instruction",
+        ":value",
+        "@asoffer_nth//nth/debug",
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
 )
 
 cc_library(
