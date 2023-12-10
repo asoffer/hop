@@ -53,7 +53,6 @@ cc_test(
     ],
 )
 
-
 cc_library(
     name = "instruction",
     hdrs = ["instruction.h"],
@@ -86,6 +85,29 @@ cc_library(
     hdrs = ["instruction_index.h"],
     visibility = ["//visibility:public"],
     deps = [],
+)
+
+cc_library(
+    name = "metadata",
+    hdrs = ["metadata.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":instruction",
+        ":value",
+        "//jasmin/core/internal:instruction_traits",
+        "@asoffer_nth//nth/debug",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "metadata_test",
+    srcs = ["metadata_test.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":metadata",
+        "@asoffer_nth//nth/test:main",
+    ],
 )
 
 cc_library(
