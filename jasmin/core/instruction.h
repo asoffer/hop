@@ -351,9 +351,9 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       Value *input;
       Value *output;
       if constexpr (ConsumesInput<Inst>()) {
-        input  = value_stack_head - ins;
-        output = value_stack_head - ins + outs;
-        std::memmove(output, input, sizeof(Value) * ins);
+        output  = value_stack_head - ins;
+        input = value_stack_head - ins + outs;
+        std::memmove(input, output, sizeof(Value) * ins);
       } else {
         input  = value_stack_head - ins;
         output = value_stack_head;
@@ -383,8 +383,10 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       // value.
 
       if constexpr (ConsumesInput<Inst>()) {
-        value_stack_head += (outs - ins);
-        vs_left -= (outs - ins);
+        value_stack_head -= ins;
+        value_stack_head += outs;
+        vs_left += ins;
+        vs_left -= outs;
       } else {
         value_stack_head += outs;
         vs_left -= outs;

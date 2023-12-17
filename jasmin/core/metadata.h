@@ -35,10 +35,14 @@ struct InstructionSetMetadata {
     return metadata_[op_code];
   }
 
-  InstructionMetadata metadata_by_function(Value f) const {
+  uint64_t opcode(Value f) const {
     auto iter = op_code_.find(f.as<internal::exec_fn_type>());
     NTH_REQUIRE((v.harden), iter != op_code_.end());
-    return metadata(iter->second);
+    return iter->second;
+  }
+
+  InstructionMetadata metadata_by_function(Value f) const {
+    return metadata(opcode(f));
   }
 
  private:
