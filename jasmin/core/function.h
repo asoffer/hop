@@ -14,6 +14,8 @@ namespace jasmin {
 // InstructionSet template parameter).
 template <InstructionSetType Set>
 struct Function : internal::FunctionBase {
+  using instruction_set = Set;
+
   // Constructs an empty `Function` given a `parameter_count` representing
   // the number of parameters to the function, and a `return_count`
   // representing the number of return values for the function.
@@ -22,12 +24,12 @@ struct Function : internal::FunctionBase {
 
   // Appends an op-code for the given instruction `I` template parameter.
   template <typename I>
-  requires(Set::instructions.template contains<nth::type<I>>())  //
+  requires(instruction_set::instructions.template contains<nth::type<I>>())  //
       constexpr nth::interval<InstructionIndex> append(auto... vs);
 
   // Appends an op-code for the given instruction `I` template parameter.
   template <typename I>
-  requires(Set::instructions.template contains<nth::type<I>>())  //
+  requires(instruction_set::instructions.template contains<nth::type<I>>())  //
       constexpr nth::interval<InstructionIndex> append(
           InstructionSpecification spec, auto... vs);
 
@@ -36,7 +38,7 @@ struct Function : internal::FunctionBase {
   // `Function<...>::set_value`. Returns the corresponding
   // `nth::interval<InstructionIndex>`.
   template <typename I>
-  requires(Set::instructions.template contains<nth::type<I>>())  //
+  requires(instruction_set::instructions.template contains<nth::type<I>>())  //
       constexpr nth::interval<InstructionIndex> append_with_placeholders();
 };
 

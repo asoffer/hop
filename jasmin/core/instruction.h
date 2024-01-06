@@ -207,7 +207,7 @@ inline void ReallocateValueStack(Value *value_stack_head, size_t capacity_left,
     // move+release.
     auto v =
         nth::stack<Value>::reconstitute_from(value_stack_head, capacity_left);
-    v.reallocate();
+    v.reserve(v.size() * 2);
     std::tie(value_stack_head, capacity_left) = std::move(v).release();
   }
 
@@ -226,7 +226,7 @@ inline void ReallocateCallStack(Value *value_stack_head, size_t capacity_left,
     // move+release.
     auto c = nth::stack<FrameType>::reconstitute_from(
         static_cast<FrameType *>(cs_head), cs_left);
-    c.reallocate();
+    c.reserve(c.size() * 2);
     std::tie(cs_head, cs_left) = std::move(c).release();
   }
 

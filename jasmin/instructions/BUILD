@@ -24,6 +24,8 @@ cc_library(
     hdrs = ["common.h"],
     deps = [
         "//jasmin/core:instruction",
+        "//jasmin/ssa",
+        "//jasmin/ssa:register_coalescer",
     ],
 )
 

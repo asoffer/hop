@@ -124,32 +124,27 @@ struct StackToSsaConverter {
     while (not instructions.empty()) {
       auto inst = instructions.front().as<internal::exec_fn_type>();
 
-      uint64_t immediate_bits;
       uint64_t output_count;
       std::vector<SsaValue> parameters;
       if (inst == builtins_[BuiltinCall]) {
-        parameters =
-            bb_reg_stack.AssignCall(instructions[1].as<InstructionSpecification>());
-        instructions   = instructions.subspan(2);
-        immediate_bits = 0;
-        output_count   = instructions[1].as<InstructionSpecification>().returns;
+        parameters = bb_reg_stack.AssignCall(
+            instructions[1].as<InstructionSpecification>());
+        instructions = instructions.subspan(2);
+        output_count = instructions[1].as<InstructionSpecification>().returns;
       } else if (inst == builtins_[BuiltinReturn]) {
         bb_reg_stack.EnsureStackSize(returns_);
-        immediate_bits = 0;
-        output_count   = 0;
-        instructions   = instructions.subspan(1);
+        output_count = 0;
+        instructions = instructions.subspan(1);
       } else {
         auto metadata = decode_(inst);
         parameters    = bb_reg_stack.Assign(
                instructions.subspan(1, metadata.immediate_value_count), metadata);
         instructions = instructions.subspan(metadata.immediate_value_count + 1);
-        immediate_bits = (uint64_t{1} << metadata.immediate_value_count) - 1;
         output_count =
             (not metadata.consumes_input) * metadata.parameter_count +
             metadata.return_count;
       }
-      block.append(SsaInstruction(inst, output_count, immediate_bits,
-                                  std::move(parameters)));
+      block.append(SsaInstruction(inst, output_count, std::move(parameters)));
     }
     block.set_parameters(std::move(bb_reg_stack).BlockParameters());
     return registers;
@@ -218,7 +213,7 @@ void SsaFunction::Initialize(OpCodeMetadata (*decode)(Value),
       auto const& inst = block.instructions().back();
       auto boundary_iter =
           std::lower_bound(block_boundaries.begin(), block_boundaries.end(),
-                           inst.argument_value(0).immediate().as<ptrdiff_t>());
+                           inst.argument(0).immediate().as<ptrdiff_t>());
       auto target    = std::distance(block_boundaries.begin(), boundary_iter);
       size_t size    = blocks_[target].parameters().size();
       std::span span = registers_on_exit[i];
@@ -230,14 +225,14 @@ void SsaFunction::Initialize(OpCodeMetadata (*decode)(Value),
       auto const& inst = block.instructions().back();
       auto boundary_iter =
           std::lower_bound(block_boundaries.begin(), block_boundaries.end(),
-                           inst.argument_value(0).immediate().as<ptrdiff_t>());
+                           inst.argument(0).immediate().as<ptrdiff_t>());
       auto true_block  = std::distance(block_boundaries.begin(), boundary_iter);
       auto false_block = i + 1;
       size_t true_size = blocks_[true_block].parameters().size();
       size_t false_size = blocks_[false_block].parameters().size();
       std::span span    = registers_on_exit[i];
       block.set_branch(SsaBranch::Conditional(
-          inst.argument_value(1), true_block,
+          inst.argument(1), true_block,
           span.subspan(span.size() - true_size, true_size), false_block,
           span.subspan(span.size() - false_size, false_size)));
       block.remove_back();
@@ -255,6 +250,23 @@ void SsaFunction::Initialize(OpCodeMetadata (*decode)(Value),
           i + 1, span.subspan(span.size() - size, size)));
     }
   }
+}
+
+void SsaBranch::rename(nth::disjoint_set<SsaValue>& set) {
+  std::visit(
+      [&](auto& b) {
+        constexpr auto t = nth::type<decltype(b)>.decayed();
+        if constexpr (t == nth::type<UnconditionalImpl>) {
+          for (auto& v : b.block_arguments) {
+            if (auto h = set.find_representative(v); not h.empty()) { v = *h; }
+          }
+        } else if constexpr (t == nth::type<ConditionalImpl>) {
+          for (auto& v : b.block_arguments) {
+            if (auto h = set.find_representative(v); not h.empty()) { v = *h; }
+          }
+        }
+      },
+      branch_);
 }
 
 }  // namespace jasmin
