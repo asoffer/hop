@@ -10,17 +10,29 @@
 
 namespace jasmin {
 
+template <typename Set = void>
+struct Function;
+
+template <>
+struct Function<void> : internal::FunctionBase {
+ protected:
+  explicit Function(uint32_t parameter_count, uint32_t return_count)
+      : FunctionBase(parameter_count, return_count) {}
+};
+
 // A representation of a function that ties op-codes to instructions (via an
 // InstructionSet template parameter).
-template <InstructionSetType Set>
-struct Function : internal::FunctionBase {
+template <typename Set>
+struct Function : Function<> {
   using instruction_set = Set;
+
+  static_assert(InstructionSetType<Set>);
 
   // Constructs an empty `Function` given a `parameter_count` representing
   // the number of parameters to the function, and a `return_count`
   // representing the number of return values for the function.
-  explicit constexpr Function(uint32_t parameter_count, uint32_t return_count)
-      : FunctionBase(parameter_count, return_count) {}
+  explicit Function(uint32_t parameter_count, uint32_t return_count)
+      : Function<>(parameter_count, return_count) {}
 
   // Appends an op-code for the given instruction `I` template parameter.
   template <typename I>
@@ -42,7 +54,7 @@ struct Function : internal::FunctionBase {
       constexpr nth::interval<InstructionIndex> append_with_placeholders();
 };
 
-template <InstructionSetType Set>
+template <typename Set>
 template <typename I>
 requires(Set::instructions.template contains<nth::type<I>>())  //
     constexpr nth::interval<InstructionIndex> Function<Set>::append(
@@ -58,7 +70,7 @@ requires(Set::instructions.template contains<nth::type<I>>())  //
       });
 }
 
-template <InstructionSetType Set>
+template <typename Set>
 template <typename I>
 requires(Set::instructions.template contains<nth::type<I>>())  //
     constexpr nth::interval<InstructionIndex> Function<Set>::append(
@@ -74,7 +86,7 @@ requires(Set::instructions.template contains<nth::type<I>>())  //
       });
 }
 
-template <InstructionSetType Set>
+template <typename Set>
 template <typename I>
 requires(Set::instructions.template contains<nth::type<I>>())  //
     constexpr nth::interval<InstructionIndex> Function<
