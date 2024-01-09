@@ -4,15 +4,15 @@
 #include <span>
 #include <vector>
 
-#include "jasmin/core/value.h"
 #include "jasmin/core/instruction_index.h"
+#include "jasmin/core/internal/frame.h"
+#include "jasmin/core/internal/function_state.h"
+#include "jasmin/core/value.h"
 #include "nth/container/interval.h"
+#include "nth/container/stack.h"
 #include "nth/debug/debug.h"
 
 namespace jasmin::internal {
-struct FrameBase {
-  Value const *ip;
-};
 
 // `FunctionBase` is the base class for any function-type defined via Jasmin's
 // infrastructure. Op-codes are only meaningful in the presence of an
@@ -23,8 +23,11 @@ struct FrameBase {
 struct FunctionBase {
   // Constructs a `FunctionBase` representing a function that accepts
   // `parameter_count` parameters and returns `return_count` values.
-  explicit FunctionBase(uint32_t parameter_count, uint32_t return_count)
-      : parameter_count_(parameter_count), return_count_(return_count) {}
+  explicit FunctionBase(uint32_t parameter_count, uint32_t return_count,
+                        void (*invoke)(nth::stack<Value> &, Value const *))
+      : instructions_{invoke},
+        parameter_count_(parameter_count),
+        return_count_(return_count) {}
 
   // Returns the number of parameters this function accepts.
   constexpr uint32_t parameter_count() const { return parameter_count_; }
@@ -33,13 +36,23 @@ struct FunctionBase {
   constexpr uint32_t return_count() const { return return_count_; }
 
   // Returns a pointer to the first instruction in this function.
-  constexpr Value const *entry() const { return instructions_.data(); }
+  constexpr Value const *entry() const { return instructions_.data() + 1; }
+
+  // Invoke the function with arguments provided via `value_stack`.
+  constexpr void invoke(nth::stack<Value> &value_stack) const {
+    instructions_.data()->as<void (*)(nth::stack<Value> &, Value const *)>()(
+        value_stack, entry());
+  }
 
   // Returns a span over all values representing instructions in the function.
   // Values in the span are not distinguished separately as op-codes or
   // immediate values.
-  std::span<Value const> raw_instructions() const { return instructions_; }
-  std::span<Value> raw_instructions() { return instructions_; }
+  std::span<Value const> raw_instructions() const {
+    return std::span<Value const>(instructions_).subspan(1);
+  }
+  std::span<Value> raw_instructions() {
+    return std::span<Value>(instructions_).subspan(1);
+  }
 
   // Given the index `index` into the immediate values of `range`, sets the
   // corresponding `Value` to `value`. Behavior is undefined if `range` is not a

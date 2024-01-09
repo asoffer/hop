@@ -187,17 +187,6 @@ struct Return : Instruction<Return> {
 
 namespace internal {
 
-template <typename StateType>
-struct Frame : FrameBase {
-  StateType state;
-};
-
-template <>
-struct Frame<void> : FrameBase {};
-
-using exec_fn_type = void (*)(Value *, size_t, Value const *, FrameBase *,
-                              uint64_t);
-
 inline void ReallocateValueStack(Value *value_stack_head, size_t capacity_left,
                                  Value const *ip, FrameBase *call_stack,
                                  uint64_t cap_and_left) {

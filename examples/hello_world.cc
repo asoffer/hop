@@ -1,10 +1,10 @@
 #include <cstdio>
 #include <iostream>
 
-#include "jasmin/core/execute.h"
 #include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/common.h"
 #include "nth/container/interval.h"
+#include "nth/container/stack.h"
 
 // This file provides two relatively simple examples of defining
 // `jasmin::Function`s and executing them. The first example in the function
@@ -46,7 +46,8 @@ void HelloWorld() {
   func.append<jasmin::Return>();
 
   // Now that our function has been defined, we can execute it.
-  jasmin::Execute(func, {/* No arguments */});
+  nth::stack<jasmin::Value> stack;
+  func.invoke(stack);
 }
 
 // The next example reads in two integers from `stdin` and prints whether they
@@ -132,7 +133,8 @@ void Ordered() {
   func.append<jasmin::Return>();
 
   // Now that our function has been defined, we can execute it.
-  jasmin::Execute(func, {/* No arguments */});
+  nth::stack<jasmin::Value> stack;
+  func.invoke(stack);
 }
 
 int main() {

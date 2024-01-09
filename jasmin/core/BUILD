@@ -16,20 +16,6 @@ cc_library(
 )
 
 cc_library(
-    name = "execute",
-    hdrs = ["execute.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":function",
-        ":instruction",
-        ":value",
-        "@asoffer_nth//nth/base:pack",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/debug",
-    ],
-)
-
-cc_library(
     name = "function",
     hdrs = ["function.h"],
     visibility = ["//visibility:public"],
@@ -47,7 +33,6 @@ cc_test(
     name = "function_test",
     srcs = ["function_test.cc"],
     deps = [
-        ":execute",
         ":function",
         "@asoffer_nth//nth/test:main",
     ],

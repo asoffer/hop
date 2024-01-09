@@ -6,7 +6,6 @@ cc_library(
     hdrs = ["testing.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//jasmin/core:execute",
         "//jasmin/core:function",
         "//jasmin/core:instruction",
         "//jasmin/core:value",

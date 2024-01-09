@@ -1,10 +1,10 @@
 #include <cstdio>
 
 #include "jasmin/core/debugger.h"
-#include "jasmin/core/execute.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/program.h"
 #include "jasmin/instructions/common.h"
+#include "nth/container/stack.h"
 
 // This file a program consisting of some trivial functions which just call one
 // another. It is designed to show the most basic usage of Jasmin's debugger
@@ -74,7 +74,8 @@ int main() {
   // again trigger the breakpoint. This will happen two more times for the
   // second call to `b` in `a`, resulting in a total of four breakpoint
   // triggerings.
-  jasmin::Execute(program.function("a"), {});
+  nth::stack<jasmin::Value> stack;
+  program.function("a").invoke(stack);
 
   return 0;
 }

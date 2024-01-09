@@ -1,7 +1,6 @@
 #ifndef JASMIN_TESTING_H
 #define JASMIN_TESTING_H
 
-#include "jasmin/core/execute.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
 #include "nth/container/stack.h"
@@ -16,7 +15,7 @@ requires(not internal::HasFunctionState<Inst> and
   Function<MakeInstructionSet<Inst>> f(0, 0);
   f.template append<Inst>(immediates...);
   f.template append<Return>();
-  Execute(f, value_stack);
+  f.invoke(value_stack);
 }
 
 template <InstructionType Inst>
@@ -45,7 +44,7 @@ requires(internal::HasFunctionState<Inst> and
   f.template append<Inst>(immediates...);
   f.template append<ExtractFunctionState>(&state);
   f.template append<Return>();
-  Execute(f, value_stack);
+  f.invoke(value_stack);
 }
 
 }  // namespace jasmin

@@ -2,8 +2,8 @@
 #include <iostream>
 #include <queue>
 
-#include "jasmin/core/execute.h"
 #include "jasmin/instructions/common.h"
+#include "nth/container/stack.h"
 
 // This file provides an example of a Jasmin function that hold mutable state
 // associated with each invoked function. This example is slightly more advanced
@@ -87,7 +87,8 @@ void HelloWorld() {
   func.append<jasmin::Return>();
 
   // Now that our function has been defined, we can execute it.
-  jasmin::Execute(func, {/* No arguments */});
+  nth::stack<jasmin::Value> stack;
+  func.invoke(stack);
 }
 
 int main() {

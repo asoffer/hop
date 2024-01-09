@@ -2,12 +2,12 @@
 #include <cstdio>
 #include <cstring>
 
-#include "jasmin/core/execute.h"
 #include "jasmin/core/program.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
 #include "nth/container/interval.h"
+#include "nth/container/stack.h"
 
 // This file defines two implementations of functions that compute fibonacci
 // numbers recursively. The implementations have the same high-level pseudocode,
@@ -101,20 +101,20 @@ int main(int argc, char const* argv[]) {
     return 1;
   }
 
-  uint64_t input = std::atoi(argv[2]);
-  uint64_t result;
+  nth::stack<jasmin::Value> stack = {std::atoi(argv[2])};
   if (std::strcmp(argv[1], "recursive") == 0) {
     auto program = FibonacciRecursive();
-    jasmin::Execute(program.function("fib"), {input}, result);
+    program.function("fib").invoke(stack);
   } else if (std::strcmp(argv[1], "dynamic") == 0) {
     auto program = FibonacciDynamicProgramming();
-    jasmin::Execute(program.function("fib"), {input}, result);
+    program.function("fib").invoke(stack);
   } else {
     std::fputs("Choose an implementation: \"recursive\" or \"dynamic\".",
                stderr);
     return 1;
   }
 
+  uint64_t result = stack.top().as<uint64_t>();
   std::printf("[[%" PRIu64 "]]\n", result);
   return 0;
 }

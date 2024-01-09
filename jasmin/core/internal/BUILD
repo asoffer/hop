@@ -1,13 +1,24 @@
 package(default_visibility = ["//jasmin/core:__subpackages__"])
 
 cc_library(
+    name = "frame",
+    hdrs = ["frame.h"],
+    deps = [
+        "//jasmin/core:value",
+    ],
+)
+
+cc_library(
     name = "function_base",
     hdrs = ["function_base.h"],
     deps = [
+        ":frame",
+        ":function_state",
         "//jasmin/core:instruction_index",
         "//jasmin/core:value",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/container:interval",
+        "@asoffer_nth//nth/container:stack",
     ],
 )
 
