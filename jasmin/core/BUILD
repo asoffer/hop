@@ -81,6 +81,7 @@ cc_library(
         ":value",
         "//jasmin/core/internal:instruction_traits",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/utility:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

@@ -1,4 +1,4 @@
-#include "metadata.h"
+#include "jasmin/core/metadata.h"
 
 #include "nth/test/test.h"
 
@@ -18,7 +18,7 @@ using Instructions =
     jasmin::MakeInstructionSet<Inst<0>, Inst<4>, ImmediateDetermined>;
 
 NTH_TEST("metadata") {
-  auto m = Metadata<Instructions>;
+  auto const& m = Metadata<Instructions>();
   NTH_EXPECT(m.size() == Instructions::instructions.size());
 
   NTH_EXPECT(m.metadata(0).function.raw_value() ==

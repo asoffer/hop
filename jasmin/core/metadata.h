@@ -10,6 +10,7 @@
 #include "jasmin/core/internal/instruction_traits.h"
 #include "jasmin/core/value.h"
 #include "nth/debug/debug.h"
+#include "nth/utility/no_destructor.h"
 
 namespace jasmin {
 
@@ -66,9 +67,14 @@ InstructionMetadata Metadata = InstructionMetadata{
 // `Metadata<Set>` evaluates to an `InstructionSetMetadata` object holding
 // metadata about the instruction set `Set`.
 template <InstructionSetType Set>
-InstructionSetMetadata Metadata = Set::instructions.reduce([](auto... is) {
-  return InstructionSetMetadata({internal::Metadata<nth::type_t<is>, Set>...});
-});
+InstructionSetMetadata const& Metadata() {
+  static nth::NoDestructor<InstructionSetMetadata> metadata =
+      Set::instructions.reduce([](auto... is) {
+        return InstructionSetMetadata(
+            {internal::Metadata<nth::type_t<is>, Set>...});
+      });
+  return *metadata;
+}
 
 template <InstructionType I, InstructionSetType Set>
 Value InstructionFunction = Value(&I::template ExecuteImpl<Set>);
