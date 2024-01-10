@@ -196,7 +196,7 @@ inline void ReallocateValueStack(Value *value_stack_head, size_t capacity_left,
     // move+release.
     auto v =
         nth::stack<Value>::reconstitute_from(value_stack_head, capacity_left);
-    v.reserve(v.size() * 2);
+    v.reserve(v.capacity() * 2);
     std::tie(value_stack_head, capacity_left) = std::move(v).release();
   }
 
