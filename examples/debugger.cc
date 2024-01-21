@@ -10,7 +10,7 @@
 // another. It is designed to show the most basic usage of Jasmin's debugger
 // functionality.
 
-using Instructions = jasmin::MakeInstructionSet<jasmin::Push>;
+using Instructions = jasmin::MakeInstructionSet<jasmin::Push<jasmin::Function<>*>>;
 using Program = jasmin::Program<Instructions>;
 
 // Constructns a program with four functions named `a`, `b`, `c`, and `d`. The
@@ -24,21 +24,21 @@ Program ConstructProgram() {
   auto& d = p.declare("d", 0, 0);
 
   // `a` calls `b` twice and then returns.
-  a.append<jasmin::Push>(&b);
+  a.append<jasmin::Push<jasmin::Function<>*>>(&b);
   a.append<jasmin::Call>({});
-  a.append<jasmin::Push>(&b);
+  a.append<jasmin::Push<jasmin::Function<>*>>(&b);
   a.append<jasmin::Call>({});
   a.append<jasmin::Return>();
 
   // `b` calls `c` twice and then returns.
-  b.append<jasmin::Push>(&c);
+  b.append<jasmin::Push<jasmin::Function<>*>>(&c);
   b.append<jasmin::Call>({});
-  b.append<jasmin::Push>(&c);
+  b.append<jasmin::Push<jasmin::Function<>*>>(&c);
   b.append<jasmin::Call>({});
   b.append<jasmin::Return>();
 
   // `c` calls `d` once and then returns.
-  c.append<jasmin::Push>(&d);
+  c.append<jasmin::Push<jasmin::Function<>*>>(&d);
   c.append<jasmin::Call>({});
   c.append<jasmin::Return>();
 

@@ -129,7 +129,7 @@ constexpr size_t ReturnCount();
 // name should not be considered or even unique amongst instructions and should
 // no be relied upon for anything other than debugging.
 template <typename I>
-std::string InstructionName();
+std::string_view InstructionName();
 
 // `Call` is a built-in instructions, available automatically in every
 // instruction set. It pops the top value off the stack, interprets it as a
@@ -519,8 +519,8 @@ constexpr size_t ReturnCount() {
 }
 
 template <typename I>
-std::string InstructionName() {
-  return std::string(nth::type<I>.name());
+std::string_view InstructionName() {
+  return nth::type<I>.name();
 }
 
 }  // namespace jasmin

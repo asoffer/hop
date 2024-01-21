@@ -1,8 +1,7 @@
 #include <cstdio>
-#include <iostream>
 
-#include "jasmin/instructions/compare.h"
 #include "jasmin/instructions/common.h"
+#include "jasmin/instructions/compare.h"
 #include "nth/container/interval.h"
 #include "nth/container/stack.h"
 
@@ -20,7 +19,7 @@ struct PrintCString : jasmin::Instruction<PrintCString> {
   // that that one value is a `const char *` because it inspects the parameters
   // of the function named `consume`.
   static void consume(std::span<jasmin::Value, 1> values) {
-    std::fputs(values[0].as<char const*>(), stdout);
+    std::fputs(values[0].as<char const *>(), stdout);
   }
 };
 
@@ -29,7 +28,8 @@ void HelloWorld() {
   // built-in instructions like `Return`, we need a `Push` instruction to put
   // values on the stack (found in "jasmin/instructions/core.h"), along with
   // the `PrintCString` instruction we just defined.
-  using Instructions = jasmin::MakeInstructionSet<jasmin::Push, PrintCString>;
+  using Instructions =
+      jasmin::MakeInstructionSet<jasmin::Push<char const *>, PrintCString>;
 
   // Now we can define our function. It takes no arguments and returns no
   // values.
@@ -39,8 +39,8 @@ void HelloWorld() {
   // and print it, and then push "world!\n" and print it. We are choosing to
   // push both strings (in reverse order!) to demonstrate that we are working
   // with a stack.
-  func.append<jasmin::Push>("world!\n");
-  func.append<jasmin::Push>("Hello, ");
+  func.append<jasmin::Push<char const *>>("world!\n");
+  func.append<jasmin::Push<char const *>>("Hello, ");
   func.append<PrintCString>();
   func.append<PrintCString>();
   func.append<jasmin::Return>();
@@ -79,16 +79,16 @@ void Ordered() {
   // Just as in `HelloWorld`, we need to define our instruction set.
   using Instructions =
       jasmin::MakeInstructionSet<ReadIntegerFromStdIn, jasmin::LessThan<int>,
-                                 PrintCString, jasmin::Push>;
+                                 PrintCString, jasmin::Push<char const *>>;
 
   jasmin::Function<Instructions> func(0, 0);
   // Request the first integer
-  func.append<jasmin::Push>("Pick an integer: ");
+  func.append<jasmin::Push<char const *>>("Pick an integer: ");
   func.append<PrintCString>();
   func.append<ReadIntegerFromStdIn>();
 
   // Request the second integer
-  func.append<jasmin::Push>("Pick an integer: ");
+  func.append<jasmin::Push<char const *>>("Pick an integer: ");
   func.append<PrintCString>();
   func.append<ReadIntegerFromStdIn>();
 
@@ -113,7 +113,7 @@ void Ordered() {
   // the code for the case where the numbers are in order, but we don't want
   // this path to execute that code, so we need another jump. This one can be
   // unconditional.
-  func.append<jasmin::Push>("The numbers are out of order.\n");
+  func.append<jasmin::Push<char const *>>("The numbers are out of order.\n");
   nth::interval<jasmin::InstructionIndex> jump_unconditionally =
       func.append_with_placeholders<jasmin::Jump>();
 
@@ -122,7 +122,7 @@ void Ordered() {
   // want to say how far to jump. That's the difference between how big the
   // function was when we added the `JumpIf` instruction, and how big it is now.
   nth::interval<jasmin::InstructionIndex> push =
-      func.append<jasmin::Push>("The numbers are in order.\n");
+      func.append<jasmin::Push<char const *>>("The numbers are in order.\n");
   func.set_value(jump_if, 0, push.lower_bound() - jump_if.lower_bound());
 
   // Now we can add a print instruction and either fall through from the `Push`

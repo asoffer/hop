@@ -1,18 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
-    name = "op_code",
-    hdrs = ["op_code.h"],
-    deps = [
-        "//jasmin/core:instruction",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/meta:sequence",
-        "@asoffer_nth//nth/meta:type",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
     name = "register_coalescer",
     hdrs = ["register_coalescer.h"],
     srcs = ["register_coalescer.cc"],
@@ -31,9 +19,9 @@ cc_library(
     srcs = ["ssa.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":op_code",
-        "//jasmin/core:instruction",
         "//jasmin/core:function",
+        "//jasmin/core:instruction",
+        "//jasmin/core:metadata",
         "@asoffer_nth//nth/debug",
         "@asoffer_nth//nth/container:disjoint_set",
         "@asoffer_nth//nth/strings:interpolate",

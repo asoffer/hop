@@ -8,6 +8,7 @@
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
 #include "nth/debug/debug.h"
+#include "nth/utility/iterator_range.h"
 
 namespace jasmin {
 
@@ -20,11 +21,22 @@ namespace jasmin {
 // or undefined behavior if this requirement is violated.
 template <InstructionSetType Set>
 struct Program {
+  // Declares a function owned by this `Program` with the given name and
+  // signature (number of inputs and outputs).
   Function<Set>& declare(std::string_view name, uint32_t inputs,
                          uint32_t outputs);
 
+  // Returns a reference to the function declared with the given name. Behavior
+  // is undefined if no such function exists.
   Function<Set> const& function(std::string_view name) const;
   Function<Set>& function(std::string_view name);
+
+  // Returns the number of functions managed by this `Program`.
+  size_t function_count() const { return functions_.size(); }
+
+  auto functions() const {
+    return nth::iterator_range(functions_.begin(), functions_.end());
+  }
 
  private:
   absl::node_hash_map<std::string, Function<Set>> functions_;

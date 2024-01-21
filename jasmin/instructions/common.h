@@ -7,10 +7,11 @@
 
 namespace jasmin {
 
-struct Push : Instruction<Push> {
+template <typename T>
+struct Push : Instruction<Push<T>> {
   static std::string_view name() { return "push"; }
 
-  static constexpr Value execute(std::span<Value, 0>, Value v) { return v; }
+  static constexpr T execute(std::span<Value, 0>, T v) { return v; }
 
   static std::string debug(std::span<Value const, 1> immediates) {
     return "push " + std::to_string(immediates[0].raw_value());

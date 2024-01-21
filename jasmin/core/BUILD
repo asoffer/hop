@@ -75,6 +75,7 @@ cc_library(
 cc_library(
     name = "metadata",
     hdrs = ["metadata.h"],
+    srcs = ["metadata.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":instruction",
@@ -105,6 +106,7 @@ cc_library(
         ":instruction",
         ":value",
         "@asoffer_nth//nth/debug",
+        "@asoffer_nth//nth/utility:iterator_range",
         "@com_google_absl//absl/container:node_hash_map",
     ],
 )

@@ -20,27 +20,28 @@
 // are working with.
 
 using RecursiveInstructions = jasmin::MakeInstructionSet<
-    jasmin::Duplicate, jasmin::Swap, jasmin::Push, jasmin::LessThan<uint64_t>,
+    jasmin::Duplicate, jasmin::Swap, jasmin::Push<uint64_t>,
+    jasmin::Push<jasmin::Function<>*>, jasmin::LessThan<uint64_t>,
     jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>>;
 
 jasmin::Program<RecursiveInstructions> FibonacciRecursive() {
   jasmin::Program<RecursiveInstructions> p;
   auto& func = p.declare("fib", 1, 1);
   func.append<jasmin::Duplicate>();
-  func.append<jasmin::Push>(uint64_t{2});
+  func.append<jasmin::Push<uint64_t>>(2);
   func.append<jasmin::LessThan<uint64_t>>();
   nth::interval<jasmin::InstructionIndex> jump =
       func.append_with_placeholders<jasmin::JumpIf>();
   func.append<jasmin::Duplicate>();
-  func.append<jasmin::Push>(uint64_t{1});
+  func.append<jasmin::Push<uint64_t>>(1);
   func.append<jasmin::Subtract<uint64_t>>();
-  func.append<jasmin::Push>(&func);
+  func.append<jasmin::Push<jasmin::Function<>*>>(&func);
   func.append<jasmin::Call>(
       jasmin::InstructionSpecification{.parameters = 1, .returns = 1});
   func.append<jasmin::Swap>();
-  func.append<jasmin::Push>(uint64_t{2});
+  func.append<jasmin::Push<uint64_t>>(2);
   func.append<jasmin::Subtract<uint64_t>>();
-  func.append<jasmin::Push>(&func);
+  func.append<jasmin::Push<jasmin::Function<>*>>(&func);
   func.append<jasmin::Call>(
       jasmin::InstructionSpecification{.parameters = 1, .returns = 1});
   func.append<jasmin::Add<uint64_t>>();
@@ -61,18 +62,17 @@ struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
 };
 
 using DynamicInstructions =
-    jasmin::MakeInstructionSet<jasmin::DuplicateAt, jasmin::Push,
+    jasmin::MakeInstructionSet<jasmin::DuplicateAt, jasmin::Push<uint64_t>,
                                jasmin::Equal<uint64_t>, UpdateFibonacci>;
 
-jasmin::Program<DynamicInstructions>
-FibonacciDynamicProgramming() {
+jasmin::Program<DynamicInstructions> FibonacciDynamicProgramming() {
   jasmin::Program<DynamicInstructions> p;
   auto& func = p.declare("fib", 1, 1);
-  func.append<jasmin::Push>(uint64_t{1});
-  func.append<jasmin::Push>(uint64_t{0});
+  func.append<jasmin::Push<uint64_t>>(1);
+  func.append<jasmin::Push<uint64_t>>(0);
   auto loop_start = func.append<jasmin::DuplicateAt>(
       jasmin::InstructionSpecification{.parameters = 3, .returns = 1});
-  func.append<jasmin::Push>(uint64_t{0});
+  func.append<jasmin::Push<uint64_t>>(0);
   func.append<jasmin::Equal<uint64_t>>();
   nth::interval<jasmin::InstructionIndex> jump =
       func.append_with_placeholders<jasmin::JumpIf>();

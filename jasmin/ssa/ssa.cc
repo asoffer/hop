@@ -13,7 +13,8 @@ enum {
 };
 
 std::vector<uint64_t> BlockBoundaries(
-    OpCodeMetadata (*decode)(Value), std::span<Value const> instructions,
+    InstructionMetadata const& (*decode)(Value),
+    std::span<Value const> instructions,
     std::span<internal::exec_fn_type const> builtins) {
   std::vector<uint64_t> block_boundaries{0};
   Value const* start = instructions.data();
@@ -57,7 +58,7 @@ struct BasicBlockRegisterStack {
   }
 
   std::vector<SsaValue> Assign(std::span<Value const> immediates,
-                               OpCodeMetadata const& metadata) {
+                               InstructionMetadata const& metadata) {
     EnsureStackSize(metadata.parameter_count);
 
     std::vector<SsaValue> parameters;
@@ -113,7 +114,8 @@ struct BasicBlockRegisterStack {
 };
 
 struct StackToSsaConverter {
-  explicit StackToSsaConverter(OpCodeMetadata (*decode)(Value), size_t returns,
+  explicit StackToSsaConverter(InstructionMetadata const& (*decode)(Value),
+                               size_t returns,
                                std::span<internal::exec_fn_type const> builtins)
       : decode_(decode), returns_(returns), builtins_(builtins) {}
 
@@ -136,9 +138,9 @@ struct StackToSsaConverter {
         output_count = 0;
         instructions = instructions.subspan(1);
       } else {
-        auto metadata = decode_(inst);
-        parameters    = bb_reg_stack.Assign(
-               instructions.subspan(1, metadata.immediate_value_count), metadata);
+        auto const& metadata = decode_(inst);
+        parameters           = bb_reg_stack.Assign(
+                      instructions.subspan(1, metadata.immediate_value_count), metadata);
         instructions = instructions.subspan(metadata.immediate_value_count + 1);
         output_count =
             (not metadata.consumes_input) * metadata.parameter_count +
@@ -152,7 +154,7 @@ struct StackToSsaConverter {
 
  private:
   size_t register_count_ = 0;
-  OpCodeMetadata (*decode_)(Value);
+  InstructionMetadata const& (*decode_)(Value);
   size_t returns_;
   std::span<internal::exec_fn_type const> builtins_;
 };
@@ -179,7 +181,7 @@ std::string InstructionNameDecoder(internal::exec_fn_type fn) {
 
 }  // namespace internal
 
-void SsaFunction::Initialize(OpCodeMetadata (*decode)(Value),
+void SsaFunction::Initialize(InstructionMetadata const& (*decode)(Value),
                              std::span<Value const> instructions,
                              std::span<internal::exec_fn_type const> builtins) {
   std::vector<uint64_t> block_boundaries =

@@ -7,8 +7,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
+#include "jasmin/core/metadata.h"
 #include "jasmin/core/value.h"
-#include "jasmin/ssa/op_code.h"
 #include "nth/container/disjoint_set.h"
 #include "nth/debug/debug.h"
 #include "nth/io/string_printer.h"
@@ -345,8 +345,11 @@ struct SsaFunction {
   SsaFunction(Function<Set> const &f)
       : parameter_count_(f.parameter_count()), return_count_(f.return_count()) {
     InitializeNameDecoder<Set>();
-    Initialize(DecodeOpCode<Set>, f.raw_instructions(),
-               internal::BuiltinPointers<Set>);
+    Initialize(
+        [](Value fn) -> decltype(auto) {
+          return Metadata<Set>().metadata(Metadata<Set>().opcode(fn));
+        },
+        f.raw_instructions(), internal::BuiltinPointers<Set>);
   }
 
   std::span<SsaBasicBlock const> blocks() const { return blocks_; }
@@ -364,7 +367,7 @@ struct SsaFunction {
   }
 
  private:
-  void Initialize(OpCodeMetadata (*decode)(Value),
+  void Initialize(InstructionMetadata const &(*decode)(Value),
                   std::span<Value const> instructions,
                   std::span<internal::exec_fn_type const> builtins);
 

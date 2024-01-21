@@ -9,11 +9,11 @@ namespace {
 NTH_TEST("instruction/Push") {
   nth::stack<jasmin::Value> value_stack;
 
-  jasmin::ExecuteInstruction<jasmin::Push>(value_stack, 17);
+  jasmin::ExecuteInstruction<jasmin::Push<int>>(value_stack, 17);
   NTH_EXPECT(value_stack.size() == 1);
   NTH_EXPECT(value_stack.top().as<int>() == 17);
 
-  jasmin::ExecuteInstruction<jasmin::Push>(value_stack, 18);
+  jasmin::ExecuteInstruction<jasmin::Push<int>>(value_stack, 18);
   NTH_EXPECT(value_stack.size() == 2);
   NTH_EXPECT(value_stack.top().as<int>() == 18);
 }
