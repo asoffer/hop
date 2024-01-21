@@ -20,7 +20,7 @@ using Instructions = jasmin::MakeInstructionSet<
 
 jasmin::Program<Instructions> MakeProgram() {
   jasmin::Program<Instructions> p;
-  auto& func = p.declare("fib", 1, 1);
+  auto& func = p.declare("fib", 1, 1).function;
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push<uint64_t>>(2);
   func.append<jasmin::LessThan<uint64_t>>();

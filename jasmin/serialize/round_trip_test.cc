@@ -55,7 +55,7 @@ NTH_TEST("round-trip/program/empty") {
 
 NTH_TEST("round-trip/program/functions") {
   Program<Set> p;
-  auto& f = p.declare("f", 0, 0);
+  auto& f = p.declare("f", 0, 0).function;
   f.append<Return>();
 
   std::string s;
@@ -83,7 +83,7 @@ NTH_TEST("round-trip/program/functions") {
 
 NTH_TEST("round-trip/program/recursion") {
   Program<Set> p;
-  auto& f = p.declare("f", 0, 0);
+  auto& f = p.declare("f", 0, 0).function;
   f.append<Push<Function<>*>>(&f);
   f.append<Call>({0, 0});
   f.append<Return>();

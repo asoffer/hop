@@ -18,10 +18,10 @@ using Program = jasmin::Program<Instructions>;
 // calling `d`.
 Program ConstructProgram() {
   Program p;
-  auto& a = p.declare("a", 0, 0);
-  auto& b = p.declare("b", 0, 0);
-  auto& c = p.declare("c", 0, 0);
-  auto& d = p.declare("d", 0, 0);
+  auto& a = p.declare("a", 0, 0).function;
+  auto& b = p.declare("b", 0, 0).function;
+  auto& c = p.declare("c", 0, 0).function;
+  auto& d = p.declare("d", 0, 0).function;
 
   // `a` calls `b` twice and then returns.
   a.append<jasmin::Push<jasmin::Function<>*>>(&b);

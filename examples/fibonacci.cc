@@ -26,7 +26,7 @@ using RecursiveInstructions = jasmin::MakeInstructionSet<
 
 jasmin::Program<RecursiveInstructions> FibonacciRecursive() {
   jasmin::Program<RecursiveInstructions> p;
-  auto& func = p.declare("fib", 1, 1);
+  auto& func = p.declare("fib", 1, 1).function;
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push<uint64_t>>(2);
   func.append<jasmin::LessThan<uint64_t>>();
@@ -67,7 +67,7 @@ using DynamicInstructions =
 
 jasmin::Program<DynamicInstructions> FibonacciDynamicProgramming() {
   jasmin::Program<DynamicInstructions> p;
-  auto& func = p.declare("fib", 1, 1);
+  auto [id, func] = p.declare("fib", 1, 1);
   func.append<jasmin::Push<uint64_t>>(1);
   func.append<jasmin::Push<uint64_t>>(0);
   auto loop_start = func.append<jasmin::DuplicateAt>(
