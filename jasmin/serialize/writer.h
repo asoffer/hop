@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <cstring>
 #include <span>
 
 namespace jasmin {
