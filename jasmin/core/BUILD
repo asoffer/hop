@@ -9,9 +9,9 @@ cc_library(
         ":instruction",
         ":program",
         ":value",
-        "@asoffer_nth//nth/base:attributes",
-        "@asoffer_nth//nth/debug",
         "@com_google_absl//absl/container:node_hash_map",
+        "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -25,7 +25,7 @@ cc_library(
         ":value",
         "//jasmin/core/internal:function_base",
         "//jasmin/core/internal:instruction_traits",
-        "@asoffer_nth//nth/container:interval",
+        "@nth_cc//nth/container:interval",
     ],
 )
 
@@ -34,7 +34,7 @@ cc_test(
     srcs = ["function_test.cc"],
     deps = [
         ":function",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -47,12 +47,12 @@ cc_library(
         "//jasmin/core/internal:function_base",
         "//jasmin/core/internal:function_state",
         "//jasmin/core/internal:instruction_traits",
-        "@asoffer_nth//nth/base:attributes",
-        "@asoffer_nth//nth/base:pack",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/meta:sequence",
-        "@asoffer_nth//nth/meta:type",
+        "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/base:pack",
+        "@nth_cc//nth/container:stack",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/meta:sequence",
+        "@nth_cc//nth/meta:type",
     ],
 )
 
@@ -61,7 +61,7 @@ cc_test(
     srcs = ["instruction_test.cc"],
     deps = [
         ":instruction",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -81,9 +81,9 @@ cc_library(
         ":instruction",
         ":value",
         "//jasmin/core/internal:instruction_traits",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/utility:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/utility:no_destructor",
     ],
 )
 
@@ -93,7 +93,7 @@ cc_test(
     visibility = ["//visibility:public"],
     deps = [
         ":metadata",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -105,8 +105,8 @@ cc_library(
         ":function",
         ":instruction",
         ":value",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/utility:iterator_range",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/utility:iterator_range",
     ],
 )
 
@@ -116,8 +116,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//jasmin/configuration:impl",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/meta:type",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/meta:type",
     ],
 )
 
@@ -126,6 +126,6 @@ cc_test(
     srcs = ["value_test.cc"],
     deps = [
         ":value",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )

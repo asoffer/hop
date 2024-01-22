@@ -8,7 +8,7 @@ cc_binary(
         "//jasmin/core:function",
         "//jasmin/core:program",
         "//jasmin/instructions:common",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -21,8 +21,8 @@ cc_binary(
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",
         "//jasmin/instructions:common",
-        "@asoffer_nth//nth/container:interval",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/container:interval",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -31,7 +31,7 @@ cc_binary(
     srcs = ["function_state.cc"],
     deps = [
         "//jasmin/instructions:common",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -42,8 +42,8 @@ cc_binary(
         "//jasmin/core:instruction_index",
         "//jasmin/instructions:compare",
         "//jasmin/instructions:common",
-        "@asoffer_nth//nth/container:interval",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/container:interval",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -59,8 +59,8 @@ cc_binary(
         "//jasmin/serialize:serialize",
         "//jasmin/serialize:string_reader",
         "//jasmin/serialize:string_writer",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/debug/log:stderr_log_sink",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/debug/log:stderr_log_sink",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )

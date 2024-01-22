@@ -8,8 +8,8 @@ cc_library(
         ":reader",
         "//jasmin/core:instruction",
         "//jasmin/core:metadata",
-        "@asoffer_nth//nth/meta:type",
-        "@asoffer_nth//nth/meta:sequence",
+        "@nth_cc//nth/meta:type",
+        "@nth_cc//nth/meta:sequence",
     ],
 )
 
@@ -29,7 +29,7 @@ cc_test(
         ":reader",
         ":writer",
         "//jasmin/instructions:common",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -43,8 +43,8 @@ cc_library(
         "//jasmin/core:instruction",
         "//jasmin/core:metadata",
         "//jasmin/core:program",
-        "@asoffer_nth//nth/meta:type",
-        "@asoffer_nth//nth/meta:sequence",
+        "@nth_cc//nth/meta:type",
+        "@nth_cc//nth/meta:sequence",
     ],
 )
 
@@ -65,7 +65,7 @@ cc_test(
     srcs = ["string_reader_test.cc"],
     deps = [
         ":string_reader",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -86,7 +86,7 @@ cc_test(
     srcs = ["string_writer_test.cc"],
     deps = [
         ":string_writer",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -102,6 +102,6 @@ cc_test(
     deps = [
         ":string_writer",
         ":writer",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )

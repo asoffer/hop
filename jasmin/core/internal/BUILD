@@ -16,9 +16,9 @@ cc_library(
         ":function_state",
         "//jasmin/core:instruction_index",
         "//jasmin/core:value",
-        "@asoffer_nth//nth/debug",
-        "@asoffer_nth//nth/container:interval",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/debug",
+        "@nth_cc//nth/container:interval",
+        "@nth_cc//nth/container:stack",
     ],
 )
 
@@ -27,7 +27,7 @@ cc_test(
     srcs = ["function_base_test.cc"],
     deps = [
         ":function_base",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )
 
@@ -43,8 +43,8 @@ cc_library(
     deps = [
         ":function_state",
         "//jasmin/core:value",
-        "@asoffer_nth//nth/meta:concepts",
-        "@asoffer_nth//nth/meta:type",
+        "@nth_cc//nth/meta:concepts",
+        "@nth_cc//nth/meta:type",
     ],
 )
 
@@ -54,6 +54,6 @@ cc_test(
     deps = [
         ":instruction_traits",
         "//jasmin/core:instruction",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ],
 )

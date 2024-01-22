@@ -14,8 +14,8 @@ cc_test(
     deps = [
         ":bool",
         "//jasmin:testing",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/container:stack",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -35,8 +35,8 @@ cc_test(
     deps = [
         ":common",
         "//jasmin:testing",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/container:stack",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -54,8 +54,8 @@ cc_test(
     deps = [
         ":arithmetic",
         "//jasmin:testing",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/container:stack",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -73,8 +73,8 @@ cc_test(
     deps = [
         ":compare",
         "//jasmin:testing",
-        "@asoffer_nth//nth/container:stack",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/container:stack",
+        "@nth_cc//nth/test:main",
     ]
 )
 
@@ -84,7 +84,7 @@ cc_library(
     deps = [
         "//jasmin/core:instruction",
         "//jasmin/core:value",
-        "@asoffer_nth//nth/debug",
+        "@nth_cc//nth/debug",
     ],
 )
 
@@ -94,6 +94,6 @@ cc_test(
     deps = [
         ":stack",
         "//jasmin:testing",
-        "@asoffer_nth//nth/test:main",
+        "@nth_cc//nth/test:main",
     ]
 )

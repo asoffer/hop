@@ -9,6 +9,6 @@ cc_library(
         "//jasmin/core:function",
         "//jasmin/core:instruction",
         "//jasmin/core:value",
-        "@asoffer_nth//nth/container:stack",
+        "@nth_cc//nth/container:stack",
     ],
 )
