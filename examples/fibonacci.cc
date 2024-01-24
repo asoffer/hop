@@ -51,13 +51,14 @@ jasmin::Program<RecursiveInstructions> FibonacciRecursive() {
 }
 
 struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
-  static std::array<jasmin::Value, 3> consume(
-      std::span<jasmin::Value, 3> values) {
+  static void consume(std::span<jasmin::Value, 3> values,
+                      std::span<jasmin::Value, 3> out) {
     auto n = values[0];
     auto a = values[1];
     auto b = values[2];
-    return {static_cast<uint64_t>(n.as<uint64_t>() - 1), b,
-            a.as<uint64_t>() + b.as<uint64_t>()};
+    out[0] = static_cast<uint64_t>(n.as<uint64_t>() - 1);
+    out[1] = b;
+    out[2] = a.as<uint64_t>() + b.as<uint64_t>();
   }
 };
 

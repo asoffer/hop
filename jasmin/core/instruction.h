@@ -57,29 +57,15 @@ struct Instruction {
 //   If `typename Inst::function_state` is well-formed, the first parameter to
 //   the function must be a reference to this type.
 //
-//   If the function is named `consume`, it must then accept a
-//   `std::span<jasmin::Value, N>` for some `N != std::dynamic_extent`, followed
-//   by any number of parameters whose types are convertible to `jasmin::Value`.
-//   The value `N` is the number of values consumed by the instruction. The
-//   following parameters are the immediate values to the function. Functions
-//   named consume will have their arguments popped from the stack after
-//   execution.
-//
-//   If the function is named `execute`, it must then accept a type which is
-//   some instantiation of `std::span where the `element_type` is
-//   `jasmin::Value` (equivalently, `std::span<jasmin::Value, N>` for any value
-//   of `N`, including `std:dynamic_extent`). This span represents the number of
-//   stack arguments viewed by the instruction. A span of dynamic extent can
-//   view the entire stack. After this parameter, any number of parameters to
-//   the function may follow, provided each of them is convertible to
-//   `jasmin::Value`. These parameters represent the immediate values to the
-//   instruction.
-//
-//   The instruction functions `consume` or `execute` may return `void`,
-//   indicating no value should be pushed onto the stack, a type convertible to
-//   `jasmin::Value`, indicating that the returned value should be pushed onto
-//   the stack, or `std:array<jasmin::Value, N>` for some `N > 1`, indicating
-//   that all the returned should be pushed onto the stack.
+//   The function must then accept two span parameters
+//   `std::span<jasmin::Value, In>` and `std::span<jasmin::Value, Out>`, where
+//   `In` and `Out` are the number of inputs and outputs processed by the
+//   instruction respectively. These may then be followed by any number of
+//   parameters whose types are convertible to `jasmin::Value`. These
+//   parameters are the immediate values to the function. Functions named
+//   consume will have their arguments popped from the stack after execution,
+//   whereas functions named `execute` will keep their arguments. The function
+//   must return void.
 //
 // IMMEDIATE-VALUE-DETERMINED SIGNATURES:
 //   If `typename Inst::function_state` is well-formed, the first parameter to
@@ -322,7 +308,6 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
     constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
     constexpr auto inst_type = internal::InstructionFunctionType<Inst>();
     constexpr bool HasFunctionState = internal::HasFunctionState<Inst>;
-    constexpr size_t RetCount       = ReturnCount<Inst>();
     if constexpr (internal::ImmediateValueDetermined(
                       inst_type.parameters()
                           .template drop<HasFunctionState>())) {
@@ -385,61 +370,55 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left, ip,
                                               call_stack, cs_left);
     } else {
-      constexpr auto parameter_types =
-          inst_type.parameters().template drop<1 + HasFunctionState>();
-      using span_type =
+      using input_type =
           nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
-      constexpr size_t ValueCount = span_type::extent;
-
-      if constexpr ((ConsumesInput<Inst>() ? ValueCount : 0) < RetCount) {
-        static_assert(ValueCount != std::dynamic_extent);
-        if (vs_left + (ConsumesInput<Inst>() ? ValueCount : 0) < RetCount)
-            [[unlikely]] {
-          NTH_ATTRIBUTE(tailcall)
-          return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
-                                                call_stack, cs_left);
-        }
+      using output_type = nth::type_t<
+          inst_type.parameters().template get<1 + HasFunctionState>()>;
+      constexpr size_t InputCount  = input_type::extent;
+      constexpr size_t OutputCount = output_type::extent;
+      if (vs_left + (ConsumesInput<Inst>() ? InputCount : 0) < OutputCount)
+          [[unlikely]] {
+        NTH_ATTRIBUTE(tailcall)
+        return internal::ReallocateValueStack(value_stack_head, vs_left, ip,
+                                              call_stack, cs_left);
       }
+
+      constexpr auto parameter_types =
+          inst_type.parameters().template drop<2 + HasFunctionState>();
 
       if constexpr (HasFunctionState) {
         auto &fn_state = std::get<typename Inst::function_state>(
             (static_cast<frame_type *>(call_stack) - 1)->state);
 
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          if constexpr (RetCount == 0) {
-            inst(fn_state, span_type(value_stack_head - ValueCount, ValueCount),
+          if constexpr (ConsumesInput<Inst>()) {
+            auto *out_start = value_stack_head - InputCount;
+            Value input[InputCount];
+            std::memcpy(input, value_stack_head - InputCount,
+                        sizeof(Value) * InputCount);
+            inst(fn_state, input, output_type(out_start, OutputCount),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
-          } else if constexpr (RetCount == 1) {
-            *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
-                inst(fn_state,
-                     span_type(value_stack_head - ValueCount, ValueCount),
-                     JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
-            std::array result = inst(
-                fn_state, span_type(value_stack_head - ValueCount, ValueCount),
-                JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
-            std::memcpy(
-                value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
-                &result, sizeof(result));
+            inst(fn_state,
+                 input_type(value_stack_head - InputCount, InputCount),
+                 output_type(value_stack_head, OutputCount),
+                 JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           }
         }
         (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
       } else {
         [&]<size_t... Ns>(std::index_sequence<Ns...>) {
-          if constexpr (RetCount == 0) {
-            inst(span_type(value_stack_head - ValueCount, ValueCount),
+          if constexpr (ConsumesInput<Inst>()) {
+            auto *out_start = value_stack_head - InputCount;
+            Value input[InputCount];
+            std::memcpy(input, value_stack_head - InputCount,
+                        sizeof(Value) * InputCount);
+            inst(input, output_type(out_start, OutputCount),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
-          } else if constexpr (RetCount == 1) {
-            *(value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0)) =
-                inst(span_type(value_stack_head - ValueCount, ValueCount),
-                     JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
-            std::array result =
-                inst(span_type(value_stack_head - ValueCount, ValueCount),
-                     JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
-            std::memcpy(
-                value_stack_head - (ConsumesInput<Inst>() ? ValueCount : 0),
-                &result, sizeof(result));
+            inst(input_type(value_stack_head - InputCount, InputCount),
+                 output_type(value_stack_head, OutputCount),
+                 JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           }
         }
         (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
@@ -447,7 +426,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
 #undef JASMIN_CORE_INTERNAL_GET
 
       constexpr ptrdiff_t UpdateAmount =
-          RetCount - (ConsumesInput<Inst>() ? ValueCount : 0);
+          OutputCount - (ConsumesInput<Inst>() ? InputCount : 0);
       if constexpr (UpdateAmount < 0) {
         value_stack_head -= -UpdateAmount;
       } else {
@@ -469,9 +448,15 @@ constexpr size_t ImmediateValueCount() {
     return 0;
   } else if constexpr (nth::any_of<I, Call, Jump, JumpIf>) {
     return 1;
+  } else if constexpr (internal::InstructionFunctionType<I>()
+                           .parameters()
+                           .template get<internal::HasFunctionState<I>>() ==
+                       nth::type<std::span<Value>>) {
+    return 1 + internal::InstructionFunctionType<I>().parameters().size() -
+           (internal::HasFunctionState<I> ? 3 : 2);
   } else {
     return internal::InstructionFunctionType<I>().parameters().size() -
-           (internal::HasFunctionState<I> ? 2 : 1);
+           (internal::HasFunctionState<I> ? 3 : 2);
   }
 }
 
@@ -482,10 +467,16 @@ constexpr size_t ParameterCount() {
   } else if constexpr (nth::any_of<I, Call, JumpIf>) {
     return 1;
   } else {
-    return nth::type_t<
-        internal::InstructionFunctionType<I>()
-            .parameters()
-            .template get<internal::HasFunctionState<I>>()>::extent;
+    constexpr auto parameters =
+        internal::InstructionFunctionType<I>().parameters();
+    if constexpr (internal::ImmediateValueDetermined(
+                      parameters
+                          .template drop<internal::HasFunctionState<I>>())) {
+      return -1;
+    } else {
+      return nth::type_t<
+          parameters.template get<internal::HasFunctionState<I>>()>::extent;
+    }
   }
 }
 
@@ -500,21 +491,21 @@ constexpr bool ConsumesInput() {
 
 template <typename I>
 constexpr size_t ReturnCount() {
-  constexpr auto ret_type =
-      internal::InstructionFunctionType<I>().return_type();
-  if constexpr (ret_type == nth::type<void>) {
+  if constexpr (nth::any_of<I, Jump, Return, JumpIf>) {
     return 0;
-  } else if constexpr (std::convertible_to<nth::type_t<ret_type>, Value>) {
-    return 1;
+  } else if constexpr (nth::type<I> == nth::type<Call>) {
+    return -1;
   } else {
-    constexpr size_t N = sizeof(nth::type_t<ret_type>) / sizeof(Value);
-    static_assert(internal::InstructionFunctionType<I>().return_type() ==
-                  nth::type<std::array<Value, N>>);
-    static_assert(N > 1,
-                  "Instructions returning a `std::array` must return more than "
-                  "one value. If you wish to return only one value, return a "
-                  "`jasmin::Value` directly.");
-    return N;
+    constexpr auto parameters =
+        internal::InstructionFunctionType<I>().parameters();
+    if constexpr (internal::ImmediateValueDetermined(
+                      parameters
+                          .template drop<internal::HasFunctionState<I>>())) {
+      return -1;
+    } else {
+      return nth::type_t<
+          parameters.template get<1 + internal::HasFunctionState<I>>()>::extent;
+    }
   }
 }
 

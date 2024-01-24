@@ -27,14 +27,14 @@ requires(internal::HasFunctionState<Inst> and
   struct WriteFunctionState : Instruction<WriteFunctionState> {
     using function_state = typename Inst::function_state;
     static void execute(function_state &state, std::span<Value, 0>,
-                        function_state *in) {
+                        std::span<Value, 0>, function_state *in) {
       state = std::move(*in);
     }
   };
   struct ExtractFunctionState : Instruction<ExtractFunctionState> {
     using function_state = typename Inst::function_state;
     static void execute(function_state &state, std::span<Value, 0>,
-                        function_state *out) {
+                        std::span<Value, 0>, function_state *out) {
       *out = std::move(state);
     }
   };

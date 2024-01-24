@@ -8,25 +8,31 @@ namespace {
 
 struct Count : Instruction<Count> {
   using function_state = int;
-  static int execute(function_state& state, std::span<Value, 0>) {
-    return state++;
+  static void execute(function_state& state, std::span<Value, 0>,
+                      std::span<Value, 1> out) {
+    out[0] = state++;
   }
 };
 
 struct NoImmediates : Instruction<NoImmediates> {
-  static int execute(std::span<Value, 2>) { return 0; }
+  static void execute(std::span<Value, 2>, std::span<Value, 1> out) {
+    out[0] = 0;
+  }
 };
 
 struct NoImmediatesOrValues : Instruction<NoImmediatesOrValues> {
-  static void execute(std::span<Value, 0>) {}
+  static void execute(std::span<Value, 0>, std::span<Value, 0>) {}
 };
 
 struct SomeImmediates : Instruction<SomeImmediates> {
-  static void execute(std::span<Value, 0>, int, bool) {}
+  static void execute(std::span<Value, 0>, std::span<Value, 0>, int, bool) {}
 };
 
 struct ReturnsMultiple: Instruction<ReturnsMultiple> {
-  static std::array<Value, 2> consume() { return {1, 2}; }
+  static void consume(std::span<Value, 0>, std::span<Value, 2> out) {
+    out[0] = 1;
+    out[1] = 2;
+  }
 };
 
 NTH_TEST("immediate-value-count") {

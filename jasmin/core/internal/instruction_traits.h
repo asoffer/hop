@@ -45,18 +45,8 @@ constexpr bool ImmediateValueDetermined(nth::Sequence auto seq) {
   if constexpr (seq.size() < 2) {
     return false;
   } else {
-    using input_type  = nth::type_t<seq.template get<0>()>;
-    using output_type = nth::type_t<seq.template get<1>()>;
-    if constexpr (not requires {
-                    input_type::extent;
-                    output_type::extent;
-                  }) {
-      return false;
-    } else {
-      return seq.template drop<2>().template all<[](auto t) {
-        return std::is_convertible_v<nth::type_t<t>, Value>;
-      }>();
-    }
+    return seq.template get<0>() == nth::type<std::span<Value>> and
+           seq.template get<1>() == nth::type<std::span<Value>>;
   }
 }
 
@@ -84,15 +74,6 @@ constexpr bool ValidSignatureWithFunctionStateImpl(
     return ImmediateValueDetermined(
                body_type.parameters().template drop<1>()) or
            ValidParameterSequence(body_type.parameters().template drop<1>());
-  } else if constexpr (body_type.return_type() ==
-                       nth::type<
-                           std::array<Value, body_type.return_type().size() /
-                                                 sizeof(Value)>>) {
-    return body_type.return_type().size() > sizeof(Value) and
-           ValidParameterSequence(body_type.parameters().template drop<1>());
-  } else if constexpr (std::convertible_to<nth::type_t<body_type.return_type()>,
-                                           jasmin::Value>) {
-    return ValidParameterSequence(body_type.parameters().template drop<1>());
   } else {
     return false;
   }
@@ -103,16 +84,6 @@ constexpr bool ValidSignatureWithoutFunctionStateImpl(
   if constexpr (body_type.return_type() == nth::type<void>) {
     return ImmediateValueDetermined(body_type.parameters()) or
            ValidParameterSequence(body_type.parameters());
-  } else if constexpr (body_type.return_type() ==
-                       nth::type<
-                           std::array<Value, body_type.return_type().size() /
-                                                 sizeof(Value)>>) {
-    return body_type.return_type().size() > sizeof(Value) and
-           ValidParameterSequence(body_type.parameters());
-  } else if constexpr (std::is_convertible_v<
-                           nth::type_t<body_type.return_type()>,
-                           jasmin::Value>) {
-    return ValidParameterSequence(body_type.parameters());
   } else {
     return false;
   }

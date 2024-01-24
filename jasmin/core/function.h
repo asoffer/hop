@@ -98,15 +98,19 @@ template <typename I>
 requires(Set::instructions.template contains<nth::type<I>>())  //
     constexpr nth::interval<InstructionIndex> Function<Set>::append(
         auto... vs) {
-  constexpr size_t DropCount = internal::HasFunctionState<I> ? 2 : 1;
-  return internal::InstructionFunctionType<I>()
-      .parameters()
-      .template drop<DropCount>()
-      .reduce([&](auto... ts) {
-        return internal::FunctionBase::append(
-            {&I::template ExecuteImpl<Set>,
-             Value(static_cast<nth::type_t<ts>>(vs))...});
-      });
+  if constexpr (nth::type<I> == nth::type<Return>) {
+    return internal::FunctionBase::append({&I::template ExecuteImpl<Set>});
+  } else {
+    constexpr size_t DropCount = internal::HasFunctionState<I> ? 3 : 2;
+    return internal::InstructionFunctionType<I>()
+        .parameters()
+        .template drop<DropCount>()
+        .reduce([&](auto... ts) {
+          return internal::FunctionBase::append(
+              {&I::template ExecuteImpl<Set>,
+               Value(static_cast<nth::type_t<ts>>(vs))...});
+        });
+  }
 }
 
 template <typename Set>

@@ -6,7 +6,10 @@ namespace jasmin {
 namespace {
 
 struct PushImmediateBool : jasmin::Instruction<PushImmediateBool> {
-  static constexpr bool execute(std::span<Value, 0>, bool b) { return b; }
+  static constexpr void execute(std::span<Value, 0>, std::span<Value, 1> out,
+                                bool b) {
+    out[0] = b;
+  }
 };
 
 struct ImmediateDetermined : jasmin::Instruction<ImmediateDetermined> {

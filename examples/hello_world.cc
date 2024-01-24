@@ -18,7 +18,8 @@ struct PrintCString : jasmin::Instruction<PrintCString> {
   // Jasmin knows that exactly one value should be popped off the stack, and
   // that that one value is a `const char *` because it inspects the parameters
   // of the function named `consume`.
-  static void consume(std::span<jasmin::Value, 1> values) {
+  static void consume(std::span<jasmin::Value, 1> values,
+                      std::span<jasmin::Value, 0>) {
     std::fputs(values[0].as<char const *>(), stdout);
   }
 };
@@ -65,13 +66,14 @@ struct ReadIntegerFromStdIn : jasmin::Instruction<ReadIntegerFromStdIn> {
   // Just as with `PrintCString`, from the signature of `execute`, Jasmin
   // deduces that this instruction reads no values from the stack but writes a
   // single value of type `int` (the return type).
-  static int execute(std::span<jasmin::Value, 0>) {
+  static void execute(std::span<jasmin::Value, 0>,
+                      std::span<jasmin::Value, 1> out) {
     int result;
     std::scanf("%d", &result);
     // Note: This function is not robust as it does nothing to validate that the
     // provided value was a valid integer. The author of an instruction is
     // responsible for handling this sort of error-checking for themselves.
-    return result;
+    out[0] = result;
   }
 };
 

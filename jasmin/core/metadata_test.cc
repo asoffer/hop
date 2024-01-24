@@ -7,7 +7,10 @@ namespace {
 
 template <int N>
 struct Inst : jasmin::Instruction<Inst<N>> {
-  static constexpr bool execute(std::span<Value, N>, bool b) { return b; }
+  static constexpr void execute(std::span<Value, N>, std::span<Value, 1> out,
+                                bool b) {
+    out[0] = b;
+  }
 };
 
 struct ImmediateDetermined : jasmin::Instruction<ImmediateDetermined> {

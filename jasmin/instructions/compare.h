@@ -14,18 +14,18 @@ concept Comparable = requires(T t) {
 
 template <Comparable T>
 struct LessThan : Instruction<LessThan<T>> {
-  static constexpr bool consume(std::span<Value, 2> values) {
-    return values[0].as<T>() < values[1].as<T>();
+  static constexpr void consume(std::span<Value, 2> values,
+                                std::span<Value, 1> out) {
+    out[0] = values[0].as<T>() < values[1].as<T>();
   }
-  static constexpr std::string_view debug() { return "less-than"; }
 };
 
 template <Comparable T>
 struct AppendLessThan : Instruction<AppendLessThan<T>> {
-  static constexpr bool execute(std::span<Value, 2> values) {
-    return values[0].as<T>() < values[1].as<T>();
+  static constexpr void execute(std::span<Value, 2> values,
+                                std::span<Value, 1> out) {
+    out[0] = values[0].as<T>() < values[1].as<T>();
   }
-  static constexpr std::string_view debug() { return "append less-than"; }
 };
 
 template <typename T>
@@ -35,18 +35,18 @@ concept Equatable = requires(T t) {
 
 template <Equatable T>
 struct Equal : Instruction<Equal<T>> {
-  static constexpr bool consume(std::span<Value, 2> values) {
-    return values[0].as<T>() == values[1].as<T>();
+  static constexpr void consume(std::span<Value, 2> values,
+                                std::span<Value, 1> out) {
+    out[0] = values[0].as<T>() == values[1].as<T>();
   }
-  static constexpr std::string_view debug() { return "equal"; }
 };
 
 template <Equatable T>
 struct AppendEqual : Instruction<AppendEqual<T>> {
-  static constexpr bool execute(std::span<Value, 2> values) {
-    return values[0].as<T>() == values[1].as<T>();
+  static constexpr void execute(std::span<Value, 2> values,
+                                std::span<Value, 1> out) {
+    out[0] = values[0].as<T>() == values[1].as<T>();
   }
-  static constexpr std::string_view debug() { return "append equal"; }
 };
 
 }  // namespace jasmin

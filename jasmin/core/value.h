@@ -17,6 +17,7 @@ namespace jasmin {
 // and representable in no more than 64 bits.
 struct Value {
   // Constructs a `Value` holding an uninitialized value.
+  explicit Value();
   static Value Uninitialized();
 
   // Constructs a `Value` holding the value `v`.
@@ -53,8 +54,6 @@ struct Value {
  private:
   struct uninitialized_t {};
   struct unknown_t {};
-
-  explicit Value();
 
   alignas(8) char value_[8];
 
