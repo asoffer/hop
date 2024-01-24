@@ -16,6 +16,7 @@ cc_library(
 cc_library(
     name = "reader",
     hdrs = ["reader.h"],
+    visibility = ["//visibility:public"],
 )
 
 cc_test(
