@@ -25,6 +25,12 @@ void Serialize(Program<Set> const& p, W& w);
 void JasminSerialize(Writer auto& w, std::integral auto n) {
   jasmin::WriteInteger(w, n);
 }
+void JasminSerialize(Writer auto& w, std::byte b) { jasmin::WriteFixed(w, b); }
+
+void JasminSerialize(Writer auto& w, InstructionSpecification spec) {
+  jasmin::WriteInteger(w, spec.parameters);
+  jasmin::WriteInteger(w, spec.returns);
+}
 
 namespace internal {
 
@@ -32,9 +38,7 @@ template <Writer W, InstructionType I>
 void InstructionSerializer(std::span<Value const> v, W& w) {
   if constexpr (nth::type<I> == nth::type<Return>) {
   } else if constexpr (nth::type<I> == nth::type<Call>) {
-    auto [parameters, returns] = v[0].as<InstructionSpecification>();
-    JasminSerialize(w, parameters);
-    JasminSerialize(w, returns);
+    JasminSerialize(w, v[0].as<InstructionSpecification>());
   } else if constexpr (nth::type<I> == nth::type<Jump> or
                        nth::type<I> == nth::type<JumpIf>) {
     JasminSerialize(w, v[0].as<size_t>());

@@ -36,25 +36,21 @@ bool ReadImpl(Reader auto& r, Function<>& f) {
 template <InstructionType I, Reader R>
 bool InstructionDeserializer(R& r, Function<>& f) {
   if constexpr (nth::type<I> == nth::type<Return>) {
+    return true;
   } else if constexpr (nth::type<I> == nth::type<Call>) {
     return ReadImpl<InstructionSpecification>(r, f);
   } else if constexpr (nth::type<I> == nth::type<Jump> or
                        nth::type<I> == nth::type<JumpIf>) {
     return ReadImpl<size_t>(r, f);
-  } else if constexpr (requires { I::execute; }) {
-    constexpr auto params = nth::type<decltype(I::execute)>.parameters();
-    return params.template drop<params.size() - ImmediateValueCount<I>()>()
-        .reduce([&](auto... ts) {
-          return (jasmin::internal::ReadImpl<nth::type_t<ts>>(r, f) and ...);
-        });
   } else {
-    constexpr auto params = nth::type<decltype(I::consume)>.parameters();
-    return params.template drop<params.size() - ImmediateValueCount<I>()>()
-        .reduce([&](auto... ts) {
+    constexpr bool HasFunctionState = internal::HasFunctionState<I>;
+    constexpr auto parameters =
+        internal::InstructionFunctionType<I>().parameters();
+    return parameters.template drop<HasFunctionState + 2>().reduce(
+        [&](auto... ts) {
           return (jasmin::internal::ReadImpl<nth::type_t<ts>>(r, f) and ...);
         });
   }
-  return true;
 }
 
 template <InstructionSetType Set, Reader R>
@@ -124,11 +120,19 @@ bool Deserialize(R& r, Program<Set>& p) {
   return r.size() == 0;
 }
 
+bool JasminDeserialize(Reader auto& r, std::byte& b) {
+  return jasmin::ReadFixed(r, b);
+}
+
 bool JasminDeserialize(Reader auto& r, std::integral auto& n) {
   return jasmin::ReadInteger(r, n);
 }
 
-inline bool JasminDeserialize(Reader auto& r, InstructionSpecification& spec) {
+bool JasminDeserialize(Reader auto& r, std::floating_point auto& f) {
+  return jasmin::ReadFixed(r, f);
+}
+
+bool JasminDeserialize(Reader auto& r, InstructionSpecification& spec) {
   return jasmin::ReadInteger(r, spec.parameters) and
          jasmin::ReadInteger(r, spec.returns);
 }

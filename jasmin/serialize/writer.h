@@ -68,9 +68,13 @@ void WriteInteger(Writer auto& w, std::integral auto n) {
     m = n;
   }
 
-  while (m) {
-    w.write(static_cast<std::byte>(m & uint8_t{0xff}));
-    m >>= 8;
+  if constexpr (sizeof(n) == 1) {
+    w.write(static_cast<std::byte>(m));
+  } else {
+    while (m) {
+      w.write(static_cast<std::byte>(m & uint8_t{0xff}));
+      m >>= 8;
+    }
   }
   jasmin::WritePrefixedLength<uint8_t>(w, c);
 }
