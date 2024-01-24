@@ -1,6 +1,7 @@
 #ifndef JASMIN_SERIALIZE_READER_H
 #define JASMIN_SERIALIZE_READER_H
 
+#include <climits>
 #include <concepts>
 #include <cstdint>
 #include <optional>
