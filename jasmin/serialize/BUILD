@@ -17,6 +17,9 @@ cc_library(
     name = "reader",
     hdrs = ["reader.h"],
     visibility = ["//visibility:public"],
+    deps = [
+        "//jasmin/core:function",
+    ],
 )
 
 cc_test(
