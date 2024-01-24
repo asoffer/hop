@@ -396,7 +396,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
             Value input[InputCount];
             std::memcpy(input, value_stack_head - InputCount,
                         sizeof(Value) * InputCount);
-            inst(fn_state, std::span<Value, InputCount>(input),
+            inst(fn_state, std::span<Value, InputCount>(input, InputCount),
                  output_type(out_start, OutputCount),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
@@ -414,7 +414,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
             Value input[InputCount];
             std::memcpy(input, value_stack_head - InputCount,
                         sizeof(Value) * InputCount);
-            inst(std::span<Value, InputCount>(input),
+            inst(std::span<Value, InputCount>(input, InputCount),
                  output_type(out_start, OutputCount),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
