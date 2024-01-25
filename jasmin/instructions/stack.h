@@ -33,13 +33,9 @@ struct StackFrame {
 // be called more than once on any `jasmin::Function`.
 struct StackAllocate : Instruction<StackAllocate> {
   using function_state = internal::StackFrame;
-  static constexpr void execute(function_state &frame, std::span<Value, 0>,
-                                std::span<Value, 0>, size_t size_in_bytes) {
+  static constexpr void execute(function_state &frame, Input<>, Output<>,
+                                size_t size_in_bytes) {
     frame.allocate_once(size_in_bytes);
-  }
-  static std::string debug(std::span<Value const, 1> immediates) {
-    return "stack-allocate" + std::to_string(immediates[0].as<size_t>()) +
-           " byte(s)";
   }
 };
 
@@ -47,13 +43,9 @@ struct StackAllocate : Instruction<StackAllocate> {
 // offset by the amount `offset`.
 struct StackOffset : Instruction<StackOffset> {
   using function_state = internal::StackFrame;
-  static constexpr void execute(function_state &frame, std::span<Value, 0>,
-                                std::span<Value, 1> out, size_t offset) {
-    out[0] = frame.data() + offset;
-  }
-  static std::string debug(std::span<Value const, 1> immediates) {
-    return "stack-offset" + std::to_string(immediates[0].as<size_t>()) +
-           " byte(s)";
+  static constexpr void execute(function_state &frame, Input<>,
+                                Output<std::byte *> out, size_t offset) {
+    out.set<0>(frame.data() + offset);
   }
 };
 

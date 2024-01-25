@@ -8,9 +8,11 @@
 #include <string_view>
 #include <type_traits>
 
+#include "jasmin/core/input.h"
 #include "jasmin/core/internal/function_base.h"
 #include "jasmin/core/internal/function_state.h"
 #include "jasmin/core/internal/instruction_traits.h"
+#include "jasmin/core/output.h"
 #include "jasmin/core/value.h"
 #include "nth/base/attributes.h"
 #include "nth/base/pack.h"
@@ -57,15 +59,14 @@ struct Instruction {
 //   If `typename Inst::function_state` is well-formed, the first parameter to
 //   the function must be a reference to this type.
 //
-//   The function must then accept two span parameters
-//   `std::span<jasmin::Value, In>` and `std::span<jasmin::Value, Out>`, where
-//   `In` and `Out` are the number of inputs and outputs processed by the
-//   instruction respectively. These may then be followed by any number of
-//   parameters whose types are convertible to `jasmin::Value`. These
-//   parameters are the immediate values to the function. Functions named
-//   consume will have their arguments popped from the stack after execution,
-//   whereas functions named `execute` will keep their arguments. The function
-//   must return void.
+//   The function must then accept a parameter of the form
+//   `jasmin::Input<Is...>` followed by a parameter of the form
+//   `jasmin::Output<Os...>` representing access to the inputs and outputs of
+//   the instruction respectively. These may then be followed by any number of
+//   parameters whose types are convertible to `jasmin::Value`. These parameters
+//   are the immediate values to the function. Functions named consume will have
+//   their arguments popped from the stack after execution, whereas functions
+//   named `execute` will keep their arguments. The function must return void.
 //
 // IMMEDIATE-VALUE-DETERMINED SIGNATURES:
 //   If `typename Inst::function_state` is well-formed, the first parameter to
@@ -92,6 +93,17 @@ concept InstructionType = (std::derived_from<I, Instruction<I>> and
 // by Jasmin's interpreter.
 template <typename S>
 concept InstructionSetType = std::derived_from<S, internal::InstructionSetBase>;
+
+// Returns `nth::type<F>` where `F` is the type representing the function state
+// associated with this instruction, or `nth::type<void>` if the instruction
+// does not manipulate any function state.
+template <typename I>
+constexpr nth::Type auto FunctionState();
+
+// Returns `true` if and only if the number of inputs/outputs processed by the
+// function is determined by immediate values.
+template <typename I>
+constexpr bool ImmediateValueDetermined();
 
 // Returns the number of immediate values passed to the instruction `I`.
 template <typename I>
@@ -307,10 +319,9 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
   } else {
     constexpr auto inst      = internal::InstructionFunctionPointer<Inst>();
     constexpr auto inst_type = internal::InstructionFunctionType<Inst>();
-    constexpr bool HasFunctionState = internal::HasFunctionState<Inst>;
-    if constexpr (internal::ImmediateValueDetermined(
-                      inst_type.parameters()
-                          .template drop<HasFunctionState>())) {
+    constexpr bool HasFunctionState =
+        (FunctionState<Inst>() != nth::type<void>);
+    if constexpr (ImmediateValueDetermined<Inst>()) {
       auto [ins, outs] = (ip + 1)->as<InstructionSpecification>();
       // If we consume, we still need a place to move the inputs during
       // execution. If not, we might need extra space to push return values. In
@@ -325,8 +336,8 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
       Value *input;
       Value *output;
       if constexpr (ConsumesInput<Inst>()) {
-        output  = value_stack_head - ins;
-        input = value_stack_head - ins + outs;
+        output = value_stack_head - ins;
+        input  = value_stack_head - ins + outs;
         std::memmove(input, output, sizeof(Value) * ins);
       } else {
         input  = value_stack_head - ins;
@@ -350,7 +361,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
                JASMIN_CORE_INTERNAL_GET((ip + 2), Ns)...);
         }
       }
-      (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
+      (std::make_index_sequence<ImmediateValueCount<Inst>() - 1>{});
       // Note: We subtract one above because we do not need to pass the
       // `InstructionSpecification`. We don't want this reflected in the return
       // of `ImmediateValueCount` since it is technically still an immediate
@@ -374,8 +385,8 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
           nth::type_t<inst_type.parameters().template get<HasFunctionState>()>;
       using output_type = nth::type_t<
           inst_type.parameters().template get<1 + HasFunctionState>()>;
-      constexpr size_t InputCount  = input_type::extent;
-      constexpr size_t OutputCount = output_type::extent;
+      constexpr size_t InputCount  = ParameterCount<Inst>();
+      constexpr size_t OutputCount = ReturnCount<Inst>();
       if (vs_left + (ConsumesInput<Inst>() ? InputCount : 0) < OutputCount)
           [[unlikely]] {
         NTH_ATTRIBUTE(tailcall)
@@ -396,13 +407,11 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
             Value input[InputCount];
             std::memcpy(input, value_stack_head - InputCount,
                         sizeof(Value) * InputCount);
-            inst(fn_state, std::span<Value, InputCount>(input, InputCount),
-                 output_type(out_start, OutputCount),
+            inst(fn_state, input_type(input), output_type(out_start),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
-            inst(fn_state,
-                 input_type(value_stack_head - InputCount, InputCount),
-                 output_type(value_stack_head, OutputCount),
+            inst(fn_state, input_type(value_stack_head - InputCount),
+                 output_type(value_stack_head),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           }
         }
@@ -414,12 +423,11 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
             Value input[InputCount];
             std::memcpy(input, value_stack_head - InputCount,
                         sizeof(Value) * InputCount);
-            inst(std::span<Value, InputCount>(input, InputCount),
-                 output_type(out_start, OutputCount),
+            inst(input_type(input), output_type(out_start),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           } else {
-            inst(input_type(value_stack_head - InputCount, InputCount),
-                 output_type(value_stack_head, OutputCount),
+            inst(input_type(value_stack_head - InputCount),
+                 output_type(value_stack_head),
                  JASMIN_CORE_INTERNAL_GET((ip + 1), Ns)...);
           }
         }
@@ -445,6 +453,24 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
 }
 
 template <typename I>
+constexpr nth::Type auto FunctionState() {
+  if constexpr (requires { typename I::function_state; }) {
+    return nth::type<typename I::function_state>;
+  } else {
+    return nth::type<void>;
+  }
+}
+
+template <typename I>
+constexpr bool ImmediateValueDetermined() {
+  return not std::derived_from<
+      nth::type_t<internal::InstructionFunctionType<I>()
+                      .parameters()
+                      .template get<FunctionState<I>() != nth::type<void>>()>,
+      internal::InputBase>;
+}
+
+template <typename I>
 constexpr size_t ImmediateValueCount() {
   if constexpr (nth::any_of<I, Return>) {
     return 0;
@@ -452,7 +478,8 @@ constexpr size_t ImmediateValueCount() {
     return 1;
   } else {
     return internal::InstructionFunctionType<I>().parameters().size() -
-           (internal::HasFunctionState<I> ? 3 : 2);
+           (FunctionState<I>() == nth::type<void> ? 2 : 3) +
+           ImmediateValueDetermined<I>();
   }
 }
 
@@ -465,13 +492,11 @@ constexpr size_t ParameterCount() {
   } else {
     constexpr auto parameters =
         internal::InstructionFunctionType<I>().parameters();
-    if constexpr (internal::ImmediateValueDetermined(
-                      parameters
-                          .template drop<internal::HasFunctionState<I>>())) {
+    if constexpr (ImmediateValueDetermined<I>()) {
       return -1;
     } else {
-      return nth::type_t<
-          parameters.template get<internal::HasFunctionState<I>>()>::extent;
+      return nth::type_t<parameters.template get<FunctionState<I>() !=
+                                                 nth::type<void>>()>::count;
     }
   }
 }
@@ -494,13 +519,11 @@ constexpr size_t ReturnCount() {
   } else {
     constexpr auto parameters =
         internal::InstructionFunctionType<I>().parameters();
-    if constexpr (internal::ImmediateValueDetermined(
-                      parameters
-                          .template drop<internal::HasFunctionState<I>>())) {
+    if constexpr (ImmediateValueDetermined<I>()) {
       return -1;
     } else {
-      return nth::type_t<
-          parameters.template get<1 + internal::HasFunctionState<I>>()>::extent;
+      return nth::type_t<parameters.template get<
+          1 + (FunctionState<I>() != nth::type<void>)>()>::count;
     }
   }
 }

@@ -1,15 +1,28 @@
 #include "jasmin/core/metadata.h"
 
+#include <type_traits>
+
 #include "nth/test/test.h"
 
 namespace jasmin {
 namespace {
 
+template <typename>
+struct InputType;
+
+template <int... Ns>
+struct InputType<std::index_sequence<Ns...>> {
+  template <int N>
+  using JustValue = Value;
+  using type      = Input<JustValue<Ns>...>;
+};
+
 template <int N>
 struct Inst : jasmin::Instruction<Inst<N>> {
-  static constexpr void execute(std::span<Value, N>, std::span<Value, 1> out,
-                                bool b) {
-    out[0] = b;
+  static constexpr void execute(
+      typename InputType<std::make_index_sequence<N>>::type, Output<bool> out,
+      bool b) {
+    out.set<0>(b);
   }
 };
 

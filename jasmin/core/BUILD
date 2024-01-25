@@ -39,10 +39,32 @@ cc_test(
 )
 
 cc_library(
+    name = "input",
+    hdrs = ["input.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":value",
+        "@nth_cc//nth/meta:sequence",
+        "@nth_cc//nth/meta:type",
+    ],
+)
+
+cc_test(
+    name = "input_test",
+    srcs = ["input_test.cc"],
+    deps = [
+        ":input",
+        "@nth_cc//nth/test:main",
+    ],
+)
+
+cc_library(
     name = "instruction",
     hdrs = ["instruction.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":input",
+        ":output",
         ":value",
         "//jasmin/core/internal:function_base",
         "//jasmin/core/internal:function_state",
@@ -93,6 +115,26 @@ cc_test(
     visibility = ["//visibility:public"],
     deps = [
         ":metadata",
+        "@nth_cc//nth/test:main",
+    ],
+)
+
+cc_library(
+    name = "output",
+    hdrs = ["output.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":value",
+        "@nth_cc//nth/meta:sequence",
+        "@nth_cc//nth/meta:type",
+    ],
+)
+
+cc_test(
+    name = "output_test",
+    srcs = ["output_test.cc"],
+    deps = [
+        ":output",
         "@nth_cc//nth/test:main",
     ],
 )

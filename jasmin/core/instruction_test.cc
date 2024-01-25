@@ -8,30 +8,27 @@ namespace {
 
 struct Count : Instruction<Count> {
   using function_state = int;
-  static void execute(function_state& state, std::span<Value, 0>,
-                      std::span<Value, 1> out) {
-    out[0] = state++;
+  static void execute(function_state& state, Input<>, Output<int> out) {
+    out.set<0>(state++);
   }
 };
 
 struct NoImmediates : Instruction<NoImmediates> {
-  static void execute(std::span<Value, 2>, std::span<Value, 1> out) {
-    out[0] = 0;
-  }
+  static void execute(Input<int, int>, Output<int> out) { out.set<0>(0); }
 };
 
 struct NoImmediatesOrValues : Instruction<NoImmediatesOrValues> {
-  static void execute(std::span<Value, 0>, std::span<Value, 0>) {}
+  static void execute(Input<>, Output<>) {}
 };
 
 struct SomeImmediates : Instruction<SomeImmediates> {
-  static void execute(std::span<Value, 0>, std::span<Value, 0>, int, bool) {}
+  static void execute(Input<>, Output<>, int, bool) {}
 };
 
-struct ReturnsMultiple: Instruction<ReturnsMultiple> {
-  static void consume(std::span<Value, 0>, std::span<Value, 2> out) {
-    out[0] = 1;
-    out[1] = 2;
+struct ReturnsMultiple : Instruction<ReturnsMultiple> {
+  static void consume(Input<>, Output<int, int> out) {
+    out.set<0>(1);
+    out.set<1>(2);
   }
 };
 

@@ -9,9 +9,8 @@ namespace jasmin {
 
 template <typename T>
 struct Push : Instruction<Push<T>> {
-  static constexpr void execute(std::span<Value, 0>, std::span<Value, 1> out,
-                                T v) {
-    out[0] = v;
+  static constexpr void execute(Input<>, Output<T> out, T v) {
+    out.template set<0>(v);
   }
 
   static void identify(RegisterCoalescer& p, SsaInstruction const& i) {
@@ -20,12 +19,13 @@ struct Push : Instruction<Push<T>> {
 };
 
 struct Drop : Instruction<Drop> {
-  static constexpr void consume(std::span<Value, 1>, std::span<Value, 0>) {}
+  static constexpr void consume(Input<Value>, Output<>) {}
 };
 
 struct Swap : Instruction<Swap> {
-  static void execute(std::span<Value, 2> values, std::span<Value, 0>) {
-    std::swap(values[0], values[1]);
+  static void consume(Input<Value, Value> in, Output<Value, Value>out) {
+    out.set<0>(in.get<1>());
+    out.set<1>(in.get<0>());
   }
 
   static void identify(RegisterCoalescer& p, SsaInstruction const& i) {
@@ -43,8 +43,8 @@ struct Rotate : Instruction<Rotate> {
 };
 
 struct Duplicate : Instruction<Duplicate> {
-  static void execute(std::span<Value, 1> values, std::span<Value, 1> out) {
-    out[0] = values[0];
+  static void execute(Input<Value> in, Output<Value> out) {
+    out.set<0>(in.get<0>());
   }
 
   static void identify(RegisterCoalescer& p, SsaInstruction const& i) {
@@ -60,16 +60,15 @@ struct DuplicateAt : Instruction<DuplicateAt> {
 };
 
 struct Load : Instruction<Load> {
-  static void execute(std::span<Value, 1> values, std::span<Value, 0>,
+  static void consume(Input<std::byte const*> in, Output<Value> out,
                       size_t size) {
-    values[0] = Value::Load(values[0].as<std::byte const*>(), size);
+    out.set<0>(Value::Load(in.get<0>(), size));
   }
 };
 
 struct Store : Instruction<Store> {
-  static void consume(std::span<Value, 2> values, std::span<Value, 0>,
-                      uint8_t size) {
-    Value::Store(values[1], values[0].as<void*>(), size);
+  static void consume(Input<void*, Value> in, Output<>, uint8_t size) {
+    Value::Store(in.get<1>(), in.get<0>(), size);
   }
 };
 

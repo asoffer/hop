@@ -39,49 +39,43 @@ concept Negatable = not std::same_as<bool, T> and requires(T t) {
 
 template <Addable T>
 struct Add : Instruction<Add<T>> {
-  static constexpr void consume(std::span<Value, 2> values,
-                                std::span<Value, 1> out) {
-    out[0] = T(values[0].as<T>() + values[1].as<T>());
+  static constexpr void consume(Input<T, T> in, Output<T> out) {
+    out.template set<0>(in.template get<0>() + in.template get<1>());
   }
 };
 
 template <Subtractable T>
 struct Subtract : Instruction<Subtract<T>> {
-  static constexpr void consume(std::span<Value, 2> values,
-                                std::span<Value, 1> out) {
-    out[0] = T(values[0].as<T>() - values[1].as<T>());
+  static constexpr void consume(Input<T, T> in, Output<T> out) {
+    out.template set<0>(in.template get<0>() - in.template get<1>());
   }
 };
 
 template <Multiplicable T>
 struct Multiply : Instruction<Multiply<T>> {
-  static constexpr void consume(std::span<Value, 2> values,
-                                std::span<Value, 1> out) {
-    out[0] = T(values[0].as<T>() * values[1].as<T>());
+  static constexpr void consume(Input<T, T> in, Output<T> out) {
+    out.template set<0>(in.template get<0>() * in.template get<1>());
   }
 };
 
 template <Divisible T>
 struct Divide : Instruction<Divide<T>> {
-  static constexpr void consume(std::span<Value, 2> values,
-                                std::span<Value, 1> out) {
-    out[0] = T(values[0].as<T>() / values[1].as<T>());
+  static constexpr void consume(Input<T, T> in, Output<T> out) {
+    out.template set<0>(in.template get<0>() / in.template get<1>());
   }
 };
 
 template <Modable T>
 struct Mod : Instruction<Mod<T>> {
-  static constexpr void consume(std::span<Value, 2> values,
-                                std::span<Value, 1> out) {
-    out[0] = T(values[0].as<T>() % values[1].as<T>());
+  static constexpr void consume(Input<T, T> in, Output<T> out) {
+    out.template set<0>(in.template get<0>() % in.template get<1>());
   }
 };
 
 template <Negatable T>
 struct Negate : Instruction<Negate<T>> {
-  static constexpr void execute(std::span<Value, 1> values,
-                                std::span<Value, 0>) {
-    values[0] = T(-values[0].as<T>());
+  static constexpr void consume(Input<T> in, Output<T> out) {
+    out.template set<0>(-in.template get<0>());
   }
 };
 

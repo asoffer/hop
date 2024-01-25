@@ -2,7 +2,9 @@
 #define JASMIN_TESTING_H
 
 #include "jasmin/core/function.h"
+#include "jasmin/core/input.h"
 #include "jasmin/core/instruction.h"
+#include "jasmin/core/output.h"
 #include "nth/container/stack.h"
 
 namespace jasmin {
@@ -26,15 +28,15 @@ requires(internal::HasFunctionState<Inst> and
                             auto... immediates) {
   struct WriteFunctionState : Instruction<WriteFunctionState> {
     using function_state = typename Inst::function_state;
-    static void execute(function_state &state, std::span<Value, 0>,
-                        std::span<Value, 0>, function_state *in) {
+    static void execute(function_state &state, Input<>, Output<>,
+                        function_state *in) {
       state = std::move(*in);
     }
   };
   struct ExtractFunctionState : Instruction<ExtractFunctionState> {
     using function_state = typename Inst::function_state;
-    static void execute(function_state &state, std::span<Value, 0>,
-                        std::span<Value, 0>, function_state *out) {
+    static void execute(function_state &state, Input<>, Output<>,
+                        function_state *out) {
       *out = std::move(state);
     }
   };

@@ -10,9 +10,8 @@
 // before this one.
 
 struct PrintCString : jasmin::Instruction<PrintCString> {
-  static void consume(std::span<jasmin::Value, 1> values,
-                      std::span<jasmin::Value, 0>) {
-    std::fputs(values[0].as<char const *>(), stdout);
+  static void consume(jasmin::Input<char const *> in, jasmin::Output<>) {
+    std::fputs(in.get<0>(), stdout);
   }
 };
 
@@ -31,8 +30,8 @@ struct Queue {
 
 struct PushQueue : jasmin::Instruction<PushQueue> {
   using function_state = Queue;
-  static void execute(function_state &state, std::span<jasmin::Value, 0>,
-                      std::span<jasmin::Value, 0>, char const *cstr) {
+  static void execute(function_state &state, jasmin::Input<>, jasmin::Output<>,
+                      char const *cstr) {
     state.queue.push(cstr);
   }
 };
@@ -40,17 +39,17 @@ struct PushQueue : jasmin::Instruction<PushQueue> {
 struct PopQueue : jasmin::Instruction<PopQueue> {
   using function_state = Queue;
 
-  static void execute(function_state &state, std::span<jasmin::Value, 0>,
-                      std::span<jasmin::Value, 1> out) {
-    out[0] = state.queue.front();
+  static void execute(function_state &state, jasmin::Input<>,
+                      jasmin::Output<char const *> out) {
+    out.set<0>(state.queue.front());
     state.queue.pop();
   }
 };
 
 struct RotateQueue : jasmin::Instruction<RotateQueue> {
   using function_state = Queue;
-  static void execute(function_state &state, std::span<jasmin::Value, 0>,
-                      std::span<jasmin::Value, 0>) {
+  static void execute(function_state &state, jasmin::Input<>,
+                      jasmin::Output<>) {
     char const *top = state.queue.front();
     state.queue.pop();
     state.queue.push(top);

@@ -42,6 +42,8 @@ cc_library(
     hdrs = ["instruction_traits.h"],
     deps = [
         ":function_state",
+        "//jasmin/core:input",
+        "//jasmin/core:output",
         "//jasmin/core:value",
         "@nth_cc//nth/meta:concepts",
         "@nth_cc//nth/meta:type",

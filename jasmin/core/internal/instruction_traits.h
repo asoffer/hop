@@ -1,7 +1,9 @@
 #ifndef JASMIN_CORE_INTERNAL_INSTRUCTION_TRAITS_H
 #define JASMIN_CORE_INTERNAL_INSTRUCTION_TRAITS_H
 
+#include "jasmin/core/input.h"
 #include "jasmin/core/internal/function_state.h"
+#include "jasmin/core/output.h"
 #include "jasmin/core/value.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/type.h"
@@ -51,83 +53,25 @@ constexpr bool ImmediateValueDetermined(nth::Sequence auto seq) {
 }
 
 constexpr bool ValidParameterSequence(nth::Sequence auto seq) {
-  if constexpr (seq.empty()) {
+  if constexpr (seq.size() < 2) {
     return false;
   } else {
-    using span_type = nth::type_t<seq.template get<0>()>;
-    if constexpr (not requires { span_type::extent; }) {
-      return false;
-    } else if constexpr (seq.template get<0>() !=
-                         nth::type<std::span<Value, span_type::extent>>) {
-      return false;
-    } else {
+    if constexpr (std::derived_from<nth::type_t<seq.template get<0>()>,
+                                    internal::InputBase> and
+                  std::derived_from<nth::type_t<seq.template get<1>()>,
+                                    internal::OutputBase>) {
       return seq.template drop<1>().template all<[](auto t) {
         return std::is_convertible_v<nth::type_t<t>, Value>;
       }>();
+    } else if constexpr (seq.template get<0>() ==
+                             nth::type<std::span<Value>> and
+                         seq.template get<1>() == nth::type<std::span<Value>>) {
+      return seq.template drop<1>().template all<[](auto t) {
+        return std::is_convertible_v<nth::type_t<t>, Value>;
+      }>();
+    } else {
+      return false;
     }
-  }
-}
-
-constexpr bool ValidSignatureWithFunctionStateImpl(
-    nth::Type auto body_type, nth::Type auto /*function_state_type*/) {
-  if constexpr (body_type.return_type() == nth::type<void>) {
-    return ImmediateValueDetermined(
-               body_type.parameters().template drop<1>()) or
-           ValidParameterSequence(body_type.parameters().template drop<1>());
-  } else {
-    return false;
-  }
-}
-
-constexpr bool ValidSignatureWithoutFunctionStateImpl(
-    nth::Type auto body_type) {
-  if constexpr (body_type.return_type() == nth::type<void>) {
-    return ImmediateValueDetermined(body_type.parameters()) or
-           ValidParameterSequence(body_type.parameters());
-  } else {
-    return false;
-  }
-}
-
-template <typename I>
-constexpr bool ValidSignatureWithFunctionState() {
-  if constexpr (requires { &I::execute; }) {
-    return std::is_function_v<decltype(I::execute)> and
-           ValidSignatureWithFunctionStateImpl(
-               nth::type<decltype(I::execute)>,
-               nth::type<typename I::function_state>);
-  } else {
-    return std::is_function_v<decltype(I::consume)> and
-           ValidSignatureWithFunctionStateImpl(
-               nth::type<decltype(I::consume)>,
-               nth::type<typename I::function_state>);
-  }
-}
-
-template <typename I>
-constexpr bool ValidSignatureWithoutFunctionState() {
-  if constexpr (requires { &I::execute; }) {
-    return std::is_function_v<decltype(I::execute)> and
-           ValidSignatureWithoutFunctionStateImpl(
-               nth::type<decltype(I::execute)>);
-  } else {
-    return std::is_function_v<decltype(I::consume)> and
-           ValidSignatureWithoutFunctionStateImpl(
-               nth::type<decltype(I::consume)>);
-  }
-}
-
-template <typename I>
-concept UserDefinedInstruction = HasExactlyOneOfConsumeOrExecute<I>() and
-    ((HasFunctionState<I> and ValidSignatureWithFunctionState<I>()) or
-     (not HasFunctionState<I> and ValidSignatureWithoutFunctionState<I>()));
-
-template <typename I>
-constexpr auto InstructionFunctionPointer() {
-  if constexpr (requires { &I::consume; }) {
-    return &I::consume;
-  } else {
-    return &I::execute;
   }
 }
 
@@ -142,9 +86,52 @@ constexpr auto InstructionFunctionType() {
   } else if constexpr (nth::type<I> == nth::type<Return>) {
     return nth::type<void(std::span<Value, 0>)>;
   } else {
-    return nth::type<decltype(*InstructionFunctionPointer<I>())>.without_reference();
+    if constexpr (requires { &I::consume; }) {
+      static_assert(std::is_function_v<decltype(I::consume)>);
+      return nth::type<decltype(I::consume)>;
+    } else {
+      static_assert(std::is_function_v<decltype(I::execute)>);
+      return nth::type<decltype(I::execute)>;
+    }
   }
 }
+
+template <typename I>
+constexpr auto InstructionFunctionPointer() {
+  if constexpr (requires { &I::consume; }) {
+    return &I::consume;
+  } else {
+    return &I::execute;
+  }
+}
+
+template <typename I>
+constexpr bool ValidSignatureWithFunctionState() {
+  auto body_type = InstructionFunctionType<I>();
+  if constexpr (body_type.return_type() == nth::type<void>) {
+    return ImmediateValueDetermined(
+               body_type.parameters().template drop<1>()) or
+           ValidParameterSequence(body_type.parameters().template drop<1>());
+  } else {
+    return false;
+  }
+}
+
+template <typename I>
+constexpr bool ValidSignatureWithoutFunctionState() {
+  auto body_type = InstructionFunctionType<I>();
+  if constexpr (body_type.return_type() == nth::type<void>) {
+    return ImmediateValueDetermined(body_type.parameters()) or
+           ValidParameterSequence(body_type.parameters());
+  } else {
+    return false;
+  }
+}
+
+template <typename I>
+concept UserDefinedInstruction = HasExactlyOneOfConsumeOrExecute<I>() and
+    ((HasFunctionState<I> and ValidSignatureWithFunctionState<I>()) or
+     (not HasFunctionState<I> and ValidSignatureWithoutFunctionState<I>()));
 
 }  // namespace internal
 }  // namespace jasmin
