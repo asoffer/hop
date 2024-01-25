@@ -350,7 +350,7 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
                JASMIN_CORE_INTERNAL_GET((ip + 2), Ns)...);
         }
       }
-      (std::make_index_sequence<ImmediateValueCount<Inst>() - 1>{});
+      (std::make_index_sequence<ImmediateValueCount<Inst>()>{});
       // Note: We subtract one above because we do not need to pass the
       // `InstructionSpecification`. We don't want this reflected in the return
       // of `ImmediateValueCount` since it is technically still an immediate
@@ -450,12 +450,6 @@ constexpr size_t ImmediateValueCount() {
     return 0;
   } else if constexpr (nth::any_of<I, Call, Jump, JumpIf>) {
     return 1;
-  } else if constexpr (internal::InstructionFunctionType<I>()
-                           .parameters()
-                           .template get<internal::HasFunctionState<I>>() ==
-                       nth::type<std::span<Value>>) {
-    return 1 + internal::InstructionFunctionType<I>().parameters().size() -
-           (internal::HasFunctionState<I> ? 3 : 2);
   } else {
     return internal::InstructionFunctionType<I>().parameters().size() -
            (internal::HasFunctionState<I> ? 3 : 2);

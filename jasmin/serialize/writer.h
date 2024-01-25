@@ -28,6 +28,7 @@ concept Writer = requires(W w) {
 // Writes `n` to `w` with the same bit-representation, taking exactly
 // `sizeof(n)` bytes.
 void WriteFixed(Writer auto& w, std::integral auto n);
+void WriteFixed(Writer auto& w, std::floating_point auto f);
 
 // Writes a number into the `sizeof(LengthType)` bytes starting at `c` which is
 // equal to the number of bytes between `w.cursor()` and then end of the
@@ -47,6 +48,10 @@ void WriteInteger(Writer auto& w, std::integral auto n);
 void WriteFixed(Writer auto& w, std::integral auto n) {
   w.write(std::span(reinterpret_cast<std::byte const*>(std::addressof(n)),
                     sizeof(n)));
+}
+void WriteFixed(Writer auto& w, std::floating_point auto f) {
+  w.write(std::span(reinterpret_cast<std::byte const*>(std::addressof(f)),
+                    sizeof(f)));
 }
 
 template <std::unsigned_integral LengthType, int&..., Writer W>

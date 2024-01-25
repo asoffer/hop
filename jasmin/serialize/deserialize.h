@@ -121,15 +121,23 @@ bool Deserialize(R& r, Program<Set>& p) {
 }
 
 bool JasminDeserialize(Reader auto& r, std::byte& b) {
-  return jasmin::ReadFixed(r, b);
+  return r.read(std::span<std::byte>(&b, 1));
 }
 
 bool JasminDeserialize(Reader auto& r, std::integral auto& n) {
-  return jasmin::ReadInteger(r, n);
+  if constexpr (nth::type<decltype(n)> == nth::type<bool&>) {
+    return jasmin::ReadFixed(r, n);
+  } else {
+    return jasmin::ReadInteger(r, n);
+  }
 }
 
 bool JasminDeserialize(Reader auto& r, std::floating_point auto& f) {
   return jasmin::ReadFixed(r, f);
+}
+
+bool JasminDeserialize(Reader auto&, Function<> const*&) {
+  NTH_UNIMPLEMENTED();
 }
 
 bool JasminDeserialize(Reader auto& r, InstructionSpecification& spec) {

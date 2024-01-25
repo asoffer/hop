@@ -23,9 +23,19 @@ void Serialize(Program<Set> const& p, W& w);
 // Implementation
 
 void JasminSerialize(Writer auto& w, std::integral auto n) {
-  jasmin::WriteInteger(w, n);
+  if constexpr (nth::type<decltype(n)> == nth::type<bool>) {
+    jasmin::WriteFixed(w, n);
+  } else {
+    jasmin::WriteInteger(w, n);
+  }
 }
-void JasminSerialize(Writer auto& w, std::byte b) { jasmin::WriteFixed(w, b); }
+void JasminSerialize(Writer auto& w, std::floating_point auto f) {
+  jasmin::WriteFixed(w, f);
+}
+
+void JasminSerialize(Writer auto& w, std::byte b) { w.write(b); }
+
+void JasminSerialize(Writer auto&, Function<> const*) { NTH_UNIMPLEMENTED(); }
 
 void JasminSerialize(Writer auto& w, InstructionSpecification spec) {
   jasmin::WriteInteger(w, spec.parameters);
