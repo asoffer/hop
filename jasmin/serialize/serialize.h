@@ -60,8 +60,9 @@ void InstructionSerializer(std::span<Value const> v, W& w) {
         return nth::type<decltype(I::consume)>.parameters();
       }
     }();
-    params.template drop<params.size() - ImmediateValueCount<I>()>().reduce(
-        [&](auto... ts) {
+    params
+        .template drop<2 + (::jasmin::FunctionState<I>() != nth::type<void>)>()
+        .reduce([&](auto... ts) {
           size_t i = 0;
           (JasminSerialize(w, v[i++].template as<nth::type_t<ts>>()), ...);
         });
