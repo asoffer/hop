@@ -149,5 +149,21 @@ struct ConsumeDynamicWithImmediates
 };
 static_assert(UserDefinedInstruction<ConsumeDynamicWithImmediates>);
 
+struct BigTriviallyCopyable {
+  static void execute(Input<>, Output<>, std::array<int, 20>);
+};
+static_assert(UserDefinedInstruction<BigTriviallyCopyable>);
+
+struct BigTriviallyCopyableByReference {
+  static void execute(Input<>, Output<>, std::array<int, 20> const &);
+};
+static_assert(UserDefinedInstruction<BigTriviallyCopyableByReference>);
+
+struct BigTriviallyCopyableByMutableReference {
+  static void execute(Input<>, Output<>, std::array<int, 20> &);
+};
+static_assert(
+    not UserDefinedInstruction<BigTriviallyCopyableByMutableReference>);
+
 }  // namespace
 }  // namespace jasmin::internal

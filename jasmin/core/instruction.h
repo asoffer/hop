@@ -129,59 +129,35 @@ constexpr size_t ReturnCount();
 template <typename I>
 std::string_view InstructionName();
 
-// `Call` is a built-in instructions, available automatically in every
+// `Call` is a built-in instruction, available automatically in every
 // instruction set. It pops the top value off the stack, interprets it as a
 // function pointer, and begins execution at that function's entry point.
-struct Call : Instruction<Call> {
-  static std::string debug(std::span<Value const, 1> immediate_values) {
-    return "call " +
-           std::to_string(
-               immediate_values[0].as<InstructionSpecification>().parameters) +
-           " -> " +
-           std::to_string(
-               immediate_values[0].as<InstructionSpecification>().returns);
-  }
-};
+struct Call : Instruction<Call> {};
 
-// `Jump` is a built-in instructions, available automatically in every
+// `Jump` is a built-in instruction, available automatically in every
 // instruction set. It accepts a single `std::ptrdiff_t` immediate value,
 // increments the instruction pointer by that amount and resumes execution.
-struct Jump : Instruction<Jump> {
-  static std::string debug(std::span<Value const, 1> immediate_values) {
-    ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
-    if (n < 0) {
-      return "jump -" + std::to_string(-n);
-    } else {
-      return "jump +" + std::to_string(n);
-    }
-  }
-};
+struct Jump : Instruction<Jump> {};
 
-// `JumpIf` is a built-in instructions, available automatically in every
+// `JumpIf` is a built-in instruction, available automatically in every
 // instruction set. It accepts a single `std::ptrdiff_t` immediate value. It
 // pops the top value off the stack and interprets it as a `bool`. If that bool
 // is false, execution proceeds normally. Otherwise, the instruction pointer is
 // incremented by the immediate value and execution resumes.
-struct JumpIf : Instruction<JumpIf> {
-  static std::string debug(std::span<Value const, 1> immediate_values) {
-    ptrdiff_t n = immediate_values[0].as<ptrdiff_t>();
-    if (n < 0) {
-      return "jump-if -" + std::to_string(-n);
-    } else {
-      return "jump-if +" + std::to_string(n);
-    }
-  }
-};
+struct JumpIf : Instruction<JumpIf> {};
 
-// `Return` is a built-in instructions, available automatically in every
+// `JumpIfNot` is a built-in instruction, available automatically in every
+// instruction set. It accepts a single `std::ptrdiff_t` immediate value. It
+// pops the top value off the stack and interprets it as a `bool`. If that bool
+// is true, execution proceeds normally. Otherwise, the instruction pointer is
+// incremented by the immediate value and execution resumes.
+struct JumpIfNot : Instruction<JumpIfNot> {};
+
+// `Return` is a built-in instruction, available automatically in every
 // instruction set. It returns control back to the calling function at the
 // instruction pointer immediately following the `Call` instruction that invoked
 // this function.
-struct Return : Instruction<Return> {
-  static constexpr std::string_view debug(std::span<Value const, 0>) {
-    return "return";
-  }
-};
+struct Return : Instruction<Return> {};
 
 namespace internal {
 
@@ -261,7 +237,7 @@ template <typename... Is>
 using MakeInstructionSet = nth::type_t<
     internal::FlattenInstructionList(
         /*unprocessed=*/nth::type_sequence<Is...>,
-        /*processed=*/nth::type_sequence<Call, Jump, JumpIf, Return>)
+        /*processed=*/nth::type_sequence<Call, Jump, JumpIf, JumpIfNot, Return>)
         .reduce([](auto... vs) {
           return nth::type<internal::MakeInstructionSet<nth::type_t<vs>...>>;
         })>;
@@ -299,6 +275,19 @@ void Instruction<Inst>::ExecuteImpl(Value *value_stack_head, size_t vs_left,
   } else if constexpr (inst_type == nth::type<JumpIf>) {
     --value_stack_head;
     if (value_stack_head->as<bool>()) {
+      ip += (ip + 1)->as<ptrdiff_t>();
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
+                                              call_stack, cs_left);
+    } else {
+      ip += 2;
+      NTH_ATTRIBUTE(tailcall)
+      return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
+                                              call_stack, cs_left);
+    }
+  } else if constexpr (inst_type == nth::type<JumpIfNot>) {
+    --value_stack_head;
+    if (not value_stack_head->as<bool>()) {
       ip += (ip + 1)->as<ptrdiff_t>();
       NTH_ATTRIBUTE(tailcall)
       return ip->as<internal::exec_fn_type>()(value_stack_head, vs_left + 1, ip,
@@ -463,18 +452,22 @@ constexpr nth::Type auto FunctionState() {
 
 template <typename I>
 constexpr bool ImmediateValueDetermined() {
-  return not std::derived_from<
-      nth::type_t<internal::InstructionFunctionType<I>()
-                      .parameters()
-                      .template get<FunctionState<I>() != nth::type<void>>()>,
-      internal::InputBase>;
+  return nth::type<I> != nth::type<jasmin::Jump> and
+         nth::type<I> != nth::type<jasmin::JumpIf> and
+         nth::type<I> != nth::type<jasmin::JumpIfNot> and
+         not std::derived_from<
+             nth::type_t<
+                 internal::InstructionFunctionType<I>()
+                     .parameters()
+                     .template get<FunctionState<I>() != nth::type<void>>()>,
+             internal::InputBase>;
 }
 
 template <typename I>
 constexpr size_t ImmediateValueCount() {
   if constexpr (nth::any_of<I, Return>) {
     return 0;
-  } else if constexpr (nth::any_of<I, Call, Jump, JumpIf>) {
+  } else if constexpr (nth::any_of<I, Call, Jump, JumpIf, JumpIfNot>) {
     return 1;
   } else {
     return internal::InstructionFunctionType<I>().parameters().size() -
@@ -487,7 +480,7 @@ template <typename I>
 constexpr size_t ParameterCount() {
   if constexpr (nth::any_of<I, Jump, Return>) {
     return 0;
-  } else if constexpr (nth::any_of<I, Call, JumpIf>) {
+  } else if constexpr (nth::any_of<I, Call, JumpIf, JumpIfNot>) {
     return 1;
   } else {
     constexpr auto parameters =
@@ -503,7 +496,7 @@ constexpr size_t ParameterCount() {
 
 template <typename I>
 constexpr bool ConsumesInput() {
-  if constexpr (nth::any_of<I, JumpIf, Call>) {
+  if constexpr (nth::any_of<I, JumpIf, JumpIfNot, Call>) {
     return true;
   } else {
     return requires { &I::consume; };
@@ -512,7 +505,7 @@ constexpr bool ConsumesInput() {
 
 template <typename I>
 constexpr size_t ReturnCount() {
-  if constexpr (nth::any_of<I, Jump, Return, JumpIf>) {
+  if constexpr (nth::any_of<I, Jump, Return, JumpIf, JumpIfNot>) {
     return 0;
   } else if constexpr (nth::type<I> == nth::type<Call>) {
     return -1;

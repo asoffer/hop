@@ -1,5 +1,6 @@
 #ifndef JASMIN_SSA_H
 #define JASMIN_SSA_H
+
 #include <cstdint>
 #include <string_view>
 #include <vector>
@@ -20,7 +21,7 @@ namespace internal {
 template <InstructionSetType Set>
 constexpr std::array BuiltinPointers{
     &Call::ExecuteImpl<Set>, &Jump::ExecuteImpl<Set>, &JumpIf::ExecuteImpl<Set>,
-    &Return::ExecuteImpl<Set>};
+    &JumpIfNot::ExecuteImpl<Set>, &Return::ExecuteImpl<Set>};
 
 void InsertNameDecodings(
     std::span<std::pair<exec_fn_type, std::string_view> const> pairs);
@@ -173,8 +174,34 @@ struct SsaInstruction {
   std::vector<SsaValue> arguments_;
 };
 
+enum class SsaBranchKind { Unreachable, Unconditional, Conditional, Return };
+
 struct SsaBranch {
+  struct ConditionalImpl {
+    SsaValue value;
+    size_t true_block;
+    size_t false_block;
+    size_t true_false_split;
+    std::vector<SsaValue> block_arguments;
+
+    std::span<SsaValue const> true_arguments() const {
+      return std::span(block_arguments).subspan(0, true_false_split);
+    }
+
+    std::span<SsaValue const> false_arguments() const {
+      return std::span(block_arguments).subspan(true_false_split);
+    }
+  };
+
   SsaBranch() : SsaBranch(UnreachableImpl{}) {}
+
+  SsaBranchKind kind() const {
+    return static_cast<SsaBranchKind>(branch_.index());
+  }
+
+  ConditionalImpl const &AsConditional() const {
+    return std::get<ConditionalImpl>(branch_);
+  }
 
   static SsaBranch Unreachable() { return SsaBranch(UnreachableImpl{}); }
   static SsaBranch Unconditional(size_t block, std::span<SsaValue const> args) {
@@ -277,21 +304,6 @@ struct SsaBranch {
     size_t block;
     std::vector<SsaValue> block_arguments;
   };
-  struct ConditionalImpl {
-    SsaValue value;
-    size_t true_block;
-    size_t false_block;
-    size_t true_false_split;
-    std::vector<SsaValue> block_arguments;
-
-    std::span<SsaValue const> true_arguments() const {
-      return std::span(block_arguments).subspan(0, true_false_split);
-    }
-
-    std::span<SsaValue const> false_arguments() const {
-      return std::span(block_arguments).subspan(true_false_split);
-    }
-  };
   struct ReturnImpl {
     std::vector<SsaValue> block_arguments;
   };
@@ -311,7 +323,7 @@ struct SsaBasicBlock {
     parameters_ = std::move(parameters);
   }
   void set_branch(SsaBranch branch) { branch_ = std::move(branch); }
-  SsaBranch branch() const { return branch_; }
+  SsaBranch const &branch() const { return branch_; }
 
   constexpr std::span<SsaValue const> parameters() const { return parameters_; }
   constexpr std::span<SsaValue> parameters() { return parameters_; }

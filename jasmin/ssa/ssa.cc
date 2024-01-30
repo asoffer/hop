@@ -9,6 +9,7 @@ enum {
   BuiltinCall = 0,
   BuiltinJump,
   BuiltinJumpIf,
+  BuiltinJumpIfNot,
   BuiltinReturn,
 };
 
@@ -22,7 +23,8 @@ std::vector<uint64_t> BlockBoundaries(
   while (p != instructions.data() + instructions.size()) {
     auto metadata = decode(*p);
     if (p->as<internal::exec_fn_type>() == builtins[BuiltinJump] or
-        p->as<internal::exec_fn_type>() == builtins[BuiltinJumpIf]) {
+        p->as<internal::exec_fn_type>() == builtins[BuiltinJumpIf]/* or
+        p->as<internal::exec_fn_type>() == builtins[BuiltinJumpIfNot]*/) {
       block_boundaries.push_back(p - start + 2);
       block_boundaries.push_back((p - start) + (p + 1)->as<ptrdiff_t>());
     }
@@ -148,7 +150,8 @@ struct StackToSsaConverter {
       }
       block.append(SsaInstruction(inst, output_count, std::move(parameters)));
     }
-    block.set_parameters(std::move(bb_reg_stack).BlockParameters());
+    auto v = std::move(bb_reg_stack).BlockParameters();
+    block.set_parameters(std::move(v));
     return registers;
   }
 
@@ -225,9 +228,11 @@ void SsaFunction::Initialize(InstructionMetadata const& (*decode)(Value),
     } else if (block.instructions().back().op_code() ==
                builtins[BuiltinJumpIf]) {
       auto const& inst = block.instructions().back();
-      auto boundary_iter =
-          std::lower_bound(block_boundaries.begin(), block_boundaries.end(),
-                           inst.argument(0).immediate().as<ptrdiff_t>());
+      size_t instruction_offset =
+          block_boundaries[i] + block.instructions().size() - 1;
+      auto boundary_iter = std::lower_bound(
+          block_boundaries.begin(), block_boundaries.end(),
+          instruction_offset + inst.argument(0).immediate().as<ptrdiff_t>());
       auto true_block  = std::distance(block_boundaries.begin(), boundary_iter);
       auto false_block = i + 1;
       size_t true_size = blocks_[true_block].parameters().size();
@@ -237,6 +242,24 @@ void SsaFunction::Initialize(InstructionMetadata const& (*decode)(Value),
           inst.argument(1), true_block,
           span.subspan(span.size() - true_size, true_size), false_block,
           span.subspan(span.size() - false_size, false_size)));
+      block.remove_back();
+    } else if (block.instructions().back().op_code() ==
+               builtins[BuiltinJumpIfNot]) {
+      auto const& inst = block.instructions().back();
+      size_t instruction_offset =
+          block_boundaries[i] + block.instructions().size() - 1;
+      auto boundary_iter = std::lower_bound(
+          block_boundaries.begin(), block_boundaries.end(),
+          instruction_offset + inst.argument(0).immediate().as<ptrdiff_t>());
+      auto true_block  = std::distance(block_boundaries.begin(), boundary_iter);
+      auto false_block = i + 1;
+      size_t true_size = blocks_[true_block].parameters().size();
+      size_t false_size = blocks_[false_block].parameters().size();
+      std::span span    = registers_on_exit[i];
+      block.set_branch(SsaBranch::Conditional(
+          inst.argument(1), false_block,
+          span.subspan(span.size() - false_size, false_size), true_block,
+          span.subspan(span.size() - true_size, true_size)));
       block.remove_back();
     } else if (block.instructions().back().op_code() ==
                builtins[BuiltinReturn]) {

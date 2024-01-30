@@ -15,6 +15,7 @@ namespace jasmin {
 struct Call;
 struct Jump;
 struct JumpIf;
+struct JumpIfNot;
 struct Return;
 
 struct InstructionSpecification {
@@ -34,7 +35,7 @@ struct InstructionSetBase {};
 // be noise than to be valuable for most users.
 template <typename I>
 constexpr bool BuiltinInstruction() {
-  return nth::any_of<I, Call, Jump, JumpIf, Return>;
+  return nth::any_of<I, Call, Jump, JumpIf, JumpIfNot, Return>;
 }
 
 template <typename I>
@@ -56,18 +57,21 @@ constexpr bool ValidParameterSequence(nth::Sequence auto seq) {
   if constexpr (seq.size() < 2) {
     return false;
   } else {
-    if constexpr (std::derived_from<nth::type_t<seq.template get<0>()>,
-                                    internal::InputBase> and
-                  std::derived_from<nth::type_t<seq.template get<1>()>,
-                                    internal::OutputBase>) {
+    if constexpr ((std::derived_from<nth::type_t<seq.template get<0>()>,
+                                     internal::InputBase> and
+                   std::derived_from<nth::type_t<seq.template get<1>()>,
+                                     internal::OutputBase>) or
+                  (seq.template get<0>() == nth::type<std::span<Value>> and
+                   seq.template get<1>() == nth::type<std::span<Value>>)) {
       return seq.template drop<1>().template all<[](auto t) {
-        return std::is_convertible_v<nth::type_t<t>, Value>;
-      }>();
-    } else if constexpr (seq.template get<0>() ==
-                             nth::type<std::span<Value>> and
-                         seq.template get<1>() == nth::type<std::span<Value>>) {
-      return seq.template drop<1>().template all<[](auto t) {
-        return std::is_convertible_v<nth::type_t<t>, Value>;
+        constexpr auto underlying = t.without_reference().without_const();
+        if constexpr (std::is_trivially_copyable_v<nth::type_t<underlying>> and
+                      underlying.alignment() <= alignof(Value)) {
+          using U = nth::type_t<underlying>;
+          return nth::type<U> == t or nth::type<U const &> == t;
+        } else {
+          return false;
+        }
       }>();
     } else {
       return false;
@@ -82,6 +86,8 @@ constexpr auto InstructionFunctionType() {
   } else if constexpr (nth::type<I> == nth::type<Jump>) {
     return nth::type<void(std::span<Value, 0>, ptrdiff_t)>;
   } else if constexpr (nth::type<I> == nth::type<JumpIf>) {
+    return nth::type<void(std::span<Value, 1>, ptrdiff_t)>;
+  } else if constexpr (nth::type<I> == nth::type<JumpIfNot>) {
     return nth::type<void(std::span<Value, 1>, ptrdiff_t)>;
   } else if constexpr (nth::type<I> == nth::type<Return>) {
     return nth::type<void(std::span<Value, 0>)>;
@@ -132,6 +138,18 @@ template <typename I>
 concept UserDefinedInstruction = HasExactlyOneOfConsumeOrExecute<I>() and
     ((HasFunctionState<I> and ValidSignatureWithFunctionState<I>()) or
      (not HasFunctionState<I> and ValidSignatureWithoutFunctionState<I>()));
+
+constexpr size_t RoundUp(size_t n, size_t d) { return n / d + (n % d != 0); }
+
+template <typename I>
+constexpr size_t ImmediateValueBytes() {
+  return InstructionFunctionType<I>()
+      .parameters()
+      .template drop<(HasFunctionState<I> ? 2 : 3)>()
+      .reduce([](auto... ts) {
+        return (0 + ... + RoundUp(ts.size(), sizeof(Value)));
+      });
+}
 
 }  // namespace internal
 }  // namespace jasmin

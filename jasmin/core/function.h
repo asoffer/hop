@@ -100,6 +100,12 @@ requires(Set::instructions.template contains<nth::type<I>>())  //
         auto... vs) {
   if constexpr (nth::type<I> == nth::type<Return>) {
     return internal::FunctionBase::append({&I::template ExecuteImpl<Set>});
+  } else if constexpr (nth::type<I> == nth::type<jasmin::Jump>) {
+    static_assert(sizeof...(vs) == 0);
+    return internal::FunctionBase::append({&I::template ExecuteImpl<Set>});
+  } else if constexpr (nth::type<I> == nth::type<jasmin::JumpIf>) {
+    static_assert(sizeof...(vs) == 1);
+    return internal::FunctionBase::append({&I::template ExecuteImpl<Set>, static_cast<size_t>(vs)...});
   } else {
     constexpr size_t DropCount = internal::HasFunctionState<I> ? 3 : 2;
     return internal::InstructionFunctionType<I>()

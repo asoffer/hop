@@ -55,27 +55,32 @@ NTH_TEST("metadata") {
   NTH_EXPECT(m.metadata(2).parameter_count == 1);
 
   NTH_EXPECT(m.function(3).raw_value() ==
-             InstructionFunction<Return, Instructions>.raw_value());
-  NTH_EXPECT(m.metadata(3).immediate_value_count == 0);
-  NTH_EXPECT(m.metadata(3).parameter_count == 0);
+             InstructionFunction<JumpIfNot, Instructions>.raw_value());
+  NTH_EXPECT(m.metadata(2).immediate_value_count == 1);
+  NTH_EXPECT(m.metadata(2).parameter_count == 1);
 
   NTH_EXPECT(m.function(4).raw_value() ==
-             InstructionFunction<Inst<0>, Instructions>.raw_value());
-  NTH_EXPECT(m.metadata(4).immediate_value_count == 1);
+             InstructionFunction<Return, Instructions>.raw_value());
+  NTH_EXPECT(m.metadata(4).immediate_value_count == 0);
   NTH_EXPECT(m.metadata(4).parameter_count == 0);
 
   NTH_EXPECT(m.function(5).raw_value() ==
-             InstructionFunction<Inst<4>, Instructions>.raw_value());
+             InstructionFunction<Inst<0>, Instructions>.raw_value());
   NTH_EXPECT(m.metadata(5).immediate_value_count == 1);
-  NTH_EXPECT(m.metadata(5).parameter_count == 4);
+  NTH_EXPECT(m.metadata(5).parameter_count == 0);
+
+  NTH_EXPECT(m.function(6).raw_value() ==
+             InstructionFunction<Inst<4>, Instructions>.raw_value());
+  NTH_EXPECT(m.metadata(6).immediate_value_count == 1);
+  NTH_EXPECT(m.metadata(6).parameter_count == 4);
 
   NTH_EXPECT(
-      m.function(6).raw_value() ==
+      m.function(7).raw_value() ==
       InstructionFunction<ImmediateDetermined, Instructions>.raw_value());
   // The immediate value count is 4. Three values are passed to `execute`, and a
   // fourth implicit value dictates the size of the input and output spans.
-  NTH_EXPECT(m.metadata(6).immediate_value_count == 4);
-  NTH_EXPECT(m.metadata(6).parameter_count ==
+  NTH_EXPECT(m.metadata(7).immediate_value_count == 4);
+  NTH_EXPECT(m.metadata(7).parameter_count ==
              std::numeric_limits<size_t>::max());
 }
 

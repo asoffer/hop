@@ -49,8 +49,7 @@ void InstructionSerializer(std::span<Value const> v, W& w) {
   if constexpr (nth::type<I> == nth::type<Return>) {
   } else if constexpr (nth::type<I> == nth::type<Call>) {
     JasminSerialize(w, v[0].as<InstructionSpecification>());
-  } else if constexpr (nth::type<I> == nth::type<Jump> or
-                       nth::type<I> == nth::type<JumpIf>) {
+  } else if constexpr (nth::any_of<I, Jump, JumpIf, JumpIfNot>) {
     JasminSerialize(w, v[0].as<size_t>());
   } else {
     constexpr auto params = [] {
