@@ -2,6 +2,9 @@
 #define JASMIN_COMPILE_COMPILED_FUNCTION_H
 
 #include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <span>
 #include <string>
 

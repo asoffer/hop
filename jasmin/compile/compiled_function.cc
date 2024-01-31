@@ -1,5 +1,9 @@
 #include "jasmin/compile/compiled_function.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <span>
+
 #include "nth/debug/debug.h"
 
 namespace jasmin {
