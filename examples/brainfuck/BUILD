@@ -53,6 +53,6 @@ cc_binary(
         "//jasmin/core:function",
         "//jasmin/ssa",
         "//jasmin/compile/x64:code_generator",
-        "//jasmin/jit:function",
+        "@nth_cc//nth/dynamic:jit_function",
     ],
 )

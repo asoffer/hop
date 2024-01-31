@@ -4,8 +4,8 @@
 #include "examples/brainfuck/file.h"
 #include "examples/brainfuck/instructions.h"
 #include "jasmin/compile/x64/code_generator.h"
-#include "jasmin/jit/function.h"
 #include "jasmin/ssa/ssa.h"
+#include "nth/dynamic/jit_function.h"
 
 int main(int argc, char* argv[]) {
   // Load Brainfuck program source text.
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
   gen.function(jasmin::SsaFunction(f), code);
 
   // Construct a JIT-compiled function from the code.
-  jasmin::JitFunction<void()> jitted_fn(code);
+  nth::jit_function<void()> jitted_fn(code);
 
   // Invoke the function.
   jitted_fn();

@@ -49,15 +49,15 @@ program, producing a `jasmin::Function<>`, just as with the interpreter.
 However, rather than interpreting the function in that form, it is passed to
 a code-generator to produce a `jasmin::CompiledFunction`. A compiled function
 cannot by itself be executed, but can be passed as an argument to the
-`jasmin::JitFunction<>` constructor. The resulting `jasmin::JitFunction<>` can
-be invoked as any other normal C++ function.
+`nth::jit_function<>` constructor. The resulting `nth::jit_function<>` can be
+invoked as any other normal C++ function.
 
 It may seem strange that we have the intermediate `jasmin::CompiledFunction`
 type. The reason for the separation is twofold. First, for security reasons we
-do not want the contents of a `jasmin::JitFunction<>` to ever be simultaneously
-writable and executable. To ensure this, `jasmin::JitFunction<>`s are not
+do not want the contents of a `nth::jit_function<>` to ever be simultaneously
+writable and executable. To ensure this, `nth::jit_function<>`s are not
 modifiable after construction. Second, the `jasmin::CompiledFunction` can be
-used for compilation other than JITs. While a `jasmin::JitFunction<>` must be
+used for compilation other than JITs. While a `nth::jit_function<>` must be
 constructed with compiled code suitable for the executing architecture, one
 could cross-compile functions via `jasmin::CompiledFunction` without JIT-ing
 them.
