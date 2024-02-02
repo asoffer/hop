@@ -3,7 +3,8 @@
 #include "examples/brainfuck/build.h"
 #include "examples/brainfuck/file.h"
 #include "examples/brainfuck/instructions.h"
-#include "jasmin/compile/x64/code_generator.h"
+#include "examples/brainfuck/x64_code_generator.h"
+#include "jasmin/compile/compiled_function.h"
 #include "jasmin/ssa/ssa.h"
 #include "nth/dynamic/jit_function.h"
 
@@ -23,10 +24,12 @@ int main(int argc, char* argv[]) {
 
   auto& f = std::get<jasmin::Function<bf::Instructions>>(fn_or_parse_error);
 
-  // Generate executable code for the function, storing it in `code`.
   jasmin::CompiledFunction code;
-  jasmin::x64::CodeGenerator gen(nth::type<bf::Instructions>);
-  gen.function(jasmin::SsaFunction(f), code);
+  {  // Generate executable code for the function, storing it in `code`.
+    bf::X64CodeGenerator gen;
+    jasmin::x64::FunctionEmitter emitter(nth::type<bf::Instructions>, gen);
+    emitter.emit(jasmin::SsaFunction(f), code);
+  }
 
   // Construct a JIT-compiled function from the code.
   nth::jit_function<void()> jitted_fn(code);

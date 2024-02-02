@@ -26,8 +26,6 @@ cc_library(
     hdrs = ["instructions.h"],
     deps = [
         "//jasmin/core:instruction",
-        "//jasmin/compile/x64:code_generator",
-        "//jasmin/compile/x64:location_map",
     ],
 )
 
@@ -50,9 +48,20 @@ cc_binary(
         ":build",
         ":file",
         ":instructions",
+        ":x64_code_generator",
         "//jasmin/core:function",
         "//jasmin/ssa",
-        "//jasmin/compile/x64:code_generator",
+        "//jasmin/compile/x64:function_emitter",
         "@nth_cc//nth/dynamic:jit_function",
+    ],
+)
+
+cc_library(
+    name = "x64_code_generator",
+    hdrs = ["x64_code_generator.h"],
+    deps = [
+        "//jasmin/core:instruction",
+        "//jasmin/compile/x64:function_emitter",
+        "//jasmin/compile/x64:location_map",
     ],
 )

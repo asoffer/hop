@@ -1,9 +1,9 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
-    name = "code_generator",
-    hdrs = ["code_generator.h"],
-    srcs = ["code_generator.cc"],
+    name = "function_emitter",
+    hdrs = ["function_emitter.h"],
+    srcs = ["function_emitter.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":location_map",
