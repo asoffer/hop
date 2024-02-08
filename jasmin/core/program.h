@@ -9,6 +9,8 @@
 #include "jasmin/core/instruction.h"
 #include "nth/container/flyweight_map.h"
 #include "nth/debug/debug.h"
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
 #include "nth/utility/iterator_range.h"
 
 namespace jasmin {
@@ -58,12 +60,58 @@ struct Program {
   [[nodiscard]] Function<Set> const& function(function_identifier id) const;
   [[nodiscard]] Function<Set>& function(function_identifier id);
 
+  friend bool NthSerialize(auto& s, Program const& p) {
+    if (not nth::io::serialize_integer(s, p.functions_.size())) {
+      return false;
+    }
+    for (auto const& [name, fn] : p.functions_) {
+      s.register_function(fn);
+      if (not nth::io::serialize_integer(s, name.size())) { return false; }
+      if (not s.write(std::span<std::byte const>(
+              reinterpret_cast<std::byte const*>(name.data()), name.size()))) {
+        return false;
+      }
+    }
+
+    for (auto const& [name, fn] : p.functions_) {
+      if (not nth::io::serialize(s, fn)) { return false; }
+    }
+    return true;
+  }
+
+  friend bool NthDeserialize(auto& d, Program& p) {
+    size_t size;
+    if (not nth::io::deserialize_integer(d, size)) { return false; }
+
+    for (uint32_t i = 0; i < size; ++i) {
+      size_t name_size;
+      if (not nth::io::deserialize_integer(d, name_size)) { return false; }
+      std::string name(name_size, '\0');
+      if (not d.read(std::span<std::byte>(
+              reinterpret_cast<std::byte*>(name.data()), name.size()))) {
+        return false;
+      }
+
+      auto [iter, inserted] = p.functions_.try_emplace(name);
+      if (not inserted) { return false; }
+      d.register_function(iter->second);
+    }
+
+    for (Function<>*& fn : d.registered_functions()) {
+      if (not nth::io::deserialize(d, static_cast<Function<Set>&>(*fn))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   // Returns the number of functions managed by this `Program`.
   size_t function_count() const { return functions_.size(); }
 
   auto functions() const {
     return nth::iterator_range(functions_.begin(), functions_.end());
   }
+
 
  private:
   nth::flyweight_map<std::string, Function<Set>> functions_;

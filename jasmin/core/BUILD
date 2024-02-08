@@ -22,10 +22,13 @@ cc_library(
     deps = [
         ":instruction",
         ":instruction_index",
+        ":metadata",
         ":value",
         "//jasmin/core/internal:function_base",
         "//jasmin/core/internal:instruction_traits",
         "@nth_cc//nth/container:interval",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
     ],
 )
 
@@ -148,7 +151,36 @@ cc_library(
         ":instruction",
         ":value",
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
         "@nth_cc//nth/utility:iterator_range",
+    ],
+)
+
+cc_library(
+    name = "serialization",
+    hdrs = ["serialization.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":function",
+        ":instruction",
+        ":metadata",
+        ":program",
+        ":value",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
+        "@nth_cc//nth/io/serialize:string_reader",
+        "@nth_cc//nth/io/serialize:string_writer",
+    ],
+)
+
+cc_test(
+    name = "serialization_test",
+    srcs = ["serialization_test.cc"],
+    deps = [
+        ":serialization",
+        "//jasmin/instructions:common",
+        "@nth_cc//nth/test:main",
     ],
 )
 

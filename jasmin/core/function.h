@@ -6,6 +6,7 @@
 #include "jasmin/core/internal/frame.h"
 #include "jasmin/core/internal/function_base.h"
 #include "jasmin/core/internal/instruction_traits.h"
+#include "jasmin/core/metadata.h"
 #include "nth/container/interval.h"
 #include "nth/meta/type.h"
 
@@ -32,6 +33,9 @@ struct Function : Function<> {
   using instruction_set = Set;
 
   static_assert(InstructionSetType<Set>);
+
+  // Constructs an empty function to be used only for overwriting.
+  explicit Function();
 
   // Constructs an empty `Function` given a `parameter_count` representing
   // the number of parameters to the function, and a `return_count`
@@ -94,6 +98,10 @@ Function<Set>::Function(uint32_t parameter_count, uint32_t return_count)
                  internal::Invoke<instruction_set>) {}
 
 template <typename Set>
+Function<Set>::Function()
+    : Function<>(0, 0, internal::Invoke<instruction_set>) {}
+
+template <typename Set>
 template <typename I>
 requires(Set::instructions.template contains<nth::type<I>>())  //
     constexpr nth::interval<InstructionIndex> Function<Set>::append(
@@ -105,7 +113,8 @@ requires(Set::instructions.template contains<nth::type<I>>())  //
     return internal::FunctionBase::append({&I::template ExecuteImpl<Set>});
   } else if constexpr (nth::type<I> == nth::type<jasmin::JumpIf>) {
     static_assert(sizeof...(vs) == 1);
-    return internal::FunctionBase::append({&I::template ExecuteImpl<Set>, static_cast<size_t>(vs)...});
+    return internal::FunctionBase::append(
+        {&I::template ExecuteImpl<Set>, static_cast<size_t>(vs)...});
   } else {
     constexpr size_t DropCount = internal::HasFunctionState<I> ? 3 : 2;
     return internal::InstructionFunctionType<I>()

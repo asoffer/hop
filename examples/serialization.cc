@@ -2,16 +2,18 @@
 #include <cstdio>
 
 #include "jasmin/core/instruction.h"
+#include "jasmin/core/program.h"
+#include "jasmin/core/serialization.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
-#include "jasmin/serialize/deserialize.h"
-#include "jasmin/serialize/serialize.h"
-#include "jasmin/serialize/string_reader.h"
-#include "jasmin/serialize/string_writer.h"
 #include "nth/container/interval.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/stderr_log_sink.h"
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
+#include "nth/io/serialize/string_reader.h"
+#include "nth/io/serialize/string_writer.h"
 
 using Instructions = jasmin::MakeInstructionSet<
     jasmin::Duplicate, jasmin::Swap, jasmin::Push<uint64_t>,
@@ -46,29 +48,30 @@ jasmin::Program<Instructions> MakeProgram() {
 
 int main() {
   // The string which is going to hold the serialized program.
-  std::string s;
+  std::string content;
 
   {
-    // Construct a program and serialize it into `s`.
+    // Construct a program and serialize it into `content`.
     jasmin::Program<Instructions> p = MakeProgram();
-    jasmin::StringWriter w(p.functions(), s);
-    jasmin::Serialize(p, w);
+    jasmin::Serializer<nth::io::string_writer> serializer(content);
+    if (not nth::io::serialize(serializer, p)) { return 1; }
   }
 
   // At this point the constructed program has been destroyed. The only remnants
   // of it are this serialization.
   std::puts("Serialized program:");
-  for (size_t i = 0; i < s.size(); ++i) {
-    std::printf(" %0.2x", s[i]);
+  for (size_t i = 0; i < content.size(); ++i) {
+    std::printf(" %0.2x", content[i]);
     if (i % 8 == 7) { std::putchar('\n'); }
   }
   std::putchar('\n');
 
   {
-    // Reconstitute the program previously serialized into `s` back into `p`.
+    // Reconstitute the program previously serialized into `content` back into
+    // the program `p`.
     jasmin::Program<Instructions> p;
-    jasmin::StringReader r(s);
-    if (not jasmin::Deserialize(r, p)) { return 1; }
+    jasmin::Deserializer<nth::io::string_reader> deserializer(content);
+    if (not nth::io::deserialize(deserializer, p)) { return 1; }
 
     uint64_t n                      = 15;
     nth::stack<jasmin::Value> stack = {n};

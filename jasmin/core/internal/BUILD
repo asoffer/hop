@@ -47,6 +47,8 @@ cc_library(
         "//jasmin/core:value",
         "@nth_cc//nth/meta:concepts",
         "@nth_cc//nth/meta:type",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/serialize:deserialize",
     ],
 )
 

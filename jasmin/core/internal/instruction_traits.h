@@ -5,6 +5,8 @@
 #include "jasmin/core/internal/function_state.h"
 #include "jasmin/core/output.h"
 #include "jasmin/core/value.h"
+#include "nth/io/serialize/deserialize.h"
+#include "nth/io/serialize/serialize.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/type.h"
 
@@ -21,6 +23,13 @@ struct Return;
 struct InstructionSpecification {
   uint32_t parameters;
   uint32_t returns;
+
+  friend bool NthSerialize(auto& s, InstructionSpecification spec) {
+    return nth::io::serialize(s, spec.parameters, spec.returns);
+  }
+  friend bool NthDeserialize(auto& d, InstructionSpecification& spec) {
+    return nth::io::deserialize(d, spec.parameters, spec.returns);
+  }
 };
 
 namespace internal {

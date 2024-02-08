@@ -1,27 +1,23 @@
+#include "jasmin/core/serialization.h"
+
 #include "jasmin/core/program.h"
 #include "jasmin/instructions/common.h"
-#include "jasmin/serialize/deserialize.h"
-#include "jasmin/serialize/reader.h"
-#include "jasmin/serialize/serialize.h"
-#include "jasmin/serialize/string_reader.h"
-#include "jasmin/serialize/string_writer.h"
-#include "jasmin/serialize/writer.h"
+#include "nth/io/serialize/string_reader.h"
+#include "nth/io/serialize/string_writer.h"
 #include "nth/test/test.h"
 
 namespace jasmin {
 namespace {
 
-std::vector<std::pair<std::string, Function<>&>> FunctionData() { return {}; }
-
 NTH_TEST("round-trip/integer", auto n) {
-  std::string s;
-  StringWriter w(FunctionData(), s);
-  WriteInteger(w, n);
+  std::string content;
+  Serializer<nth::io::string_writer> serializer(content);
+  NTH_ASSERT(nth::io::serialize_integer(serializer, n));
 
   decltype(n) m;
-  StringReader r(s);
-  ReadInteger(r, m);
-  NTH_ASSERT(r.size() == 0);
+  Deserializer<nth::io::string_reader> deserializer(content);
+  NTH_ASSERT(nth::io::deserialize_integer(deserializer, m));
+  NTH_ASSERT(deserializer.size() == 0);
   NTH_EXPECT(m == n);
 }
 
@@ -43,13 +39,13 @@ using Set = MakeInstructionSet<Push<Function<>*>>;
 NTH_TEST("round-trip/program/empty") {
   Program<Set> p;
 
-  std::string s;
-  StringWriter w(p.functions(), s);
-  Serialize(p, w);
+  std::string content;
+  Serializer<nth::io::string_writer> serializer(content);
+  NTH_ASSERT(nth::io::serialize(serializer, p));
 
   Program<Set> q;
-  StringReader r(s);
-  NTH_ASSERT(Deserialize(r, q));
+  Deserializer<nth::io::string_reader> deserializer(content);
+  NTH_ASSERT(nth::io::deserialize(deserializer, q));
   NTH_EXPECT(q.function_count() == p.function_count());
 }
 
@@ -58,20 +54,13 @@ NTH_TEST("round-trip/program/functions") {
   auto& f = p.declare("f", 0, 0).function;
   f.append<Return>();
 
-  std::string s;
-  StringWriter w(p.functions(), s);
-  Serialize(p, w);
-
-  std::puts("Serialized program:");
-  for (size_t i = 0; i < s.size(); ++i) {
-    std::printf(" %0.2x", s[i]);
-    if (i % 8 == 7) { std::putchar('\n'); }
-  }
-  std::putchar('\n');
+  std::string content;
+  Serializer<nth::io::string_writer> serializer(content);
+  NTH_ASSERT(nth::io::serialize(serializer, p));
 
   Program<Set> q;
-  StringReader r(s);
-  NTH_ASSERT(Deserialize(r, q));
+  Deserializer<nth::io::string_reader> deserializer(content);
+  NTH_ASSERT(nth::io::deserialize(deserializer, q));
   NTH_EXPECT(q.function_count() == p.function_count());
   NTH_ASSERT(p.function("f").raw_instructions().size() ==
              q.function("f").raw_instructions().size());
@@ -88,20 +77,13 @@ NTH_TEST("round-trip/program/recursion") {
   f.append<Call>({0, 0});
   f.append<Return>();
 
-  std::string s;
-  StringWriter w(p.functions(), s);
-  Serialize(p, w);
-
-  std::puts("Serialized program:");
-  for (size_t i = 0; i < s.size(); ++i) {
-    std::printf(" %0.2x", s[i]);
-    if (i % 8 == 7) { std::putchar('\n'); }
-  }
-  std::putchar('\n');
+  std::string content;
+  Serializer<nth::io::string_writer> serializer(content);
+  NTH_ASSERT(nth::io::serialize(serializer, p));
 
   Program<Set> q;
-  StringReader r(s);
-  NTH_ASSERT(Deserialize(r, q));
+  Deserializer<nth::io::string_reader> deserializer(content);
+  NTH_ASSERT(nth::io::deserialize(deserializer, q));
   NTH_EXPECT(q.function_count() == p.function_count());
   NTH_ASSERT(p.function("f").raw_instructions().size() ==
              q.function("f").raw_instructions().size());
