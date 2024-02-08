@@ -169,8 +169,6 @@ cc_library(
         ":value",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/serialize:string_reader",
-        "@nth_cc//nth/io/serialize:string_writer",
     ],
 )
 
@@ -180,6 +178,8 @@ cc_test(
     deps = [
         ":serialization",
         "//jasmin/instructions:common",
+        "@nth_cc//nth/io/serialize:string_reader",
+        "@nth_cc//nth/io/serialize:string_writer",
         "@nth_cc//nth/test:main",
     ],
 )

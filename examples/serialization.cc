@@ -1,9 +1,10 @@
+#include "jasmin/core/serialization.h"
+
 #include <cinttypes>
 #include <cstdio>
 
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/program.h"
-#include "jasmin/core/serialization.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
@@ -46,6 +47,30 @@ jasmin::Program<Instructions> MakeProgram() {
   return p;
 }
 
+// Defines a serializer that understands how to serialize jasmin::Programs. We
+// still need to teach the serializer how to serialize specific immediate value
+// types.
+struct Serializer : jasmin::ProgramSerializer, nth::io::string_writer {
+  explicit Serializer(std::string& s) : nth::io::string_writer(s) {}
+
+  friend bool NthSerialize(Serializer& s, uint64_t n) {
+    return nth::io::serialize_integer(s, n);
+  }
+};
+
+// Defines a deserializer that understands how to deserialize jasmin::Programs.
+// We still need to teach the deserializer how to deserialize specific immediate
+// value types.
+struct Deserializer : jasmin::ProgramDeserializer, nth::io::string_reader {
+  explicit Deserializer(std::string_view s) : nth::io::string_reader(s) {}
+
+  friend bool NthDeserialize(Deserializer& d, uint64_t& n) {
+    return nth::io::deserialize_integer(d, n);
+  }
+};
+
+
+
 int main() {
   // The string which is going to hold the serialized program.
   std::string content;
@@ -53,7 +78,7 @@ int main() {
   {
     // Construct a program and serialize it into `content`.
     jasmin::Program<Instructions> p = MakeProgram();
-    jasmin::Serializer<nth::io::string_writer> serializer(content);
+    Serializer serializer(content);
     if (not nth::io::serialize(serializer, p)) { return 1; }
   }
 
@@ -70,7 +95,7 @@ int main() {
     // Reconstitute the program previously serialized into `content` back into
     // the program `p`.
     jasmin::Program<Instructions> p;
-    jasmin::Deserializer<nth::io::string_reader> deserializer(content);
+    Deserializer deserializer(content);
     if (not nth::io::deserialize(deserializer, p)) { return 1; }
 
     uint64_t n                      = 15;

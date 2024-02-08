@@ -25,10 +25,12 @@ struct InstructionSpecification {
   uint32_t returns;
 
   friend bool NthSerialize(auto& s, InstructionSpecification spec) {
-    return nth::io::serialize(s, spec.parameters, spec.returns);
+    return nth::io::serialize_integer(s, spec.parameters) and
+           nth::io::serialize_integer(s, spec.returns);
   }
   friend bool NthDeserialize(auto& d, InstructionSpecification& spec) {
-    return nth::io::deserialize(d, spec.parameters, spec.returns);
+    return nth::io::deserialize_integer(d, spec.parameters) and
+           nth::io::deserialize_integer(d, spec.returns);
   }
 };
 

@@ -2,58 +2,56 @@
 #define JASMIN_CORE_SERIALIZATION_H
 
 #include <array>
+#include <concepts>
 #include <span>
 
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/program.h"
 #include "nth/io/serialize/deserialize.h"
-#include "nth/io/serialize/reader.h"
 #include "nth/io/serialize/serialize.h"
-#include "nth/io/serialize/writer.h"
 
 namespace jasmin {
 namespace internal {
 
 template <typename S, InstructionType>
-bool InstructionSerializer(S &, std::span<Value const>);
+requires std::is_lvalue_reference_v<S>
+bool InstructionSerializer(S, std::span<Value const>);
 template <typename D, InstructionType>
-bool InstructionDeserializer(D &, Function<> &);
+requires std::is_lvalue_reference_v<D>
+bool InstructionDeserializer(D, Function<> &);
 
 }  // namespace internal
 
-template <nth::io::writer W>
-struct Serializer : W {
-  explicit Serializer(std::string& content) : W(content) {}
-
-  friend bool NthSerialize(Serializer &s, std::integral auto x) {
-    return nth::io::serialize_integer(s, x);
+struct ProgramSerializer {
+  void register_function(Function<> const &f) {
+    registered_functions_.emplace(&f, registered_functions_.size());
   }
 
-  friend bool NthSerialize(Serializer &s, std::floating_point auto x) {
-    return nth::io::serialize_fixed(s, x);
-  }
-
-  friend bool NthSerialize(Serializer &s, Function<> const *f) {
+  friend bool NthSerialize(std::derived_from<ProgramSerializer> auto &s,
+                           Function<> const *f) {
     auto iter = s.registered_functions_.find(f);
     if (iter == s.registered_functions_.end()) { return false; }
     return nth::io::serialize_fixed(s, static_cast<uint32_t>(iter->second));
   }
 
   template <InstructionSetType Set>
-  friend bool NthSerialize(Serializer &s, Function<Set> const &fn) {
-    if (not nth::io::serialize_integer(s, fn.parameter_count())) { return false; }
+  friend bool NthSerialize(std::derived_from<ProgramSerializer> auto &s,
+                    Function<Set> const &fn) {
+    if (not nth::io::serialize_integer(s, fn.parameter_count())) {
+      return false;
+    }
     if (not nth::io::serialize_integer(s, fn.return_count())) { return false; }
     auto const &set_metadata                 = Metadata<Set>();
-    std::optional<typename W::cursor_type> c = s.allocate(sizeof(uint32_t));
+    std::optional c = s.allocate(sizeof(uint32_t));
     if (not c) { return false; }
     std::span insts = fn.raw_instructions();
 
     static constexpr auto Serializers =
         Set::instructions.reduce([](auto... ts) {
-          return std::array<bool (*)(Serializer &, std::span<Value const>),
+          return std::array<bool (*)(decltype(s), std::span<Value const>),
                             sizeof...(ts)>{
-              internal::InstructionSerializer<Serializer, nth::type_t<ts>>...};
+              internal::InstructionSerializer<decltype(s), nth::type_t<ts>>...};
         });
 
     while (not insts.empty()) {
@@ -68,36 +66,33 @@ struct Serializer : W {
     return s.write_at(*c, nth::bytes(distance));
   }
 
-  void register_function(Function<> const & f) {
-    registered_functions_.emplace(&f, registered_functions_.size());
-  }
-
  private:
   absl::flat_hash_map<Function<> const *, size_t> registered_functions_;
 };
 
-template <nth::io::reader R>
-struct Deserializer : R {
-  explicit Deserializer(std::string_view content) : R(content) {}
-
-  friend bool NthDeserialize(Deserializer &d, std::integral auto &x) {
+struct ProgramDeserializer {
+  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
+                             std::integral auto &x) {
     return nth::io::deserialize_integer(d, x);
   }
 
-  friend bool NthDeserialize(Deserializer &d, std::floating_point auto &x) {
+  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
+                             std::floating_point auto &x) {
     return nth::io::deserialize_fixed(d, x);
   }
 
-  friend bool NthDeserialize(Deserializer &d, Function<> *&fn) {
+  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
+                             Function<> *&fn) {
     uint32_t index;
     if (not nth::io::deserialize_fixed(d, index)) { return false; }
     if (index >= d.registered_functions_.size()) { return false; }
     fn = d.registered_functions_[index];
-    return true;  
+    return true;
   }
 
   template <InstructionSetType Set>
-  friend bool NthDeserialize(Deserializer &d, Function<Set> &fn) {
+  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
+                             Function<Set> &fn) {
     uint32_t parameter_count, return_count;
     if (not nth::io::deserialize_integer(d, parameter_count)) { return false; }
     if (not nth::io::deserialize_integer(d, return_count)) { return false; }
@@ -110,9 +105,8 @@ struct Deserializer : R {
     auto const &set_metadata = Metadata<Set>();
     static constexpr auto Deserializers =
         Set::instructions.reduce([](auto... ts) {
-          return std::array<bool (*)(Deserializer &, Function<> &),
-                            sizeof...(ts)>{
-              internal::InstructionDeserializer<Deserializer,
+          return std::array<bool (*)(decltype(d), Function<> &), sizeof...(ts)>{
+              internal::InstructionDeserializer<decltype(d),
                                                 nth::type_t<ts>>...};
         });
 
@@ -139,7 +133,8 @@ struct Deserializer : R {
 namespace internal {
 
 template <typename S, InstructionType I>
-bool InstructionSerializer(S &s, std::span<Value const> v) {
+requires std::is_lvalue_reference_v<S>
+bool InstructionSerializer(S s, std::span<Value const> v) {
   if constexpr (nth::type<I> == nth::type<Return>) {
     return true;
   } else if constexpr (nth::type<I> == nth::type<Call>) {
@@ -166,7 +161,8 @@ bool InstructionSerializer(S &s, std::span<Value const> v) {
 }
 
 template <typename D, InstructionType I>
-bool InstructionDeserializer(D &d, Function<> &fn) {
+requires std::is_lvalue_reference_v<D>
+bool InstructionDeserializer(D d, Function<> &fn) {
   if constexpr (nth::type<I> == nth::type<Return>) {
     return true;
   } else if constexpr (nth::type<I> == nth::type<Call>) {
