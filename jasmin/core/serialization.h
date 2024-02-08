@@ -82,6 +82,15 @@ struct ProgramDeserializer {
   }
 
   friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
+                             Function<> const *&fn) {
+    uint32_t index;
+    if (not nth::io::deserialize_fixed(d, index)) { return false; }
+    if (index >= d.registered_functions_.size()) { return false; }
+    fn = d.registered_functions_[index];
+    return true;
+  }
+
+  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
                              Function<> *&fn) {
     uint32_t index;
     if (not nth::io::deserialize_fixed(d, index)) { return false; }
