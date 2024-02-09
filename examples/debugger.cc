@@ -1,8 +1,9 @@
+#include "jasmin/core/debugger.h"
+
 #include <cstdio>
 
-#include "jasmin/core/debugger.h"
 #include "jasmin/core/function.h"
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/common.h"
 #include "nth/container/stack.h"
 
@@ -10,14 +11,15 @@
 // another. It is designed to show the most basic usage of Jasmin's debugger
 // functionality.
 
-using Instructions = jasmin::MakeInstructionSet<jasmin::Push<jasmin::Function<>*>>;
-using Program = jasmin::Program<Instructions>;
+using Instructions =
+    jasmin::MakeInstructionSet<jasmin::Push<jasmin::Function<>*>>;
+using ProgramFragment = jasmin::ProgramFragment<Instructions>;
 
 // Constructns a program with four functions named `a`, `b`, `c`, and `d`. The
-// functions call each other, with `a` calling `b` twice, `b` calling `c` twice, and `c`
-// calling `d`.
-Program ConstructProgram() {
-  Program p;
+// functions call each other, with `a` calling `b` twice, `b` calling `c` twice,
+// and `c` calling `d`.
+ProgramFragment ConstructProgram() {
+  ProgramFragment p;
   auto& a = p.declare("a", 0, 0).function;
   auto& b = p.declare("b", 0, 0).function;
   auto& c = p.declare("c", 0, 0).function;
@@ -44,13 +46,13 @@ Program ConstructProgram() {
 
   // `d` does nothing, returning immediately.
   d.append<jasmin::Return>();
-  
+
   return p;
 }
 
 int main() {
   // Create a program.
-  Program program = ConstructProgram();
+  ProgramFragment program = ConstructProgram();
 
   // Construct a debugger and attach it to `program`.
   jasmin::Debugger debugger(program);

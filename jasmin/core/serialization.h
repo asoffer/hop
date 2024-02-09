@@ -7,7 +7,7 @@
 
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "nth/io/serialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 
@@ -23,12 +23,12 @@ bool InstructionDeserializer(D, Function<> &);
 
 }  // namespace internal
 
-struct ProgramSerializer {
+struct ProgramFragmentSerializer {
   void register_function(Function<> const &f) {
     registered_functions_.emplace(&f, registered_functions_.size());
   }
 
-  friend bool NthSerialize(std::derived_from<ProgramSerializer> auto &s,
+  friend bool NthSerialize(std::derived_from<ProgramFragmentSerializer> auto &s,
                            Function<> const *f) {
     auto iter = s.registered_functions_.find(f);
     if (iter == s.registered_functions_.end()) { return false; }
@@ -36,14 +36,14 @@ struct ProgramSerializer {
   }
 
   template <InstructionSetType Set>
-  friend bool NthSerialize(std::derived_from<ProgramSerializer> auto &s,
-                    Function<Set> const &fn) {
+  friend bool NthSerialize(std::derived_from<ProgramFragmentSerializer> auto &s,
+                           Function<Set> const &fn) {
     if (not nth::io::serialize_integer(s, fn.parameter_count())) {
       return false;
     }
     if (not nth::io::serialize_integer(s, fn.return_count())) { return false; }
-    auto const &set_metadata                 = Metadata<Set>();
-    std::optional c = s.allocate(sizeof(uint32_t));
+    auto const &set_metadata = Metadata<Set>();
+    std::optional c          = s.allocate(sizeof(uint32_t));
     if (not c) { return false; }
     std::span insts = fn.raw_instructions();
 
@@ -70,19 +70,22 @@ struct ProgramSerializer {
   absl::flat_hash_map<Function<> const *, size_t> registered_functions_;
 };
 
-struct ProgramDeserializer {
-  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
-                             std::integral auto &x) {
+struct ProgramFragmentDeserializer {
+  friend bool NthDeserialize(
+      std::derived_from<ProgramFragmentDeserializer> auto &d,
+      std::integral auto &x) {
     return nth::io::deserialize_integer(d, x);
   }
 
-  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
-                             std::floating_point auto &x) {
+  friend bool NthDeserialize(
+      std::derived_from<ProgramFragmentDeserializer> auto &d,
+      std::floating_point auto &x) {
     return nth::io::deserialize_fixed(d, x);
   }
 
-  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
-                             Function<> const *&fn) {
+  friend bool NthDeserialize(
+      std::derived_from<ProgramFragmentDeserializer> auto &d,
+      Function<> const *&fn) {
     uint32_t index;
     if (not nth::io::deserialize_fixed(d, index)) { return false; }
     if (index >= d.registered_functions_.size()) { return false; }
@@ -90,8 +93,8 @@ struct ProgramDeserializer {
     return true;
   }
 
-  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
-                             Function<> *&fn) {
+  friend bool NthDeserialize(
+      std::derived_from<ProgramFragmentDeserializer> auto &d, Function<> *&fn) {
     uint32_t index;
     if (not nth::io::deserialize_fixed(d, index)) { return false; }
     if (index >= d.registered_functions_.size()) { return false; }
@@ -100,8 +103,9 @@ struct ProgramDeserializer {
   }
 
   template <InstructionSetType Set>
-  friend bool NthDeserialize(std::derived_from<ProgramDeserializer> auto &d,
-                             Function<Set> &fn) {
+  friend bool NthDeserialize(
+      std::derived_from<ProgramFragmentDeserializer> auto &d,
+      Function<Set> &fn) {
     uint32_t parameter_count, return_count;
     if (not nth::io::deserialize_integer(d, parameter_count)) { return false; }
     if (not nth::io::deserialize_integer(d, return_count)) { return false; }

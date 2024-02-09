@@ -9,7 +9,7 @@
 #include "absl/container/node_hash_map.h"
 #include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "nth/base/attributes.h"
 #include "nth/debug/debug.h"
 
@@ -17,21 +17,21 @@ namespace jasmin {
 
 template <InstructionSetType Set>
 struct Debugger {
-  explicit Debugger(Program<Set> &program NTH_ATTRIBUTE(lifetimebound))
+  explicit Debugger(ProgramFragment<Set> &program NTH_ATTRIBUTE(lifetimebound))
       : program_(program) {}
 
   void set_function_breakpoint(std::string name,
                                std::function<void()> response);
 
  private:
-  Program<Set> &program_;
+  ProgramFragment<Set> &program_;
   absl::node_hash_map<std::string,
                       std::pair<Function<Set>, std::function<void()>>>
       breakpoint_functions_;
 };
 
 template <InstructionSetType Set>
-Debugger(Program<Set> &) -> Debugger<Set>;
+Debugger(ProgramFragment<Set> &) -> Debugger<Set>;
 
 namespace internal {
 

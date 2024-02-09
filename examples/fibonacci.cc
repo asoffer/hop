@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
@@ -24,8 +24,8 @@ using RecursiveInstructions = jasmin::MakeInstructionSet<
     jasmin::Push<jasmin::Function<>*>, jasmin::LessThan<uint64_t>,
     jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>>;
 
-jasmin::Program<RecursiveInstructions> FibonacciRecursive() {
-  jasmin::Program<RecursiveInstructions> p;
+jasmin::ProgramFragment<RecursiveInstructions> FibonacciRecursive() {
+  jasmin::ProgramFragment<RecursiveInstructions> p;
   auto& func = p.declare("fib", 1, 1).function;
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push<uint64_t>>(2);
@@ -63,8 +63,8 @@ using DynamicInstructions =
     jasmin::MakeInstructionSet<jasmin::DuplicateAt, jasmin::Push<uint64_t>,
                                jasmin::Equal<uint64_t>, UpdateFibonacci>;
 
-jasmin::Program<DynamicInstructions> FibonacciDynamicProgramming() {
-  jasmin::Program<DynamicInstructions> p;
+jasmin::ProgramFragment<DynamicInstructions> FibonacciDynamicProgramming() {
+  jasmin::ProgramFragment<DynamicInstructions> p;
   auto [id, func] = p.declare("fib", 1, 1);
   func.append<jasmin::Push<uint64_t>>(1);
   func.append<jasmin::Push<uint64_t>>(0);

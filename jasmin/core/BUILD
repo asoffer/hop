@@ -7,7 +7,7 @@ cc_library(
     deps = [
         ":function",
         ":instruction",
-        ":program",
+        ":program_fragment",
         ":value",
         "@com_google_absl//absl/container:node_hash_map",
         "@nth_cc//nth/base:attributes",
@@ -143,8 +143,8 @@ cc_test(
 )
 
 cc_library(
-    name = "program",
-    hdrs = ["program.h"],
+    name = "program_fragment",
+    hdrs = ["program_fragment.h"],
     visibility = ["//visibility:public"],
     deps = [
         ":function",
@@ -165,7 +165,7 @@ cc_library(
         ":function",
         ":instruction",
         ":metadata",
-        ":program",
+        ":program_fragment",
         ":value",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",

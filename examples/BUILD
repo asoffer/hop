@@ -6,7 +6,7 @@ cc_binary(
     deps = [
         "//jasmin/core:debugger",
         "//jasmin/core:function",
-        "//jasmin/core:program",
+        "//jasmin/core:program_fragment",
         "//jasmin/instructions:common",
         "@nth_cc//nth/container:stack",
     ],
@@ -17,7 +17,7 @@ cc_binary(
     srcs = ["fibonacci.cc"],
     deps = [
         "//jasmin/core:instruction_index",
-        "//jasmin/core:program",
+        "//jasmin/core:program_fragment",
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",
         "//jasmin/instructions:common",
@@ -53,7 +53,7 @@ cc_binary(
     srcs = ["serialization.cc"],
     deps = [
         "//jasmin/core:instruction",
-        "//jasmin/core:program",
+        "//jasmin/core:program_fragment",
         "//jasmin/core:serialization",
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",

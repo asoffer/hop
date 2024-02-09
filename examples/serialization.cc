@@ -4,7 +4,7 @@
 #include <cstdio>
 
 #include "jasmin/core/instruction.h"
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/arithmetic.h"
 #include "jasmin/instructions/common.h"
 #include "jasmin/instructions/compare.h"
@@ -21,8 +21,8 @@ using Instructions = jasmin::MakeInstructionSet<
     jasmin::Push<jasmin::Function<>*>, jasmin::LessThan<uint64_t>,
     jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>>;
 
-jasmin::Program<Instructions> MakeProgram() {
-  jasmin::Program<Instructions> p;
+jasmin::ProgramFragment<Instructions> MakeProgram() {
+  jasmin::ProgramFragment<Instructions> p;
   auto& func = p.declare("fib", 1, 1).function;
   func.append<jasmin::Duplicate>();
   func.append<jasmin::Push<uint64_t>>(2);
@@ -47,10 +47,10 @@ jasmin::Program<Instructions> MakeProgram() {
   return p;
 }
 
-// Defines a serializer that understands how to serialize jasmin::Programs. We
-// still need to teach the serializer how to serialize specific immediate value
-// types.
-struct Serializer : jasmin::ProgramSerializer, nth::io::string_writer {
+// Defines a serializer that understands how to serialize
+// jasmin::ProgramFragments. We still need to teach the serializer how to
+// serialize specific immediate value types.
+struct Serializer : jasmin::ProgramFragmentSerializer, nth::io::string_writer {
   explicit Serializer(std::string& s) : nth::io::string_writer(s) {}
 
   friend bool NthSerialize(Serializer& s, uint64_t n) {
@@ -58,10 +58,11 @@ struct Serializer : jasmin::ProgramSerializer, nth::io::string_writer {
   }
 };
 
-// Defines a deserializer that understands how to deserialize jasmin::Programs.
-// We still need to teach the deserializer how to deserialize specific immediate
-// value types.
-struct Deserializer : jasmin::ProgramDeserializer, nth::io::string_reader {
+// Defines a deserializer that understands how to deserialize
+// jasmin::ProgramFragments. We still need to teach the deserializer how to
+// deserialize specific immediate value types.
+struct Deserializer : jasmin::ProgramFragmentDeserializer,
+                      nth::io::string_reader {
   explicit Deserializer(std::string_view s) : nth::io::string_reader(s) {}
 
   friend bool NthDeserialize(Deserializer& d, uint64_t& n) {
@@ -69,15 +70,13 @@ struct Deserializer : jasmin::ProgramDeserializer, nth::io::string_reader {
   }
 };
 
-
-
 int main() {
   // The string which is going to hold the serialized program.
   std::string content;
 
   {
     // Construct a program and serialize it into `content`.
-    jasmin::Program<Instructions> p = MakeProgram();
+    jasmin::ProgramFragment<Instructions> p = MakeProgram();
     Serializer serializer(content);
     if (not nth::io::serialize(serializer, p)) { return 1; }
   }
@@ -94,7 +93,7 @@ int main() {
   {
     // Reconstitute the program previously serialized into `content` back into
     // the program `p`.
-    jasmin::Program<Instructions> p;
+    jasmin::ProgramFragment<Instructions> p;
     Deserializer deserializer(content);
     if (not nth::io::deserialize(deserializer, p)) { return 1; }
 

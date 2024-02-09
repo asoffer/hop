@@ -1,6 +1,6 @@
 #include "jasmin/core/serialization.h"
 
-#include "jasmin/core/program.h"
+#include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/common.h"
 #include "nth/io/serialize/reader.h"
 #include "nth/io/serialize/string_reader.h"
@@ -11,11 +11,11 @@
 namespace jasmin {
 namespace {
 
-struct Serializer : ProgramSerializer, nth::io::string_writer {
+struct Serializer : ProgramFragmentSerializer, nth::io::string_writer {
   explicit Serializer(std::string& s) : nth::io::string_writer(s) {}
 };
 
-struct Deserializer : ProgramDeserializer, nth::io::string_reader {
+struct Deserializer : ProgramFragmentDeserializer, nth::io::string_reader {
   explicit Deserializer(std::string_view s) : nth::io::string_reader(s) {}
 };
 
@@ -46,21 +46,21 @@ NTH_INVOKE_TEST("round-trip/integer") {
 
 using Set = MakeInstructionSet<Push<Function<>*>>;
 
-NTH_TEST("round-trip/program/empty") {
-  Program<Set> p;
+NTH_TEST("round-trip/program-fragment/empty") {
+  ProgramFragment<Set> p;
 
   std::string content;
   Serializer serializer(content);
   NTH_ASSERT(nth::io::serialize(serializer, p));
 
-  Program<Set> q;
+  ProgramFragment<Set> q;
   Deserializer deserializer(content);
   NTH_ASSERT(nth::io::deserialize(deserializer, q));
   NTH_EXPECT(q.function_count() == p.function_count());
 }
 
-NTH_TEST("round-trip/program/functions") {
-  Program<Set> p;
+NTH_TEST("round-trip/program-fragment/functions") {
+  ProgramFragment<Set> p;
   auto& f = p.declare("f", 0, 0).function;
   f.append<Return>();
 
@@ -68,7 +68,7 @@ NTH_TEST("round-trip/program/functions") {
   Serializer serializer(content);
   NTH_ASSERT(nth::io::serialize(serializer, p));
 
-  Program<Set> q;
+  ProgramFragment<Set> q;
   Deserializer deserializer(content);
   NTH_ASSERT(nth::io::deserialize(deserializer, q));
   NTH_EXPECT(q.function_count() == p.function_count());
@@ -80,8 +80,8 @@ NTH_TEST("round-trip/program/functions") {
   }
 }
 
-NTH_TEST("round-trip/program/recursion") {
-  Program<Set> p;
+NTH_TEST("round-trip/program-fragment/recursion") {
+  ProgramFragment<Set> p;
   auto& f = p.declare("f", 0, 0).function;
   f.append<Push<Function<>*>>(&f);
   f.append<Call>({0, 0});
@@ -91,7 +91,7 @@ NTH_TEST("round-trip/program/recursion") {
   Serializer serializer(content);
   NTH_ASSERT(nth::io::serialize(serializer, p));
 
-  Program<Set> q;
+  ProgramFragment<Set> q;
   Deserializer deserializer(content);
   NTH_ASSERT(nth::io::deserialize(deserializer, q));
   NTH_EXPECT(q.function_count() == p.function_count());

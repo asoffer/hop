@@ -1,5 +1,5 @@
-#ifndef JASMIN_CORE_PROGRAM_H
-#define JASMIN_CORE_PROGRAM_H
+#ifndef JASMIN_CORE_PROGRAM_FRAGMENT_H
+#define JASMIN_CORE_PROGRAM_FRAGMENT_H
 
 #include <cstdint>
 #include <string>
@@ -15,15 +15,11 @@
 
 namespace jasmin {
 
-// A `Program` represents a collection of functions closed under the caller ->
-// callee relationship, with a unique entry-point. It is the responsibility of
-// the user to ensure that any function transitively invocable via functions in
-// a program are also in the same program. Functions transitively invocable are
-// assumed to be owned solely by the `Program`. They may be modified (by an
-// optimizer, or a debugger), and could therefore cause unsupported, unexpected,
-// or undefined behavior if this requirement is violated.
+// A `ProgramFragment` represents a collection of functions, each with a unique
+// name. Functions within this collection may call other functions in the same
+// program fragment or within different program fragments.
 template <InstructionSetType Set>
-struct Program {
+struct ProgramFragment {
   struct function_identifier {
     uint32_t value() const { return value_; }
 
@@ -36,7 +32,7 @@ struct Program {
     }
 
    private:
-    friend Program;
+    friend ProgramFragment;
 
     constexpr function_identifier(uint32_t n) : value_(n) {}
 
@@ -48,7 +44,7 @@ struct Program {
     Function<Set>& function;
   };
 
-  // Declares a function owned by this `Program` with the given name and
+  // Declares a function owned by this `ProgramFragment` with the given name and
   // signature (number of inputs and outputs).
   declare_result declare(std::string const& name, uint32_t inputs,
                          uint32_t outputs);
@@ -60,7 +56,7 @@ struct Program {
   [[nodiscard]] Function<Set> const& function(function_identifier id) const;
   [[nodiscard]] Function<Set>& function(function_identifier id);
 
-  friend bool NthSerialize(auto& s, Program const& p) {
+  friend bool NthSerialize(auto& s, ProgramFragment const& p) {
     if (not nth::io::serialize_integer(s, p.functions_.size())) {
       return false;
     }
@@ -79,7 +75,7 @@ struct Program {
     return true;
   }
 
-  friend bool NthDeserialize(auto& d, Program& p) {
+  friend bool NthDeserialize(auto& d, ProgramFragment& p) {
     size_t size;
     if (not nth::io::deserialize_integer(d, size)) { return false; }
 
@@ -105,22 +101,20 @@ struct Program {
     return true;
   }
 
-  // Returns the number of functions managed by this `Program`.
+  // Returns the number of functions managed by this `ProgramFragment`.
   size_t function_count() const { return functions_.size(); }
 
   auto functions() const {
     return nth::iterator_range(functions_.begin(), functions_.end());
   }
 
-
  private:
   nth::flyweight_map<std::string, Function<Set>> functions_;
 };
 
 template <InstructionSetType Set>
-Program<Set>::declare_result Program<Set>::declare(std::string const& name,
-                                                   uint32_t inputs,
-                                                   uint32_t outputs) {
+ProgramFragment<Set>::declare_result ProgramFragment<Set>::declare(
+    std::string const& name, uint32_t inputs, uint32_t outputs) {
   auto [iter, inserted] = functions_.try_emplace(name, inputs, outputs);
   return declare_result{
       .identifier = function_identifier(functions_.index(iter)),
@@ -129,29 +123,31 @@ Program<Set>::declare_result Program<Set>::declare(std::string const& name,
 }
 
 template <InstructionSetType Set>
-Function<Set>& Program<Set>::function(std::string const& name) {
+Function<Set>& ProgramFragment<Set>::function(std::string const& name) {
   auto iter = functions_.find(name);
   NTH_REQUIRE((v.harden), iter != functions_.end());
   return iter->second;
 }
 
 template <InstructionSetType Set>
-Function<Set> const& Program<Set>::function(std::string const& name) const {
+Function<Set> const& ProgramFragment<Set>::function(
+    std::string const& name) const {
   auto iter = functions_.find(name);
   NTH_REQUIRE((v.harden), iter != functions_.end());
   return iter->second;
 }
 
 template <InstructionSetType Set>
-Function<Set>& Program<Set>::function(function_identifier id) {
+Function<Set>& ProgramFragment<Set>::function(function_identifier id) {
   return functions_.from_index(id.value()).second;
 }
 
 template <InstructionSetType Set>
-Function<Set> const& Program<Set>::function(function_identifier id) const {
+Function<Set> const& ProgramFragment<Set>::function(
+    function_identifier id) const {
   return functions_.from_index(id.value()).second;
 }
 
 }  // namespace jasmin
 
-#endif  // JASMIN_CORE_PROGRAM_H
+#endif  // JASMIN_CORE_PROGRAM_FRAGMENT_H
