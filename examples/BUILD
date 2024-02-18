@@ -62,8 +62,8 @@ cc_binary(
         "@nth_cc//nth/debug/log:stderr_log_sink",
         "@nth_cc//nth/io/serialize",
         "@nth_cc//nth/io/serialize:deserialize",
-        "@nth_cc//nth/io/serialize:string_reader",
-        "@nth_cc//nth/io/serialize:string_writer",
+        "@nth_cc//nth/io/reader:string",
+        "@nth_cc//nth/io/writer:string",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )

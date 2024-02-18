@@ -2,10 +2,10 @@
 
 #include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/common.h"
-#include "nth/io/serialize/reader.h"
-#include "nth/io/serialize/string_reader.h"
-#include "nth/io/serialize/string_writer.h"
-#include "nth/io/serialize/writer.h"
+#include "nth/io/reader/reader.h"
+#include "nth/io/reader/string.h"
+#include "nth/io/writer/string.h"
+#include "nth/io/writer/writer.h"
 #include "nth/test/test.h"
 
 namespace jasmin {

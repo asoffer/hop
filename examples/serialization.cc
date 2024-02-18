@@ -11,10 +11,10 @@
 #include "nth/container/interval.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/stderr_log_sink.h"
+#include "nth/io/reader/string.h"
 #include "nth/io/serialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
-#include "nth/io/serialize/string_reader.h"
-#include "nth/io/serialize/string_writer.h"
+#include "nth/io/writer/string.h"
 
 using Instructions = jasmin::MakeInstructionSet<
     jasmin::Duplicate, jasmin::Swap, jasmin::Push<uint64_t>,

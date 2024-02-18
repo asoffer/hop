@@ -178,8 +178,8 @@ cc_test(
     deps = [
         ":serialization",
         "//jasmin/instructions:common",
-        "@nth_cc//nth/io/serialize:string_reader",
-        "@nth_cc//nth/io/serialize:string_writer",
+        "@nth_cc//nth/io/reader:string",
+        "@nth_cc//nth/io/writer:string",
         "@nth_cc//nth/test:main",
     ],
 )
