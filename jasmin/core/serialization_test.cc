@@ -1,5 +1,5 @@
-#include "jasmin/core/serialization.h"
-
+#include "jasmin/core/function.h"
+#include "jasmin/core/function_registry.h"
 #include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/common.h"
 #include "nth/io/reader/reader.h"
@@ -11,22 +11,44 @@
 namespace jasmin {
 namespace {
 
-struct Serializer : ProgramFragmentSerializer, nth::io::string_writer {
-  explicit Serializer(std::string& s) : nth::io::string_writer(s) {}
+struct Serializer : nth::io::string_writer {
+  explicit Serializer(std::string &s) : nth::io::string_writer(s) {}
+
+  FunctionRegistry &context(decltype(nth::type<FunctionRegistry>)) {
+    return registry_;
+  }
+
+ private:
+  FunctionRegistry registry_;
 };
 
-struct Deserializer : ProgramFragmentDeserializer, nth::io::string_reader {
+struct Deserializer : nth::io::string_reader {
   explicit Deserializer(std::string_view s) : nth::io::string_reader(s) {}
+
+  FunctionRegistry &context(decltype(nth::type<FunctionRegistry>)) {
+    return registry_;
+  }
+
+  friend bool NthDeserialize(Deserializer &d, std::integral auto &x) {
+    return nth::io::read_integer(d, x);
+  }
+
+  friend bool NthDeserialize(Deserializer &d, std::floating_point auto &x) {
+    return nth::io::read_fixed(d, x);
+  }
+
+ private:
+  FunctionRegistry registry_;
 };
 
 NTH_TEST("round-trip/integer", auto n) {
   std::string content;
   Serializer serializer(content);
-  NTH_ASSERT(nth::io::serialize_integer(serializer, n));
+  NTH_ASSERT(nth::io::write_integer(serializer, n));
 
   decltype(n) m;
   Deserializer deserializer(content);
-  NTH_ASSERT(nth::io::deserialize_integer(deserializer, m));
+  NTH_ASSERT(nth::io::read_integer(deserializer, m));
   NTH_ASSERT(deserializer.size() == 0);
   NTH_EXPECT(m == n);
 }

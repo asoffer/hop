@@ -5,7 +5,7 @@
 #include "jasmin/core/internal/function_state.h"
 #include "jasmin/core/output.h"
 #include "jasmin/core/value.h"
-#include "nth/io/serialize/deserialize.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/meta/concepts.h"
 #include "nth/meta/type.h"
@@ -24,13 +24,19 @@ struct InstructionSpecification {
   uint32_t parameters;
   uint32_t returns;
 
-  friend bool NthSerialize(auto& s, InstructionSpecification spec) {
-    return nth::io::serialize_integer(s, spec.parameters) and
-           nth::io::serialize_integer(s, spec.returns);
+  template <typename S>
+  friend nth::io::serializer_result_type<S>NthSerialize(S& s, InstructionSpecification spec) {
+    return nth::io::serializer_result_type<S>(
+        nth::io::write_integer(s, spec.parameters) and
+        nth::io::write_integer(s, spec.returns));
   }
-  friend bool NthDeserialize(auto& d, InstructionSpecification& spec) {
-    return nth::io::deserialize_integer(d, spec.parameters) and
-           nth::io::deserialize_integer(d, spec.returns);
+
+  template <typename D>
+  friend nth::io::deserializer_result_type<D> NthDeserialize(
+      D& d, InstructionSpecification& spec) {
+    return nth::io::deserializer_result_type<D>(
+        nth::io::read_integer(d, spec.parameters) and
+        nth::io::read_integer(d, spec.returns));
   }
 };
 

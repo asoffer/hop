@@ -1,8 +1,7 @@
-#include "jasmin/core/serialization.h"
-
 #include <cinttypes>
 #include <cstdio>
 
+#include "jasmin/core/function.h"
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/arithmetic.h"
@@ -11,8 +10,8 @@
 #include "nth/container/interval.h"
 #include "nth/debug/debug.h"
 #include "nth/debug/log/stderr_log_sink.h"
+#include "nth/io/deserialize/deserialize.h"
 #include "nth/io/reader/string.h"
-#include "nth/io/serialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/io/writer/string.h"
 
@@ -50,24 +49,47 @@ jasmin::ProgramFragment<Instructions> MakeProgram() {
 // Defines a serializer that understands how to serialize
 // jasmin::ProgramFragments. We still need to teach the serializer how to
 // serialize specific immediate value types.
-struct Serializer : jasmin::ProgramFragmentSerializer, nth::io::string_writer {
+struct Serializer : nth::io::string_writer {
   explicit Serializer(std::string& s) : nth::io::string_writer(s) {}
 
   friend bool NthSerialize(Serializer& s, uint64_t n) {
-    return nth::io::serialize_integer(s, n);
+    return nth::io::write_integer(s, n);
   }
+
+  jasmin::FunctionRegistry& context(
+      decltype(nth::type<jasmin::FunctionRegistry>)) {
+    return registry_;
+  }
+
+ private:
+  jasmin::FunctionRegistry registry_;
 };
 
 // Defines a deserializer that understands how to deserialize
 // jasmin::ProgramFragments. We still need to teach the deserializer how to
 // deserialize specific immediate value types.
-struct Deserializer : jasmin::ProgramFragmentDeserializer,
-                      nth::io::string_reader {
+struct Deserializer : nth::io::string_reader {
   explicit Deserializer(std::string_view s) : nth::io::string_reader(s) {}
 
   friend bool NthDeserialize(Deserializer& d, uint64_t& n) {
-    return nth::io::deserialize_integer(d, n);
+    return nth::io::read_integer(d, n);
   }
+
+  friend bool NthDeserialize(Deserializer& d, std::integral auto& x) {
+    return nth::io::read_integer(d, x);
+  }
+
+  friend bool NthDeserialize(Deserializer& d, std::floating_point auto& x) {
+    return nth::io::read_fixed(d, x);
+  }
+
+  jasmin::FunctionRegistry& context(
+      decltype(nth::type<jasmin::FunctionRegistry>)) {
+    return registry_;
+  }
+
+ private:
+  jasmin::FunctionRegistry registry_;
 };
 
 int main() {
