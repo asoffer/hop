@@ -17,20 +17,17 @@ cc_library(
 
 cc_library(
     name = "function",
-    hdrs = [
-        "function.h",
-        "function_registry.h",
-    ],
+    hdrs = ["function.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":function_identifier",
         ":instruction",
         ":instruction_index",
         ":metadata",
         ":value",
         "//jasmin/core/internal:function_base",
+        "//jasmin/core/internal:function_forward",
         "//jasmin/core/internal:instruction_traits",
-        "@nth_cc//nth/base:attributes",
-        "@nth_cc//nth/container:flyweight_set",
         "@nth_cc//nth/container:interval",
         "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/serialize",
@@ -43,6 +40,34 @@ cc_test(
     deps = [
         ":function",
         "@nth_cc//nth/test:main",
+    ],
+)
+
+cc_library(
+    name = "function_identifier",
+    hdrs = ["function_identifier.h"],
+    srcs = ["function_identifier.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//jasmin/core/internal:function_forward",
+        "@nth_cc//nth/io/deserialize",
+        "@nth_cc//nth/io/reader",
+        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/io/writer",
+    ],
+)
+
+cc_library(
+    name = "function_registry",
+    hdrs = ["function_registry.h"],
+    srcs = ["function_registry.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":function_identifier",
+        "//jasmin/core/internal:function_forward",
+        "@nth_cc//nth/base:attributes",
+        "@nth_cc//nth/container:flyweight_map",
+        "@nth_cc//nth/container:flyweight_set",
     ],
 )
 
@@ -167,6 +192,7 @@ cc_test(
     srcs = ["serialization_test.cc"],
     deps = [
         ":function",
+        ":function_registry",
         ":program_fragment",
         "//jasmin/instructions:common",
         "@nth_cc//nth/io/reader:string",

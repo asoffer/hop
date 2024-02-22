@@ -54,6 +54,7 @@ cc_binary(
     deps = [
         "//jasmin/core:instruction",
         "//jasmin/core:function",
+        "//jasmin/core:function_registry",
         "//jasmin/core:program_fragment",
         "//jasmin/instructions:arithmetic",
         "//jasmin/instructions:compare",

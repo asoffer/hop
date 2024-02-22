@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include "jasmin/core/function.h"
+#include "jasmin/core/function_registry.h"
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/program_fragment.h"
 #include "jasmin/instructions/arithmetic.h"

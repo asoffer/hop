@@ -22,6 +22,12 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "function_forward",
+    hdrs = ["function_forward.h"],
+    deps = [],
+)
+
 cc_test(
     name = "function_base_test",
     srcs = ["function_base_test.cc"],

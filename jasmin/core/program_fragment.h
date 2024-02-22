@@ -6,8 +6,8 @@
 #include <string_view>
 
 #include "jasmin/core/function.h"
-#include "jasmin/core/function_registry.h"
 #include "jasmin/core/instruction.h"
+#include "jasmin/core/internal/function_forward.h"
 #include "nth/container/flyweight_map.h"
 #include "nth/debug/debug.h"
 #include "nth/io/deserialize/deserialize.h"
@@ -16,11 +16,12 @@
 
 namespace jasmin {
 
-// A `ProgramFragment` represents a collection of functions, each with a unique
-// name. Functions within this collection may call other functions in the same
-// program fragment or within different program fragments.
 template <InstructionSetType Set>
-struct ProgramFragment {
+struct ProgramFragment;
+
+namespace internal {
+
+struct ProgramFragmentBase {
   struct function_identifier {
     uint32_t value() const { return value_; }
 
@@ -33,13 +34,22 @@ struct ProgramFragment {
     }
 
    private:
-    friend ProgramFragment;
+    template <InstructionSetType>
+    friend struct ::jasmin::ProgramFragment;
 
     constexpr function_identifier(uint32_t n) : value_(n) {}
 
     uint32_t value_;
   };
+};
 
+}  // namespace internal
+
+// A `ProgramFragment` represents a collection of functions, each with a unique
+// name. Functions within this collection may call other functions in the same
+// program fragment or within different program fragments.
+template <InstructionSetType Set>
+struct ProgramFragment : internal::ProgramFragmentBase {
   struct declare_result {
     function_identifier identifier;
     Function<Set>& function;
@@ -66,7 +76,7 @@ struct ProgramFragment {
     }
     auto& registry = s.context(nth::type<FunctionRegistry>);
     for (auto const& [name, fn] : p.functions_) {
-      registry.register_function(fn);
+      registry.register_function(p, fn);
       if (not nth::io::write_integer(s, name.size())) {
         return result_type(false);
       }
@@ -91,6 +101,9 @@ struct ProgramFragment {
     size_t size;
     if (not nth::io::read_integer(d, size)) { return result_type(false); }
 
+    std::vector<Function<Set>*> fns;
+    fns.reserve(size);
+
     auto& registry = d.context(nth::type<FunctionRegistry>);
     for (uint32_t i = 0; i < size; ++i) {
       size_t name_size;
@@ -105,12 +118,13 @@ struct ProgramFragment {
 
       auto [iter, inserted] = p.functions_.try_emplace(name);
       if (not inserted) { return result_type(false); }
-      registry.register_function(iter->second);
+      registry.register_function(p, iter->second);
+      fns.push_back(&iter->second);
     }
 
     result_type result(true);
-    for (Function<>* fn : registry.registered_functions()) {
-      result = nth::io::deserialize(d, static_cast<Function<Set>&>(*fn));
+    for (Function<Set>* fn : fns) {
+      result = nth::io::deserialize(d, *fn);
       if (not result) { return result; }
     }
     return result;

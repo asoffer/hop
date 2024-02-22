@@ -1,10 +1,12 @@
 #ifndef JASMIN_CORE_FUNCTION_H
 #define JASMIN_CORE_FUNCTION_H
 
+#include "jasmin/core/function_identifier.h"
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/instruction_index.h"
 #include "jasmin/core/internal/frame.h"
 #include "jasmin/core/internal/function_base.h"
+#include "jasmin/core/internal/function_forward.h"
 #include "jasmin/core/internal/instruction_traits.h"
 #include "jasmin/core/metadata.h"
 #include "nth/container/interval.h"
@@ -12,11 +14,6 @@
 #include "nth/meta/type.h"
 
 namespace jasmin {
-
-template <typename = void>
-struct Function;
-struct FunctionRegistry;
-
 namespace internal {
 
 template <typename S, InstructionType I>
@@ -39,33 +36,24 @@ struct Function<void> : internal::FunctionBase {
   template <nth::io::serializer_with_context<FunctionRegistry> S>
   friend nth::io::serializer_result_type<S> NthSerialize(S &s,
                                                          Function<> const *f) {
-    using result_type = nth::io::serializer_result_type<S>;
-    uint32_t index    = s.context(nth::type<FunctionRegistry>).get(f);
-    if (index == static_cast<uint32_t>(-1)) { return result_type(false); }
-    return result_type(nth::io::write_fixed(s, index));
+    return nth::io::serialize(s, s.context(nth::type<FunctionRegistry>).get(f));
   }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
   friend nth::io::deserializer_result_type<D> NthDeserialize(D &d,
                                                              Function<> *&fn) {
-    using result_type = nth::io::deserializer_result_type<D>;
-    uint32_t index;
-    if (not nth::io::read_fixed(d, index)) { return result_type(false); }
-    auto &registry = d.context(nth::type<FunctionRegistry>);
-    if (index >= registry.size()) { return result_type(false); }
-    fn = registry[index];
-    return result_type(true);
+    return nth::io::deserialize(d, const_cast<Function<> const *&>(fn));
   }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
   friend nth::io::deserializer_result_type<D> NthDeserialize(
       D &d, Function<> const *&fn) {
     using result_type = nth::io::deserializer_result_type<D>;
-    uint32_t index;
-    if (not nth::io::read_fixed(d, index)) { return result_type(false); }
+    FunctionIdentifier id;
+    result_type result = nth::io::deserialize(d, id);
+    if (not result) { return result; }
     auto &registry = d.context(nth::type<FunctionRegistry>);
-    if (index >= registry.size()) { return result_type(false); }
-    fn = registry[index];
+    fn = registry[id];
     return result_type(true);
   }
 
