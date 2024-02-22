@@ -35,25 +35,25 @@ template <>
 struct Function<void> : internal::FunctionBase {
   template <nth::io::serializer_with_context<FunctionRegistry> S>
   friend nth::io::serializer_result_type<S> NthSerialize(S &s,
-                                                         Function<> const *f) {
+                                                         Function const *f) {
     return nth::io::serialize(s, s.context(nth::type<FunctionRegistry>).get(f));
   }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
   friend nth::io::deserializer_result_type<D> NthDeserialize(D &d,
-                                                             Function<> *&fn) {
-    return nth::io::deserialize(d, const_cast<Function<> const *&>(fn));
+                                                             Function *&fn) {
+    return nth::io::deserialize(d, const_cast<Function const *&>(fn));
   }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
   friend nth::io::deserializer_result_type<D> NthDeserialize(
-      D &d, Function<> const *&fn) {
+      D &d, Function const *&fn) {
     using result_type = nth::io::deserializer_result_type<D>;
     FunctionIdentifier id;
     result_type result = nth::io::deserialize(d, id);
     if (not result) { return result; }
     auto &registry = d.context(nth::type<FunctionRegistry>);
-    fn = registry[id];
+    fn             = registry[id];
     return result_type(true);
   }
 
@@ -134,9 +134,11 @@ struct Function : Function<> {
     return result_type(s.write_at(*c, nth::bytes(distance)));
   }
 
-  template <nth::io::serializer_with_context<FunctionRegistry> D>
-  friend nth::io::serializer_result_type<D> NthSerialize(D &,
-                                                         Function<> const *);
+  template <nth::io::serializer_with_context<FunctionRegistry> S>
+  friend nth::io::serializer_result_type<S> NthSerialize(S &s,
+                                                         Function const *f) {
+    return nth::io::serialize(s, static_cast<Function<> const *>(f));
+  }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
   friend nth::io::deserializer_result_type<D> NthDeserialize(D &d,
@@ -179,11 +181,20 @@ struct Function : Function<> {
   }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
-  friend nth::io::deserializer_result_type<D> NthDeserialize(D &, Function<> *);
+  friend nth::io::deserializer_result_type<D> NthDeserialize(D &d,
+                                                             Function *&f) {
+    Function<> *fn;
+    auto result = nth::io::deserialize(d, fn);
+    if (not result) { return result; }
+    f = static_cast<Function *>(fn);
+    return result;
+  }
 
   template <nth::io::deserializer_with_context<FunctionRegistry> D>
   friend nth::io::deserializer_result_type<D> NthDeserialize(
-      D &, Function<> const *);
+      D &d, Function const *f) {
+    return nth::io::deserialize(d, static_cast<Function<> const *&>(f));
+  }
 };
 
 namespace internal {
