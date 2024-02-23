@@ -50,6 +50,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//jasmin/core/internal:function_forward",
+        "@nth_cc//nth/debug",
         "@nth_cc//nth/io/deserialize",
         "@nth_cc//nth/io/reader",
         "@nth_cc//nth/io/serialize",

@@ -36,6 +36,7 @@ struct Function<void> : internal::FunctionBase {
   template <nth::io::serializer_with_context<FunctionRegistry> S>
   friend nth::io::serializer_result_type<S> NthSerialize(S &s,
                                                          Function const *f) {
+    if (not f) { NTH_UNIMPLEMENTED(); }
     return nth::io::serialize(s, s.context(nth::type<FunctionRegistry>).get(f));
   }
 
@@ -54,7 +55,8 @@ struct Function<void> : internal::FunctionBase {
     if (not result) { return result; }
     auto &registry = d.context(nth::type<FunctionRegistry>);
     fn             = registry[id];
-    return result_type(true);
+    if (fn == nullptr) { NTH_UNIMPLEMENTED(); }
+    return result_type(fn != nullptr);
   }
 
  protected:

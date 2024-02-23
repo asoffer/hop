@@ -20,7 +20,6 @@ FunctionIdentifier FunctionRegistry::get(Function<> const *f) {
 Function<> const *FunctionRegistry::operator[](FunctionIdentifier id) const {
   if (id.index_ >= registered_functions_.size()) { return nullptr; }
   auto [f, pf] = registered_functions_.from_index(id.index_);
-  if (pf != id.fragment_) { return nullptr; }
   return f;
 }
 

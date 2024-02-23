@@ -117,8 +117,7 @@ struct ProgramFragment : internal::ProgramFragmentBase {
       }
 
       auto [iter, inserted] = p.functions_.try_emplace(name);
-      if (not inserted) { return result_type(false); }
-      registry.register_function(p, iter->second);
+      if (inserted) { registry.register_function(p, iter->second); }
       fns.push_back(&iter->second);
     }
 
