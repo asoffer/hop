@@ -28,8 +28,8 @@ but is not required to, use in their instruction set.
 
 ## Building from Source
 
-Jasmin is a collection of C++20 libraries, and relies heavily on Bazel for
-building and testing. You will need a C++20-compliant compiler and a relatively
+Jasmin is a collection of C++23 libraries, and relies heavily on Bazel for
+building and testing. You will need a C++23-compliant compiler and a relatively
 recent copy of [Bazel](https://bazel.build/). Specifically,
 
 * Bazel version 5.4.0 or greater
