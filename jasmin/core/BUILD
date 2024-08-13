@@ -28,9 +28,8 @@ cc_library(
         "//jasmin/core/internal:function_base",
         "//jasmin/core/internal:function_forward",
         "//jasmin/core/internal:instruction_traits",
+        "@nth_cc//nth/format",
         "@nth_cc//nth/container:interval",
-        "@nth_cc//nth/io/deserialize",
-        "@nth_cc//nth/io/serialize",
     ],
 )
 
@@ -51,10 +50,6 @@ cc_library(
     deps = [
         "//jasmin/core/internal:function_forward",
         "@nth_cc//nth/debug",
-        "@nth_cc//nth/io/deserialize",
-        "@nth_cc//nth/io/reader",
-        "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/writer",
     ],
 )
 
@@ -139,7 +134,7 @@ cc_library(
         "//jasmin/core/internal:instruction_traits",
         "@com_google_absl//absl/container:flat_hash_map",
         "@nth_cc//nth/debug",
-        "@nth_cc//nth/utility:no_destructor",
+        "@nth_cc//nth/base:indestructible",
     ],
 )
 
@@ -182,23 +177,8 @@ cc_library(
         ":instruction",
         ":value",
         "@nth_cc//nth/debug",
-        "@nth_cc//nth/io/deserialize",
-        "@nth_cc//nth/io/serialize",
+        "@nth_cc//nth/format",
         "@nth_cc//nth/utility:iterator_range",
-    ],
-)
-
-cc_test(
-    name = "serialization_test",
-    srcs = ["serialization_test.cc"],
-    deps = [
-        ":function",
-        ":function_registry",
-        ":program_fragment",
-        "//jasmin/instructions:common",
-        "@nth_cc//nth/io/reader:string",
-        "@nth_cc//nth/io/writer:string",
-        "@nth_cc//nth/test:main",
     ],
 )
 

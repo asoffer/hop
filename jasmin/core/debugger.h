@@ -56,7 +56,7 @@ void Debugger<Set>::set_function_breakpoint(std::string name,
   auto [iter, inserted] = breakpoint_functions_.try_emplace(
       std::move(name), Function<Set>(f.parameter_count(), f.return_count()),
       std::move(response));
-  NTH_REQUIRE((v.harden), inserted);
+  NTH_REQUIRE((harden), inserted);
   iter->second.first = std::move(f);
   f                  = Function<Set>(0, 0);
   f.raw_append(internal::DebugImpl<Set>);

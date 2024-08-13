@@ -268,7 +268,7 @@ void SsaFunction::Initialize(InstructionMetadata const& (*decode)(Value),
       block.set_branch(SsaBranch::Return(
           span.subspan(span.size() - return_count_, return_count_)));
     } else {
-      NTH_REQUIRE((v.harden), not registers_on_exit.empty());
+      NTH_REQUIRE((harden), not registers_on_exit.empty());
       size_t size    = blocks_[i + 1].parameters().size();
       std::span span = registers_on_exit[i];
       block.set_branch(SsaBranch::Unconditional(

@@ -46,8 +46,8 @@ void RegisterCoalescer::freshen() {
 }
 
 SsaValue RegisterCoalescer::get(handle_type h) {
-  NTH_REQUIRE((v.debug), not h.empty());
-  NTH_REQUIRE((v.debug), not stale_);
+  NTH_REQUIRE((debug), not h.empty());
+  NTH_REQUIRE((debug), not stale_);
   if (auto iter = constants_.find(h); iter != constants_.end()) {
     return *iter->second;
   } else {

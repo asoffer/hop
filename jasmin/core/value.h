@@ -80,8 +80,7 @@ requires(nth::type<V> != nth::type<Value> and
 }
 
 inline Value Value::Load(void const* ptr, size_t bytes_to_load) {
-  NTH_REQUIRE((v.when(internal::harden)), bytes_to_load <= size_t{8})
-      .Log<"Bytes to load must not exceed 8.">();
+  NTH_REQUIRE((harden), bytes_to_load <= size_t{8});
   Value v;
   std::memcpy(&v.value_, ptr, bytes_to_load);
 #if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
@@ -91,8 +90,7 @@ inline Value Value::Load(void const* ptr, size_t bytes_to_load) {
 }
 
 inline void Value::Store(Value value, void* ptr, size_t bytes_to_store) {
-  NTH_REQUIRE((v.when(internal::harden)), bytes_to_store <= size_t{8})
-      .Log<"Bytes to load must not exceed 8.">();
+  NTH_REQUIRE((harden), bytes_to_store <= size_t{8});
   std::memcpy(ptr, &value.value_, bytes_to_store);
 }
 
@@ -116,9 +114,7 @@ T Value::as() const {
   } else {
 #if defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
     NTH_REQUIRE((v.always), debug_type_id_ == internal::type_id<T> or
-                                debug_type_id_ == internal::type_id<unknown_t>)
-        .Log<"Value type mismatch: {} != {}">(debug_type_id_,
-                                              internal::type_id<T>);
+                                debug_type_id_ == internal::type_id<unknown_t>);
 #endif  // defined(JASMIN_INTERNAL_CONFIGURATION_DEBUG)
 
     T result;

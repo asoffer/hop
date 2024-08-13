@@ -10,8 +10,8 @@
 #include "jasmin/core/internal/function_forward.h"
 #include "nth/container/flyweight_map.h"
 #include "nth/debug/debug.h"
-#include "nth/io/deserialize/deserialize.h"
-#include "nth/io/serialize/serialize.h"
+#include "nth/format/format.h"
+#include "nth/memory/bytes.h"
 #include "nth/utility/iterator_range.h"
 
 namespace jasmin {
@@ -67,68 +67,6 @@ struct ProgramFragment : internal::ProgramFragmentBase {
   [[nodiscard]] Function<Set> const& function(function_identifier id) const;
   [[nodiscard]] Function<Set>& function(function_identifier id);
 
-  template <nth::io::serializer_with_context<FunctionRegistry> S>
-  friend nth::io::serializer_result_type<S> NthSerialize(
-      S& s, ProgramFragment const& p) {
-    using result_type = nth::io::serializer_result_type<S>;
-    if (not nth::io::write_integer(s, p.functions_.size())) {
-      return result_type(false);
-    }
-    auto& registry = s.context(nth::type<FunctionRegistry>);
-    for (auto const& [name, fn] : p.functions_) {
-      registry.register_function(p, fn);
-      if (not nth::io::write_integer(s, name.size())) {
-        return result_type(false);
-      }
-      if (not s.write(std::span<std::byte const>(
-              reinterpret_cast<std::byte const*>(name.data()), name.size()))) {
-        return result_type(false);
-      }
-    }
-
-    result_type result(true);
-    for (auto const& [name, fn] : p.functions_) {
-      result = nth::io::serialize(s, fn);
-      if (not result) { return result; }
-    }
-    return result;
-  }
-
-  template <nth::io::deserializer_with_context<FunctionRegistry> D>
-  friend nth::io::deserializer_result_type<D> NthDeserialize(
-      D& d, ProgramFragment& p) {
-    using result_type = nth::io::deserializer_result_type<D>;
-    size_t size;
-    if (not nth::io::read_integer(d, size)) { return result_type(false); }
-
-    std::vector<Function<Set>*> fns;
-    fns.reserve(size);
-
-    auto& registry = d.context(nth::type<FunctionRegistry>);
-    for (uint32_t i = 0; i < size; ++i) {
-      size_t name_size;
-      if (not nth::io::read_integer(d, name_size)) {
-        return result_type(false);
-      }
-      std::string name(name_size, '\0');
-      if (not d.read(std::span<std::byte>(
-              reinterpret_cast<std::byte*>(name.data()), name.size()))) {
-        return result_type(false);
-      }
-
-      auto [iter, inserted] = p.functions_.try_emplace(name);
-      if (inserted) { registry.register_function(p, iter->second); }
-      fns.push_back(&iter->second);
-    }
-
-    result_type result(true);
-    for (Function<Set>* fn : fns) {
-      result = nth::io::deserialize(d, *fn);
-      if (not result) { return result; }
-    }
-    return result;
-  }
-
   // Returns the number of functions managed by this `ProgramFragment`.
   size_t function_count() const { return functions_.size(); }
 
@@ -153,7 +91,7 @@ ProgramFragment<Set>::declare_result ProgramFragment<Set>::declare(
 template <InstructionSetType Set>
 Function<Set>& ProgramFragment<Set>::function(std::string const& name) {
   auto iter = functions_.find(name);
-  NTH_REQUIRE((v.harden), iter != functions_.end());
+  NTH_REQUIRE((harden), iter != functions_.end());
   return iter->second;
 }
 
@@ -161,7 +99,7 @@ template <InstructionSetType Set>
 Function<Set> const& ProgramFragment<Set>::function(
     std::string const& name) const {
   auto iter = functions_.find(name);
-  NTH_REQUIRE((v.harden), iter != functions_.end());
+  NTH_REQUIRE((harden), iter != functions_.end());
   return iter->second;
 }
 

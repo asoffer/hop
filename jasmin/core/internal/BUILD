@@ -51,6 +51,7 @@ cc_library(
         "//jasmin/core:input",
         "//jasmin/core:output",
         "//jasmin/core:value",
+        "@nth_cc//nth/format",
         "@nth_cc//nth/meta:concepts",
         "@nth_cc//nth/meta:type",
         "@nth_cc//nth/io/deserialize",

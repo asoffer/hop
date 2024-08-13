@@ -19,7 +19,7 @@ std::string LoadFileContentsOrDie(std::string_view path) {
   std::string contents(file->size(), '\0');
   std::span<char const> data = file->read_into(contents);
   if (not file->close()) { std::abort(); }
-  NTH_REQUIRE((v.debug), data.size() == contents.size());
+  NTH_REQUIRE((debug), data.size() == contents.size());
   return contents;
 }
 

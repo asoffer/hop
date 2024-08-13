@@ -13,8 +13,7 @@ namespace internal {
 
 struct StackFrame {
   std::byte *allocate_once(size_t size_in_bytes) {
-    NTH_REQUIRE(data() == nullptr)
-        .Log<"`allocate_once` must only be called once per stack frame.">();
+    NTH_REQUIRE(data() == nullptr);
     data_.reset(new std::byte[size_in_bytes]);
     return data_.get();
   }

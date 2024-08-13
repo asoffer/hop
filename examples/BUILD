@@ -46,25 +46,3 @@ cc_binary(
         "@nth_cc//nth/container:stack",
     ],
 )
-
-
-cc_binary(
-    name = "serialization",
-    srcs = ["serialization.cc"],
-    deps = [
-        "//jasmin/core:instruction",
-        "//jasmin/core:function",
-        "//jasmin/core:function_registry",
-        "//jasmin/core:program_fragment",
-        "//jasmin/instructions:arithmetic",
-        "//jasmin/instructions:compare",
-        "//jasmin/instructions:common",
-        "@nth_cc//nth/debug",
-        "@nth_cc//nth/debug/log:stderr_log_sink",
-        "@nth_cc//nth/io/deserialize",
-        "@nth_cc//nth/io/serialize",
-        "@nth_cc//nth/io/reader:string",
-        "@nth_cc//nth/io/writer:string",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)

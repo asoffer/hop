@@ -12,8 +12,6 @@
 #include "jasmin/core/value.h"
 #include "nth/container/disjoint_set.h"
 #include "nth/debug/debug.h"
-#include "nth/io/string_printer.h"
-#include "nth/strings/interpolate.h"
 
 namespace jasmin {
 namespace internal {
@@ -36,11 +34,6 @@ struct SsaRegister {
 
   friend constexpr bool operator==(SsaRegister, SsaRegister) = default;
   constexpr uint64_t value() const { return number_; }
-
-  friend void NthPrint(auto &p, auto &f, SsaRegister const &r) {
-    p.write("r.");
-    f(p, r.value());
-  }
 
  private:
   uint64_t number_;
@@ -89,16 +82,6 @@ struct SsaValue {
     return not(lhs == rhs);
   }
 
-  friend void NthPrint(auto &p, auto &f, SsaValue const &v) {
-    if (v.is_register()) {
-      f(p, v.reg());
-    } else {
-      p.write("imm[");
-      f(p, v.immediate().raw_value());
-      p.write("]");
-    }
-  }
-
  private:
   constexpr SsaValue() : impl_(SsaRegister()) {}
 
@@ -139,33 +122,6 @@ struct SsaInstruction {
   SsaValue &output(size_t i) { return *(arguments_.end() - output_count_ + i); }
   SsaValue const &output(size_t i) const {
     return *(arguments_.end() - output_count_ + i);
-  }
-
-  friend void NthPrint(auto &p, auto &f, SsaInstruction const &inst) {
-    p.write(" ");
-    for (size_t i = inst.arguments_.size() - inst.output_count_;
-         i < inst.arguments_.size(); ++i) {
-      if (inst.arguments_[i].is_register()) {
-        p.write(" ");
-        f(p, inst.arguments_[i].reg());
-      } else {
-        p.write(" imm[");
-        f(p, inst.arguments_[i].immediate().raw_value());
-        p.write("]");
-      }
-    }
-    p.write(" = ");
-    f(p, internal::InstructionNameDecoder(inst.op_code_));
-    for (size_t i = 0; i < inst.arguments_.size() - inst.output_count_; ++i) {
-      if (inst.arguments_[i].is_register()) {
-        p.write(" ");
-        f(p, inst.arguments_[i].reg());
-      } else {
-        p.write(" imm[");
-        f(p, inst.arguments_[i].immediate().raw_value());
-        p.write("]");
-      }
-    }
   }
 
  private:
@@ -241,61 +197,6 @@ struct SsaBranch {
     });
   }
 
-  friend void NthPrint(auto &p, auto &f, SsaBranch const &branch) {
-    std::visit(
-        [&](auto const &b) {
-          constexpr auto t =
-              nth::type<decltype(b)>.without_reference().without_const();
-          if constexpr (t == nth::type<UnreachableImpl>) {
-            p.write("  unreachable\n");
-          } else if constexpr (t == nth::type<ReturnImpl>) {
-            p.write("return ");
-            std::string_view sep = "";
-            for (SsaValue arg : b.block_arguments) {
-              f(p, arg);
-              p.write(std::exchange(sep, ", "));
-            }
-            p.write("\n");
-          } else if constexpr (t == nth::type<UnconditionalImpl>) {
-            p.write("  br #");
-            f(p, b.block);
-            p.write(" <- (");
-            std::string_view sep = "";
-            for (SsaValue arg : b.block_arguments) {
-              f(p, arg);
-              p.write(std::exchange(sep, ", "));
-            }
-            p.write(")\n");
-          } else if constexpr (t == nth::type<ConditionalImpl>) {
-            std::string true_args;
-            {
-              std::string_view sep = "";
-              nth::string_printer sp(true_args);
-              for (SsaValue arg : b.true_arguments()) {
-                f(sp, arg);
-                sp.write(std::exchange(sep, ", "));
-              }
-            }
-            std::string false_args;
-            {
-              std::string_view sep = "";
-              nth::string_printer sp(false_args);
-              for (SsaValue arg : b.false_arguments()) {
-                f(sp, arg);
-                sp.write(std::exchange(sep, ", "));
-              }
-            }
-
-            nth::Interpolate<"  cond br {} ? #{} <- ({}) : #{} <- ({})\n">(
-                p, f, b.value.reg(), b.true_block, true_args, b.false_block,
-                false_args);
-          } else if constexpr (t == nth::type<ReturnImpl>) {
-            p.write("  return\n");
-          }
-        },
-        branch.branch_);
-  }
-
   void rename(nth::disjoint_set<SsaValue> &);
 
  private:
@@ -328,21 +229,6 @@ struct SsaBasicBlock {
   constexpr std::span<SsaValue const> parameters() const { return parameters_; }
   constexpr std::span<SsaValue> parameters() { return parameters_; }
 
-  friend void NthPrint(auto &p, auto &f, SsaBasicBlock const &block) {
-    p.write("block(");
-    std::string_view separator = "";
-    for (SsaValue v : block.parameters_) {
-      p.write(std::exchange(separator, ", "));
-      f(p, v.reg());
-    }
-    p.write("):\n");
-    for (SsaInstruction const &i : block.instructions_) {
-      f(p, i);
-      p.write("\n");
-    }
-    f(p, block.branch_);
-  }
-
   std::span<SsaInstruction const> instructions() const { return instructions_; }
   std::span<SsaInstruction> instructions() { return instructions_; }
 
@@ -366,17 +252,6 @@ struct SsaFunction {
 
   std::span<SsaBasicBlock const> blocks() const { return blocks_; }
   std::span<SsaBasicBlock> blocks() { return blocks_; }
-
-  friend void NthPrint(auto &p, auto &f, SsaFunction const &fn) {
-    size_t i = 0;
-    for (SsaBasicBlock const &block : fn.blocks_) {
-      p.write("#");
-      f(p, i++);
-      p.write(" ");
-      f(p, block);
-      p.write("\n");
-    }
-  }
 
  private:
   void Initialize(InstructionMetadata const &(*decode)(Value),

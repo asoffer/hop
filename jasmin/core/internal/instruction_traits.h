@@ -5,6 +5,7 @@
 #include "jasmin/core/internal/function_state.h"
 #include "jasmin/core/output.h"
 #include "jasmin/core/value.h"
+#include "nth/format/format.h"
 #include "nth/io/deserialize/deserialize.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/meta/concepts.h"
@@ -25,10 +26,11 @@ struct InstructionSpecification {
   uint32_t returns;
 
   template <typename S>
-  friend nth::io::serializer_result_type<S>NthSerialize(S& s, InstructionSpecification spec) {
+  friend nth::io::serializer_result_type<S> NthSerialize(
+      S& s, InstructionSpecification spec) {
     return nth::io::serializer_result_type<S>(
-        nth::io::write_integer(s, spec.parameters) and
-        nth::io::write_integer(s, spec.returns));
+        nth::format_integer(s, spec.parameters) and
+        nth::format_integer(s, spec.returns));
   }
 
   template <typename D>

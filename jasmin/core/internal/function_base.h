@@ -61,8 +61,7 @@ struct FunctionBase {
   // overwrite any such `Value`.
   void set_value(nth::interval<InstructionIndex> range,
                  InstructionIndex::difference_type index, Value value) {
-    NTH_REQUIRE((v.when(internal::harden)), index + 1 < range.length())
-        .Log<"Index larger than range">();
+    NTH_REQUIRE((harden), index + 1 < range.length());
     instructions_[range.lower_bound().value() + index + 1] = value;
   }
 

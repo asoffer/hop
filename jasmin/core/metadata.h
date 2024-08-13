@@ -9,7 +9,7 @@
 #include "jasmin/core/instruction.h"
 #include "jasmin/core/internal/instruction_traits.h"
 #include "jasmin/core/value.h"
-#include "nth/utility/no_destructor.h"
+#include "nth/base/indestructible.h"
 
 namespace jasmin {
 
@@ -71,7 +71,7 @@ struct InstructionSetMetadata {
 // `Set`.
 template <InstructionSetType Set>
 InstructionSetMetadata const& Metadata() {
-  static nth::NoDestructor<InstructionSetMetadata> metadata =
+  static nth::indestructible<InstructionSetMetadata> metadata =
       Set::instructions.reduce([](auto... is) {
         return InstructionSetMetadata(
             {InstructionMetadata{

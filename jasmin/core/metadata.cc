@@ -9,13 +9,12 @@
 #include "jasmin/core/internal/instruction_traits.h"
 #include "jasmin/core/value.h"
 #include "nth/debug/debug.h"
-#include "nth/utility/no_destructor.h"
 
 namespace jasmin {
 
 InstructionMetadata const& InstructionSetMetadata::metadata(
     uint16_t opcode) const {
-  NTH_REQUIRE((v.harden), opcode < metadata_.size());
+  NTH_REQUIRE((harden), opcode < metadata_.size());
   return metadata_[opcode];
 }
 
@@ -25,7 +24,7 @@ Value InstructionSetMetadata::function(uint16_t opcode) const {
 
 uint16_t InstructionSetMetadata::opcode(Value f) const {
   auto iter = opcode_.find(f.as<internal::exec_fn_type>());
-  NTH_REQUIRE((v.harden), iter != opcode_.end());
+  NTH_REQUIRE((harden), iter != opcode_.end());
   return iter->second;
 }
 

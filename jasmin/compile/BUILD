@@ -7,5 +7,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@nth_cc//nth/debug",
+        "@nth_cc//nth/memory:bytes",
     ],
 )

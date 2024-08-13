@@ -6,7 +6,7 @@
 #include "nth/debug/log/stderr_log_sink.h"
 
 int main(int argc, char* argv[]) {
-  nth::RegisterLogSink(nth::stderr_log_sink);
+  nth::register_log_sink(nth::stderr_log_sink);
 
   if (argc != 2) { return 1; }
   std::string contents = bf::LoadFileContentsOrDie(argv[1]);

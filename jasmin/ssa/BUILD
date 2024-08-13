@@ -24,23 +24,6 @@ cc_library(
         "//jasmin/core:metadata",
         "@nth_cc//nth/debug",
         "@nth_cc//nth/container:disjoint_set",
-        "@nth_cc//nth/strings:interpolate",
         "@com_google_absl//absl/synchronization",
-    ],
-)
-
-cc_binary(
-    name = "test",
-    srcs = ["main.cc"],
-    deps = [
-        ":register_coalescer",
-        ":ssa",
-        "//jasmin/core:instruction",
-        "//jasmin/instructions:arithmetic",
-        "//jasmin/instructions:compare",
-        "//jasmin/instructions:common",
-        "@nth_cc//nth/debug",
-        "@nth_cc//nth/debug/log:stderr_log_sink",
-        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )

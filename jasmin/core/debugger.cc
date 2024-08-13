@@ -28,7 +28,7 @@ void Debugger::set_function_breakpoint(std::string name,
   auto &f               = program_.function(name);
   auto [iter, inserted] = breakpoint_functions_.try_emplace(
       std::move(name), nullptr, std::move(response));
-  NTH_REQUIRE((v.harden), inserted);
+  NTH_REQUIRE((harden), inserted);
   iter->second.first = std::exchange(f, nullptr);
   auto fn            = std::make_unique<Function<DebuggerInstructions>>(0, 0);
   f.raw_append(DebugImpl);

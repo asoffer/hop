@@ -10,6 +10,7 @@
 #include "jasmin/core/internal/instruction_traits.h"
 #include "jasmin/core/metadata.h"
 #include "nth/container/interval.h"
+#include "nth/format/format.h"
 #include "nth/io/serialize/serialize.h"
 #include "nth/meta/type.h"
 
@@ -104,10 +105,10 @@ struct Function : Function<> {
   friend nth::io::serializer_result_type<S> NthSerialize(S &s,
                                                          Function const &fn) {
     using result_type = nth::io::serializer_result_type<S>;
-    if (not nth::io::write_integer(s, fn.parameter_count())) {
+    if (not nth::format_integer(s, fn.parameter_count())) {
       return result_type(false);
     }
-    if (not nth::io::write_integer(s, fn.return_count())) {
+    if (not nth::format_integer(s, fn.return_count())) {
       return result_type(false);
     }
     auto const &set_metadata = Metadata<Set>();
@@ -124,7 +125,7 @@ struct Function : Function<> {
 
     while (not insts.empty()) {
       uint16_t index = set_metadata.opcode(insts[0]);
-      if (not nth::io::write_fixed(s, index)) { return result_type(false); }
+      if (not nth::format_fixed(s, index)) { return result_type(false); }
       auto immediate_value_count =
           set_metadata.metadata(index).immediate_value_count;
       result_type result =
@@ -303,7 +304,7 @@ InstructionSerializer(
   } else if constexpr (nth::type<I> == nth::type<Call>) {
     return nth::io::serialize(s, v[0].as<InstructionSpecification>());
   } else if constexpr (nth::any_of<I, Jump, JumpIf, JumpIfNot>) {
-    return result_type(nth::io::write_integer(s, v[0].as<ptrdiff_t>()));
+    return result_type(nth::format_integer(s, v[0].as<ptrdiff_t>()));
   } else {
     constexpr auto params = [] {
       if constexpr (requires { I::execute; }) {
