@@ -3,11 +3,11 @@
 
 namespace bf {
 
-std::variant<jasmin::Function<Instructions>, parse_error> BuildJasminFunction(
+std::variant<hop::Function<Instructions>, parse_error> BuildHopFunction(
     std::string_view contents) {
-  jasmin::Function<Instructions> f(0, 0);
+  hop::Function<Instructions> f(0, 0);
   f.append<Initialize>();
-  std::vector<nth::interval<jasmin::InstructionIndex>> open_brackets;
+  std::vector<nth::interval<hop::InstructionIndex>> open_brackets;
   int line   = 1;
   int column = 0;
   for (char c : contents) {
@@ -18,7 +18,7 @@ std::variant<jasmin::Function<Instructions>, parse_error> BuildJasminFunction(
       case '>': f.append<Right>(); break;
       case '[': {
         f.append<Zero>();
-        open_brackets.push_back(f.append_with_placeholders<jasmin::JumpIf>());
+        open_brackets.push_back(f.append_with_placeholders<hop::JumpIf>());
       } break;
       case ']': {
         if (open_brackets.empty()) {
@@ -27,7 +27,7 @@ std::variant<jasmin::Function<Instructions>, parse_error> BuildJasminFunction(
         f.append<Zero>();
         auto loc = open_brackets.back();
         open_brackets.pop_back();
-        auto land = f.append_with_placeholders<jasmin::JumpIfNot>();
+        auto land = f.append_with_placeholders<hop::JumpIfNot>();
         f.set_value(loc, 0, land.lower_bound() - loc.lower_bound() + 2);
         f.set_value(land, 0, loc.lower_bound() - land.lower_bound() + 2);
       } break;
@@ -46,7 +46,7 @@ std::variant<jasmin::Function<Instructions>, parse_error> BuildJasminFunction(
     return parse_error{.line = line, .column = column};
   }
 
-  f.append<jasmin::Return>();
+  f.append<hop::Return>();
   return f;
 }
 

@@ -1,16 +1,16 @@
 #include <cstdio>
 #include <queue>
 
-#include "jasmin/instructions/common.h"
+#include "hop/instructions/common.h"
 #include "nth/container/stack.h"
 
-// This file provides an example of a Jasmin function that hold mutable state
+// This file provides an example of a Hop function that hold mutable state
 // associated with each invoked function. This example is slightly more advanced
 // and we suggest looking at the "hello_world.cc" and "fibonacci.cc" examples
 // before this one.
 
-struct PrintCString : jasmin::Instruction<PrintCString> {
-  static void consume(jasmin::Input<char const *> in, jasmin::Output<>) {
+struct PrintCString : hop::Instruction<PrintCString> {
+  static void consume(hop::Input<char const *> in, hop::Output<>) {
     std::fputs(in.get<0>(), stdout);
   }
 };
@@ -28,28 +28,28 @@ struct Queue {
   std::queue<char const *> queue;
 };
 
-struct PushQueue : jasmin::Instruction<PushQueue> {
+struct PushQueue : hop::Instruction<PushQueue> {
   using function_state = Queue;
-  static void execute(function_state &state, jasmin::Input<>, jasmin::Output<>,
+  static void execute(function_state &state, hop::Input<>, hop::Output<>,
                       char const *cstr) {
     state.queue.push(cstr);
   }
 };
 
-struct PopQueue : jasmin::Instruction<PopQueue> {
+struct PopQueue : hop::Instruction<PopQueue> {
   using function_state = Queue;
 
-  static void execute(function_state &state, jasmin::Input<>,
-                      jasmin::Output<char const *> out) {
+  static void execute(function_state &state, hop::Input<>,
+                      hop::Output<char const *> out) {
     out.set<0>(state.queue.front());
     state.queue.pop();
   }
 };
 
-struct RotateQueue : jasmin::Instruction<RotateQueue> {
+struct RotateQueue : hop::Instruction<RotateQueue> {
   using function_state = Queue;
-  static void execute(function_state &state, jasmin::Input<>,
-                      jasmin::Output<>) {
+  static void execute(function_state &state, hop::Input<>,
+                      hop::Output<>) {
     char const *top = state.queue.front();
     state.queue.pop();
     state.queue.push(top);
@@ -57,10 +57,10 @@ struct RotateQueue : jasmin::Instruction<RotateQueue> {
 };
 
 void HelloWorld() {
-  using Instructions = jasmin::MakeInstructionSet<PrintCString, PushQueue,
+  using Instructions = hop::MakeInstructionSet<PrintCString, PushQueue,
                                                   PopQueue, RotateQueue>;
 
-  jasmin::Function<Instructions> func(0, 0);
+  hop::Function<Instructions> func(0, 0);
 
   // Push "world!\n" onto the state queue.
   func.append<PushQueue>("world!\n");
@@ -83,10 +83,10 @@ void HelloWorld() {
 
   func.append<PrintCString>();
 
-  func.append<jasmin::Return>();
+  func.append<hop::Return>();
 
   // Now that our function has been defined, we can execute it.
-  nth::stack<jasmin::Value> stack;
+  nth::stack<hop::Value> stack;
   func.invoke(stack);
 }
 

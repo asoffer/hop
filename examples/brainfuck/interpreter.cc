@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
   std::string contents = bf::LoadFileContentsOrDie(argv[1]);
 
   // Constructs a function from the program source text.
-  std::variant fn_or_parse_error = bf::BuildJasminFunction(contents);
+  std::variant fn_or_parse_error = bf::BuildHopFunction(contents);
 
   if (auto* error = std::get_if<bf::parse_error>(&fn_or_parse_error)) {
     std::fprintf(stderr, "Parse error on line %d (column %d).\n", error->line,
@@ -20,10 +20,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto& f = std::get<jasmin::Function<bf::Instructions>>(fn_or_parse_error);
+  auto& f = std::get<hop::Function<bf::Instructions>>(fn_or_parse_error);
 
   // Create an empty stack, because `f` takes to arguments.
-  nth::stack<jasmin::Value> stack;
+  nth::stack<hop::Value> stack;
 
   // Invoke the function.
   f.invoke(stack);

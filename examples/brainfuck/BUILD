@@ -6,7 +6,7 @@ cc_library(
     srcs = ["build.cc"],
     deps = [
         ":instructions",
-        "//jasmin/core:function",
+        "//hop/core:function",
     ],
 )
 
@@ -25,7 +25,7 @@ cc_library(
     name = "instructions",
     hdrs = ["instructions.h"],
     deps = [
-        "//jasmin/core:instruction",
+        "//hop/core:instruction",
     ],
 )
 
@@ -36,7 +36,7 @@ cc_binary(
         ":build",
         ":file",
         ":instructions",
-        "//jasmin/core:function",
+        "//hop/core:function",
         "@nth_cc//nth/debug/log:stderr_log_sink",
     ],
 )
@@ -49,9 +49,9 @@ cc_binary(
         ":file",
         ":instructions",
         ":x64_code_generator",
-        "//jasmin/core:function",
-        "//jasmin/ssa",
-        "//jasmin/compile/x64:function_emitter",
+        "//hop/core:function",
+        "//hop/ssa",
+        "//hop/compile/x64:function_emitter",
         "@nth_cc//nth/dynamic:jit_function",
     ],
 )
@@ -60,8 +60,8 @@ cc_library(
     name = "x64_code_generator",
     hdrs = ["x64_code_generator.h"],
     deps = [
-        "//jasmin/core:instruction",
-        "//jasmin/compile/x64:function_emitter",
-        "//jasmin/compile/x64:location_map",
+        "//hop/core:instruction",
+        "//hop/compile/x64:function_emitter",
+        "//hop/compile/x64:location_map",
     ],
 )

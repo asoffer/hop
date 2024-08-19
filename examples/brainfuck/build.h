@@ -5,7 +5,7 @@
 #include <variant>
 
 #include "examples/brainfuck/instructions.h"
-#include "jasmin/core/function.h"
+#include "hop/core/function.h"
 
 namespace bf {
 
@@ -18,7 +18,7 @@ struct parse_error {
 // the source text does not represent a valid Brainfuck program. Characters
 // other than "[]+-<>,." are ignored, so the only way `contents` could not
 // represent a valid program would be if the square brackets are mismatched.
-std::variant<jasmin::Function<Instructions>, parse_error> BuildJasminFunction(
+std::variant<hop::Function<Instructions>, parse_error> BuildHopFunction(
     std::string_view contents);
 
 }  // namespace bf

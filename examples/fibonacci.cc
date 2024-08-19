@@ -2,10 +2,10 @@
 #include <cstdio>
 #include <cstring>
 
-#include "jasmin/core/program_fragment.h"
-#include "jasmin/instructions/arithmetic.h"
-#include "jasmin/instructions/common.h"
-#include "jasmin/instructions/compare.h"
+#include "hop/core/program_fragment.h"
+#include "hop/instructions/arithmetic.h"
+#include "hop/instructions/common.h"
+#include "hop/instructions/compare.h"
 #include "nth/container/interval.h"
 #include "nth/container/stack.h"
 
@@ -15,44 +15,44 @@
 // uses subtraction to compute `n - 1` and `n - 2`, which it passes to the
 // function recursively. The second implementation uses dynamic programming and
 // a user-defined `UpdateFibonacci` function. The idea here is to show not
-// only what directly working with Jasmin's byte code looks like, but also to
-// point out that Jasmin allows users to fully control the instruction set they
+// only what directly working with Hop's byte code looks like, but also to
+// point out that Hop allows users to fully control the instruction set they
 // are working with.
 
-using RecursiveInstructions = jasmin::MakeInstructionSet<
-    jasmin::Duplicate, jasmin::Swap, jasmin::Push<uint64_t>,
-    jasmin::Push<jasmin::Function<>*>, jasmin::LessThan<uint64_t>,
-    jasmin::Add<uint64_t>, jasmin::Subtract<uint64_t>>;
+using RecursiveInstructions = hop::MakeInstructionSet<
+    hop::Duplicate, hop::Swap, hop::Push<uint64_t>,
+    hop::Push<hop::Function<>*>, hop::LessThan<uint64_t>,
+    hop::Add<uint64_t>, hop::Subtract<uint64_t>>;
 
-jasmin::ProgramFragment<RecursiveInstructions> FibonacciRecursive() {
-  jasmin::ProgramFragment<RecursiveInstructions> p;
+hop::ProgramFragment<RecursiveInstructions> FibonacciRecursive() {
+  hop::ProgramFragment<RecursiveInstructions> p;
   auto& func = p.declare("fib", 1, 1).function;
-  func.append<jasmin::Duplicate>();
-  func.append<jasmin::Push<uint64_t>>(2);
-  func.append<jasmin::LessThan<uint64_t>>();
-  nth::interval<jasmin::InstructionIndex> jump =
-      func.append_with_placeholders<jasmin::JumpIf>();
-  func.append<jasmin::Duplicate>();
-  func.append<jasmin::Push<uint64_t>>(1);
-  func.append<jasmin::Subtract<uint64_t>>();
-  func.append<jasmin::Push<jasmin::Function<>*>>(&func);
-  func.append<jasmin::Call>(
-      jasmin::InstructionSpecification{.parameters = 1, .returns = 1});
-  func.append<jasmin::Swap>();
-  func.append<jasmin::Push<uint64_t>>(2);
-  func.append<jasmin::Subtract<uint64_t>>();
-  func.append<jasmin::Push<jasmin::Function<>*>>(&func);
-  func.append<jasmin::Call>(
-      jasmin::InstructionSpecification{.parameters = 1, .returns = 1});
-  func.append<jasmin::Add<uint64_t>>();
-  nth::interval<jasmin::InstructionIndex> ret = func.append<jasmin::Return>();
+  func.append<hop::Duplicate>();
+  func.append<hop::Push<uint64_t>>(2);
+  func.append<hop::LessThan<uint64_t>>();
+  nth::interval<hop::InstructionIndex> jump =
+      func.append_with_placeholders<hop::JumpIf>();
+  func.append<hop::Duplicate>();
+  func.append<hop::Push<uint64_t>>(1);
+  func.append<hop::Subtract<uint64_t>>();
+  func.append<hop::Push<hop::Function<>*>>(&func);
+  func.append<hop::Call>(
+      hop::InstructionSpecification{.parameters = 1, .returns = 1});
+  func.append<hop::Swap>();
+  func.append<hop::Push<uint64_t>>(2);
+  func.append<hop::Subtract<uint64_t>>();
+  func.append<hop::Push<hop::Function<>*>>(&func);
+  func.append<hop::Call>(
+      hop::InstructionSpecification{.parameters = 1, .returns = 1});
+  func.append<hop::Add<uint64_t>>();
+  nth::interval<hop::InstructionIndex> ret = func.append<hop::Return>();
   func.set_value(jump, 0, ret.lower_bound() - jump.lower_bound());
   return p;
 }
 
-struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
-  static void consume(jasmin::Input<uint64_t, uint64_t, uint64_t> in,
-                      jasmin::Output<uint64_t, uint64_t, uint64_t> out) {
+struct UpdateFibonacci : hop::Instruction<UpdateFibonacci> {
+  static void consume(hop::Input<uint64_t, uint64_t, uint64_t> in,
+                      hop::Output<uint64_t, uint64_t, uint64_t> out) {
     out.set<0>(in.get<0>() - 1);
     out.set<1>(in.get<2>());
     out.set<2>(in.get<1>() + in.get<2>());
@@ -60,24 +60,24 @@ struct UpdateFibonacci : jasmin::Instruction<UpdateFibonacci> {
 };
 
 using DynamicInstructions =
-    jasmin::MakeInstructionSet<jasmin::DuplicateAt, jasmin::Push<uint64_t>,
-                               jasmin::Equal<uint64_t>, UpdateFibonacci>;
+    hop::MakeInstructionSet<hop::DuplicateAt, hop::Push<uint64_t>,
+                               hop::Equal<uint64_t>, UpdateFibonacci>;
 
-jasmin::ProgramFragment<DynamicInstructions> FibonacciDynamicProgramming() {
-  jasmin::ProgramFragment<DynamicInstructions> p;
+hop::ProgramFragment<DynamicInstructions> FibonacciDynamicProgramming() {
+  hop::ProgramFragment<DynamicInstructions> p;
   auto [id, func] = p.declare("fib", 1, 1);
-  func.append<jasmin::Push<uint64_t>>(1);
-  func.append<jasmin::Push<uint64_t>>(0);
-  auto loop_start = func.append<jasmin::DuplicateAt>(
-      jasmin::InstructionSpecification{.parameters = 3, .returns = 1});
-  func.append<jasmin::Push<uint64_t>>(0);
-  func.append<jasmin::Equal<uint64_t>>();
-  nth::interval<jasmin::InstructionIndex> jump =
-      func.append_with_placeholders<jasmin::JumpIf>();
+  func.append<hop::Push<uint64_t>>(1);
+  func.append<hop::Push<uint64_t>>(0);
+  auto loop_start = func.append<hop::DuplicateAt>(
+      hop::InstructionSpecification{.parameters = 3, .returns = 1});
+  func.append<hop::Push<uint64_t>>(0);
+  func.append<hop::Equal<uint64_t>>();
+  nth::interval<hop::InstructionIndex> jump =
+      func.append_with_placeholders<hop::JumpIf>();
   func.append<UpdateFibonacci>();
-  nth::interval<jasmin::InstructionIndex> loop_end =
-      func.append_with_placeholders<jasmin::Jump>();
-  nth::interval<jasmin::InstructionIndex> ret = func.append<jasmin::Return>();
+  nth::interval<hop::InstructionIndex> loop_end =
+      func.append_with_placeholders<hop::Jump>();
+  nth::interval<hop::InstructionIndex> ret = func.append<hop::Return>();
 
   func.set_value(loop_end, 0,
                  loop_start.lower_bound() - loop_end.lower_bound());
@@ -99,7 +99,7 @@ int main(int argc, char const* argv[]) {
     return 1;
   }
 
-  nth::stack<jasmin::Value> stack = {std::atoi(argv[2])};
+  nth::stack<hop::Value> stack = {std::atoi(argv[2])};
   if (std::strcmp(argv[1], "recursive") == 0) {
     auto program = FibonacciRecursive();
     program.function("fib").invoke(stack);
